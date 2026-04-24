@@ -7,9 +7,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
-<!-- GIS: Calendar用OAuthトークン取得（Firebaseログインとは完全に分離） -->
 <script src="https://accounts.google.com/gsi/client" async onload="onGsiLoad()"></script>
-<!-- GAPI: Calendar API呼び出し -->
 <script src="https://apis.google.com/js/api.js" async onload="onGapiLoad()"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -17,13 +15,13 @@ body{font-family:-apple-system,'Hiragino Sans','Yu Gothic UI',sans-serif;backgro
 .screen{min-height:100vh;display:none;align-items:center;justify-content:center;padding:20px;flex-direction:column}
 .screen.active{display:flex}
 .setup-card,.login-card{background:#fff;border-radius:20px;padding:36px;width:520px;max-width:100%;box-shadow:0 8px 32px rgba(0,0,0,.09)}
-h1.setup-h{font-size:20px;font-weight:700;margin-bottom:6px}
-p.setup-p{font-size:13px;color:#666;line-height:1.7;margin-bottom:16px}
+.setup-h{font-size:20px;font-weight:700;margin-bottom:6px}
+.setup-p{font-size:13px;color:#666;line-height:1.7;margin-bottom:16px}
 .step{display:flex;gap:12px;margin-bottom:14px;align-items:start}
 .step-n{width:22px;height:22px;border-radius:50%;background:#1a73e8;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
 .step p{font-size:12px;color:#444;line-height:1.7;margin:0}
 .step code{background:#f1f3f4;padding:1px 5px;border-radius:4px;font-size:11px;font-family:monospace}
-.fld-lbl{font-size:11px;color:#666;display:block;margin-bottom:4px;margin-top:12px}
+.lbl{font-size:11px;color:#666;display:block;margin-bottom:4px;margin-top:12px}
 textarea.fld{width:100%;height:108px;border:1px solid #dadce0;border-radius:8px;padding:9px;font-size:12px;font-family:monospace;resize:vertical}
 input.fld{width:100%;border:1px solid #dadce0;border-radius:8px;padding:9px 10px;font-size:12px}
 .cfg-err{color:#c5221f;font-size:12px;margin-top:6px;display:none}
@@ -64,6 +62,7 @@ input.fld{width:100%;border:1px solid #dadce0;border-radius:8px;padding:9px 10px
 .mpfil{height:100%;border-radius:2px}
 .mplbl{font-size:9px;color:#aaa;text-align:right;margin-top:1px}
 .rtag{font-size:9px;background:#e6f4ea;color:#137333;padding:1px 5px;border-radius:8px;font-weight:600}
+/* Calendar */
 .cal-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:11px}
 .cal-nav span{font-size:14px;font-weight:700}
 .cal-head{display:grid;grid-template-columns:repeat(7,1fr);margin-bottom:3px}
@@ -80,6 +79,7 @@ input.fld{width:100%;border:1px solid #dadce0;border-radius:8px;padding:9px 10px
 .cev.cr{border-top-right-radius:0;border-bottom-right-radius:0}
 .cal-more{font-size:9px;color:#999;text-align:right}
 .cal-detail{background:#fff;border:1px solid #e8e6e0;border-radius:12px;padding:13px;margin-top:10px}
+/* Gantt */
 .gantt-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
 .gantt{min-width:600px}
 .gh{display:flex;margin-left:225px;margin-bottom:3px;position:relative;height:13px}
@@ -90,14 +90,14 @@ input.fld{width:100%;border:1px solid #dadce0;border-radius:8px;padding:9px 10px
 .gbar{position:absolute;height:13px;top:4.5px;border-radius:3px;font-size:9px;color:#fff;display:flex;align-items:center;padding:0 4px;overflow:hidden;white-space:nowrap;min-width:4px}
 .gtoday{position:absolute;width:2px;top:0;bottom:0;background:#ea4335;opacity:.55;pointer-events:none}
 .gdia{position:absolute;width:9px;height:9px;top:6px;transform:rotate(45deg);border-radius:1px}
+/* Progress */
 .prog-toolbar{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap}
 .prog-toolbar label{font-size:12px;color:#444;display:flex;align-items:center;gap:6px;cursor:pointer}
 .pir{display:flex;align-items:center;gap:8px;margin:4px 0}
 .pir label{font-size:11px;color:#444;min-width:165px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:0;cursor:default}
 .pir input[type=range]{flex:1;min-width:60px;cursor:pointer}
 .pival{font-size:11px;min-width:28px;text-align:right;color:#666}
-.done-toggle{font-size:11px;color:#888;cursor:pointer;padding:4px 0;display:block}
-.done-toggle:hover{color:#555}
+/* Delay */
 .delay-opts{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px}
 @media(max-width:640px){.delay-opts{grid-template-columns:1fr}}
 .dopt{border:1px solid #e8e6e0;border-radius:10px;padding:11px;background:#fff}
@@ -107,17 +107,44 @@ input.fld{width:100%;border:1px solid #dadce0;border-radius:8px;padding:9px 10px
 .dopt-desc{font-size:11px;color:#666;line-height:1.65;margin-bottom:8px}
 .dopt-risk{font-size:10px;display:flex;align-items:center;gap:5px;margin-bottom:8px}
 .rdot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+/* Duration picker */
+.dur-picker{display:flex;gap:5px;flex-wrap:wrap;margin:10px 0}
+.dur-btn{padding:4px 10px;border:1px solid #dadce0;border-radius:6px;font-size:11px;cursor:pointer;background:#fff;color:#444;font-family:inherit}
+.dur-btn.active{background:#1a73e8;color:#fff;border-color:#1a73e8;font-weight:600}
+.dur-custom{display:flex;align-items:center;gap:6px;margin-top:6px;font-size:12px;color:#555}
+.dur-custom input{width:100px;border:1px solid #dadce0;border-radius:6px;padding:4px 8px;font-size:11px}
+/* Merge task */
+.mg-detail{background:#e8f0fe;border-radius:8px;padding:9px;margin-top:8px;font-size:11px;color:#1a56db}
+.mg-orig-list{margin-top:6px;padding-left:14px}
+.mg-orig-list li{font-size:11px;color:#444;list-style:disc;margin:2px 0}
+.mg-schedule{background:#f8f9fa;border-radius:8px;padding:8px;margin-top:8px;font-size:11px;color:#444;line-height:1.8}
+/* Merge task name input */
+.mg-name-row{display:flex;align-items:center;gap:8px;margin:8px 0}
+.mg-name-row input{flex:1;border:1px solid #dadce0;border-radius:6px;padding:5px 9px;font-size:12px}
+/* Fix list */
 .fix-purpose{background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:11px;font-size:12px;color:#78350f;line-height:1.7;margin-bottom:12px}
 .fix-purpose strong{display:block;font-size:13px;margin-bottom:4px}
 .fix-row{display:flex;gap:8px;padding:7px 0;border-top:1px solid #f0ede8;align-items:start}
 .fix-row:first-child{border-top:none}
 .fix-meta{display:flex;gap:6px;margin-top:3px;flex-wrap:wrap;align-items:center}
 .fix-status{font-size:10px;padding:1px 7px;border-radius:10px;cursor:pointer;border:1px solid;font-weight:500}
+/* Calendar source management */
+.cal-source-row{display:flex;align-items:center;gap:8px;padding:8px 0;border-top:1px solid #f0ede8;flex-wrap:wrap}
+.cal-source-row:first-child{border-top:none}
+.cal-src-info{flex:1;min-width:0}
+.cal-src-name{font-size:12px;font-weight:500}
+.cal-src-meta{font-size:10px;color:#888;margin-top:2px}
+.cal-src-btns{display:flex;gap:5px;flex-shrink:0;flex-wrap:wrap}
+.src-badge{font-size:10px;padding:1px 7px;border-radius:10px;font-weight:600}
+/* Sync modal */
 .modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;align-items:center;justify-content:center}
 .modal-bg.open{display:flex}
-.modal{background:#fff;border-radius:18px;padding:24px;width:540px;max-width:95vw;max-height:90vh;overflow-y:auto}
+.modal{background:#fff;border-radius:18px;padding:24px;width:580px;max-width:95vw;max-height:90vh;overflow-y:auto}
 .modal h2{font-size:16px;font-weight:700;margin-bottom:4px}
 .modal-sub{font-size:12px;color:#666;margin-bottom:16px}
+.modal-tabs{display:flex;border-bottom:1px solid #e8e6e0;margin-bottom:16px}
+.modal-tab{padding:7px 14px;font-size:12px;cursor:pointer;border-bottom:2px solid transparent;color:#666;white-space:nowrap}
+.modal-tab.active{color:#1a73e8;border-bottom-color:#1a73e8;font-weight:600}
 .modal-sec{margin-bottom:18px}
 .modal-sec h3{font-size:11px;font-weight:700;color:#666;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px}
 .cal-warn{background:#fff8e1;border:1px solid #fdd835;border-radius:9px;padding:12px;font-size:12px;color:#7c5400;margin-bottom:14px}
@@ -136,10 +163,19 @@ input.fld{width:100%;border:1px solid #dadce0;border-radius:8px;padding:9px 10px
 .sync-res{margin-top:11px;padding:10px;border-radius:8px;font-size:12px;display:none}
 .sync-res.ok{background:#e6f4ea;color:#137333}
 .sync-res.err{background:#fce8e6;color:#c5221f}
+.sync-notice{background:#f0f4ff;border:1px solid #c7d7ff;border-radius:8px;padding:10px;font-size:11px;color:#3c4f99;margin-bottom:12px}
+/* Op log */
+.oplog-row{display:flex;gap:8px;padding:5px 0;border-top:1px solid #f0ede8;align-items:start;font-size:11px}
+.oplog-row:first-child{border-top:none}
+.oplog-time{color:#aaa;white-space:nowrap;min-width:90px;flex-shrink:0}
+.oplog-icon{flex-shrink:0}
+/* Buttons */
 .btn{display:inline-flex;align-items:center;gap:4px;padding:5px 11px;border:1px solid #dadce0;border-radius:8px;font-size:12px;cursor:pointer;background:#fff;color:#3c4043;font-family:inherit;transition:background .1s}
 .btn:hover{background:#f1f3f4}
 .btn.pr{background:#1a73e8;color:#fff;border-color:#1a73e8}
 .btn.pr:hover{background:#1557b0}
+.btn.danger{background:#fce8e6;color:#c5221f;border-color:#f5c6c3}
+.btn.danger:hover{background:#f9d2cf}
 .btn.sm{padding:3px 8px;font-size:11px}
 .btn-row{display:flex;gap:7px;margin-top:9px;flex-wrap:wrap}
 input[type=text],select,textarea{border:1px solid #dadce0;border-radius:8px;padding:6px 10px;font-size:12px;font-family:inherit;width:100%;color:#1a1a1a}
@@ -149,6 +185,9 @@ input[type=checkbox]{width:14px;height:14px;cursor:pointer}
 .sdot{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:3px;flex-shrink:0}
 .spinner{display:inline-block;width:14px;height:14px;border:2px solid #dadce0;border-top-color:#1a73e8;border-radius:50%;animation:spin .7s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
+.undo-toast{position:fixed;bottom:48px;left:50%;transform:translateX(-50%);background:#1a1a1a;color:#fff;border-radius:10px;padding:9px 16px;font-size:12px;display:none;align-items:center;gap:10px;z-index:300;white-space:nowrap}
+.undo-toast.show{display:flex}
+.undo-btn{color:#8ab4f8;cursor:pointer;font-weight:600;border:none;background:none;font-size:12px;padding:0}
 </style>
 </head>
 <body>
@@ -156,32 +195,31 @@ input[type=checkbox]{width:14px;height:14px;cursor:pointer}
 <!-- SETUP -->
 <div id="screen-setup" class="screen">
   <div class="setup-card">
-    <h1 class="setup-h">🔧 初期設定</h1>
+    <div class="setup-h">🔧 初期設定</div>
     <p class="setup-p">Firebase設定とGoogle OAuth Client IDを入力してください。</p>
     <div class="step"><div class="step-n">1</div><p><strong>console.firebase.google.com</strong> でプロジェクト作成 → ウェブアプリ追加 → <code>firebaseConfig</code> の <strong>{ }の中身</strong>をコピー</p></div>
-    <div class="step"><div class="step-n">2</div><p><strong>console.cloud.google.com</strong> → 「APIとサービス」→「認証情報」→ OAuthクライアントID（ウェブ） の <strong>クライアントID</strong> をコピー<br>（例: <code>123456.apps.googleusercontent.com</code>）</p></div>
-    <label class="fld-lbl">Firebase設定 JSON の中身</label>
-    <textarea class="fld" id="cfg-fb" placeholder='  "apiKey": "AIza...",&#10;  "authDomain": "xxx.firebaseapp.com",&#10;  "projectId": "xxx",&#10;  "storageBucket": "xxx.appspot.com",&#10;  "messagingSenderId": "123456",&#10;  "appId": "1:xxx:web:xxx"'></textarea>
-    <label class="fld-lbl">Google OAuth Client ID（Calendar同期に必要）</label>
+    <div class="step"><div class="step-n">2</div><p><strong>console.cloud.google.com</strong> → 「APIとサービス」→「認証情報」→ OAuthクライアントID（ウェブ）の <strong>クライアントID</strong> をコピー</p></div>
+    <label class="lbl">Firebase設定 JSON（{ }の中身）</label>
+    <textarea class="fld" id="cfg-fb" placeholder='  "apiKey":"AIza...",&#10;  "authDomain":"xxx.firebaseapp.com",&#10;  "projectId":"xxx",&#10;  "storageBucket":"xxx.appspot.com",&#10;  "messagingSenderId":"123456",&#10;  "appId":"1:xxx:web:xxx"'></textarea>
+    <label class="lbl">Google OAuth Client ID</label>
     <input class="fld" id="cfg-oauth" type="text" placeholder="123456789-xxx.apps.googleusercontent.com">
     <div class="cfg-err" id="cfg-err">JSONの形式が正しくありません。</div>
     <div class="btn-row" style="margin-top:14px">
       <button class="btn pr" onclick="saveConfig()" style="width:100%;justify-content:center;padding:10px">保存して開始</button>
     </div>
-    <p style="font-size:11px;color:#999;margin-top:12px;text-align:center">詳細はREADME.mdを参照してください</p>
   </div>
 </div>
 
 <!-- LOGIN -->
 <div id="screen-login" class="screen">
   <div class="login-card">
-    <h1 class="setup-h">📋 直進優先 PM</h1>
-    <p class="setup-p">Googleアカウントでログインします。<br>Google Calendar連携はログイン後に「🔄 カレンダー同期」から個別に許可します。<br>（Firebaseログインと Calendar OAuth は別のステップです）</p>
+    <div class="setup-h">📋 直進優先 PM</div>
+    <p class="setup-p">Googleアカウントでログインします。<br>Google Calendar連携はログイン後に「🔄 カレンダー同期」から個別に許可します。</p>
     <button class="google-btn" onclick="signIn()">
       <svg width="20" height="20" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
-      Googleでログイン（アプリ認証のみ）
+      Googleでログイン
     </button>
-    <p style="font-size:11px;color:#999;margin-top:14px;text-align:center">Calendar権限は別途「🔄 カレンダー同期」ボタンから取得します</p>
+    <p style="font-size:11px;color:#999;margin-top:12px;text-align:center">Calendar権限は「🔄 カレンダー同期」ボタンから個別に取得します</p>
     <div style="text-align:center;margin-top:10px"><button class="btn sm" onclick="showSetup()">設定を変更する</button></div>
   </div>
 </div>
@@ -203,6 +241,7 @@ input[type=checkbox]{width:14px;height:14px;cursor:pointer}
     <div class="tab" onclick="sw('progress')">進捗更新</div>
     <div class="tab" onclick="sw('delay')">遅延対応</div>
     <div class="tab" onclick="sw('fixlist')">修正リスト</div>
+    <div class="tab" onclick="sw('oplog')">操作ログ</div>
   </div>
   <div class="content">
     <div class="panel active" id="panel-cal"></div>
@@ -211,35 +250,26 @@ input[type=checkbox]{width:14px;height:14px;cursor:pointer}
     <div class="panel" id="panel-progress"></div>
     <div class="panel" id="panel-delay"></div>
     <div class="panel" id="panel-fixlist">
-      <div class="fix-purpose">
-        <strong>📌 修正リストとは</strong>
-        「今は直さない」と決めた修正事項を蓄積する場所です。次工程へ渡せる最低条件を満たしていれば修正はここへ回し、本流を止めません。全体修正期間にまとめて処理します。
-      </div>
+      <div class="fix-purpose"><strong>📌 修正リストとは</strong>「今は直さない」と決めた修正事項を蓄積する場所です。次工程へ渡せる最低条件を満たしていれば修正はここへ回し、本流を止めません。全体修正期間にまとめて処理します。</div>
       <div class="card">
         <div class="card-t">修正リストへ追加</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
-          <div>
-            <label class="fld-lbl" style="margin-top:0">対象タスク</label>
+          <div><label class="lbl" style="margin-top:0">対象タスク</label>
             <select id="fx-sel" style="margin-bottom:5px"><option value="">-- タスクを選択 --</option></select>
             <input type="text" id="fx-task" placeholder="または直接入力" />
           </div>
-          <div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
-              <div><label class="fld-lbl" style="margin-top:0">優先度</label>
-                <select id="fx-pri"><option value="high">高（前半）</option><option value="mid" selected>中</option><option value="low">低</option></select></div>
-              <div><label class="fld-lbl" style="margin-top:0">状態</label>
-                <select id="fx-status"><option value="pending">未着手</option><option value="wip">対応中</option><option value="done">完了</option></select></div>
-            </div>
-          </div>
+          <div><div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+            <div><label class="lbl" style="margin-top:0">優先度</label><select id="fx-pri"><option value="high">高（前半）</option><option value="mid" selected>中</option><option value="low">低</option></select></div>
+            <div><label class="lbl" style="margin-top:0">状態</label><select id="fx-status"><option value="pending">未着手</option><option value="wip">対応中</option><option value="done">完了</option></select></div>
+          </div></div>
         </div>
-        <label class="fld-lbl" style="margin-top:0">修正内容（今直さない理由も書くと◎）</label>
-        <textarea id="fx-content"></textarea>
-        <label class="fld-lbl">対応予定時期</label>
-        <input type="text" id="fx-when" placeholder="例: 全体修正期間（6月下旬）" />
+        <label class="lbl" style="margin-top:0">修正内容</label><textarea id="fx-content"></textarea>
+        <label class="lbl">対応予定時期</label><input type="text" id="fx-when" placeholder="例: 全体修正期間（6月下旬）">
         <div class="btn-row"><button class="btn pr" onclick="addFix()">修正リストへ追加</button></div>
       </div>
       <div id="fix-body"></div>
     </div>
+    <div class="panel" id="panel-oplog"></div>
   </div>
   <div class="sbar" id="sbar"></div>
 </div>
@@ -249,48 +279,52 @@ input[type=checkbox]{width:14px;height:14px;cursor:pointer}
   <div class="modal">
     <h2>🔄 Google Calendar 同期</h2>
     <div class="modal-sub">Firebaseログインとは別に、Calendar用のアクセス権を取得します。</div>
-
-    <div id="cal-notcon">
-      <div class="cal-warn">
-        <strong>📅 Google Calendarへのアクセスがまだ許可されていません</strong><br>
-        下のボタンを押してCalendar専用のアクセス権を許可してください。Googleのポップアップが開きます。
-      </div>
-      <button class="cal-access-btn" onclick="requestCalendarAccess()">
-        <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
-        Google Calendarへのアクセスを許可する
-      </button>
+    <div class="sync-notice">⚠ この画面での解除・削除は<strong>アプリ内のタスクにのみ</strong>反映されます。Google Calendar上の予定は削除されません。</div>
+    <div class="modal-tabs">
+      <div class="modal-tab active" onclick="syncTabSw('sync',this)">同期</div>
+      <div class="modal-tab" onclick="syncTabSw('sources',this)">カレンダー管理</div>
     </div>
-
-    <div id="cal-con" style="display:none">
-      <div style="background:#e6f4ea;border-radius:8px;padding:9px 12px;font-size:12px;color:#137333;margin-bottom:14px;display:flex;align-items:center;gap:8px">
-        ✓ Google Calendarに接続済み
-        <button class="btn sm" onclick="requestCalendarAccess()" style="margin-left:auto">再取得</button>
+    <div id="st-sync">
+      <div id="cal-notcon">
+        <div class="cal-warn"><strong>📅 Google Calendarへのアクセスがまだ許可されていません</strong><br>下のボタンを押してCalendar専用のアクセス権を許可してください。</div>
+        <button class="cal-access-btn" onclick="requestCalendarAccess()">
+          <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+          Google Calendarへのアクセスを許可する
+        </button>
       </div>
-      <div class="modal-sec">
-        <h3>取込元カレンダー（Pull）</h3>
-        <div id="cal-klist"><div style="display:flex;align-items:center;gap:8px;font-size:12px;color:#999"><div class="spinner"></div>読み込み中...</div></div>
+      <div id="cal-con" style="display:none">
+        <div style="background:#e6f4ea;border-radius:8px;padding:9px 12px;font-size:12px;color:#137333;margin-bottom:14px;display:flex;align-items:center;gap:8px">✓ Google Calendarに接続済み<button class="btn sm" onclick="requestCalendarAccess()" style="margin-left:auto">再取得</button></div>
+        <div class="modal-sec"><h3>取込元カレンダー（Pull）</h3><div id="cal-klist"><div style="display:flex;align-items:center;gap:8px;font-size:12px;color:#999"><div class="spinner"></div>読み込み中...</div></div></div>
+        <div class="modal-sec"><h3>プッシュ先（プロジェクト別）</h3>
+          <div class="proj-row"><label>詩集</label><select id="pcal-poetry" class="cal-pick"><option value="primary">メインカレンダー</option></select></div>
+          <div class="proj-row"><label>音声作品</label><select id="pcal-audio" class="cal-pick"><option value="primary">メインカレンダー</option></select></div>
+          <div class="proj-row"><label>展示</label><select id="pcal-exhibit" class="cal-pick"><option value="primary">メインカレンダー</option></select></div>
+        </div>
+        <div class="sync-actions">
+          <button class="sync-act" onclick="doSync('pull')">⬇ Googleから取込</button>
+          <button class="sync-act" onclick="doSync('push')">⬆ Googleへ書出</button>
+          <button class="sync-act pr" onclick="doSync('both')">⇄ 双方向同期</button>
+        </div>
+        <div class="sync-res" id="sync-res"></div>
       </div>
-      <div class="modal-sec">
-        <h3>プッシュ先（プロジェクト別）</h3>
-        <div class="proj-row"><label>詩集</label><select id="pcal-poetry" class="cal-pick"><option value="primary">メインカレンダー</option></select></div>
-        <div class="proj-row"><label>音声作品</label><select id="pcal-audio" class="cal-pick"><option value="primary">メインカレンダー</option></select></div>
-        <div class="proj-row"><label>展示</label><select id="pcal-exhibit" class="cal-pick"><option value="primary">メインカレンダー</option></select></div>
-      </div>
-      <div class="sync-actions">
-        <button class="sync-act" onclick="doSync('pull')">⬇ Googleから取込</button>
-        <button class="sync-act" onclick="doSync('push')">⬆ Googleへ書出</button>
-        <button class="sync-act pr" onclick="doSync('both')">⇄ 双方向同期</button>
-      </div>
-      <div class="sync-res" id="sync-res"></div>
+    </div>
+    <div id="st-sources" style="display:none">
+      <div id="cal-src-list"><div class="notice">カレンダー管理情報を読み込んでいます...</div></div>
     </div>
     <div style="text-align:right;margin-top:16px"><button class="btn" onclick="closeSync()">閉じる</button></div>
   </div>
 </div>
 
+<!-- UNDO TOAST -->
+<div class="undo-toast" id="undo-toast">
+  <span id="undo-msg"></span>
+  <button class="undo-btn" onclick="execUndo()">元に戻す</button>
+</div>
+
 <script>
-// ══════════════════════════════════════════════════
+// ═══════════════════════════════════════
 // CONSTANTS
-// ══════════════════════════════════════════════════
+// ═══════════════════════════════════════
 const TODAY=new Date();TODAY.setHours(0,0,0,0);
 const PEOPLE=[
   {id:'senko',    name:'線香（私）',color:'#4f46e5'},
@@ -300,44 +334,51 @@ const PEOPLE=[
   {id:'b',        name:'B（声優）', color:'#d97706'},
 ];
 const PROJ={
-  poetry:{name:'詩集',    color:'#4f46e5',ms:[{name:'第5作到達',date:'2026-04-26'},{name:'第10作到達',date:'2026-05-11'},{name:'第15作到達',date:'2026-05-26'},{name:'最終入稿',date:'2026-06-30'}]},
-  audio: {name:'音声作品',color:'#059669',ms:[{name:'仮台本前半',date:'2026-05-01'},{name:'初回読み合わせ',date:'2026-05-13'},{name:'本台本確定',date:'2026-06-03'}]},
-  exhibit:{name:'展示',   color:'#b45309',ms:[{name:'文言確定稿',date:'2026-05-09'},{name:'通し確認',date:'2026-05-27'},{name:'公開準備完了',date:'2026-05-31'}]},
+  poetry: {name:'詩集',    color:'#4f46e5',ms:[{name:'第5作到達',date:'2026-04-26'},{name:'第10作到達',date:'2026-05-11'},{name:'第15作到達',date:'2026-05-26'},{name:'最終入稿',date:'2026-06-30'}]},
+  audio:  {name:'音声作品',color:'#059669',ms:[{name:'仮台本前半',date:'2026-05-01'},{name:'初回読み合わせ',date:'2026-05-13'},{name:'本台本確定',date:'2026-06-03'}]},
+  exhibit:{name:'展示',    color:'#b45309',ms:[{name:'文言確定稿',date:'2026-05-09'},{name:'通し確認',date:'2026-05-27'},{name:'公開準備完了',date:'2026-05-31'}]},
 };
 const OC={senko:'9',sato:'2',sunayuki:'6',shikamii:'1',b:'5'};
 
-// ══════════════════════════════════════════════════
+// ═══════════════════════════════════════
 // STATE
-// ══════════════════════════════════════════════════
-let TASKS=[],FIXES=[];
-let db=null,auth=null,unsubT=null,unsubF=null;
-// Calendar OAuth - Firebase認証とは完全に分離
+// ═══════════════════════════════════════
+let TASKS=[],FIXES=[],OPLOGS=[],CAL_SOURCES=[];
+let db=null,auth=null,unsubT=null,unsubF=null,unsubL=null,unsubCS=null;
 let tokenClient=null,gCalToken=null,gCalExp=0;
 let gapiReady=false,gsiReady=false;
 let calList=[],selCalIds=new Set();
 let visPeople=new Set(PEOPLE.map(p=>p.id));
 let calY=TODAY.getFullYear(),calM=TODAY.getMonth(),selDay=null;
-let showDone=false,mgroups={},mgk=0;
+let showDone=false,showMerged=false;
+let mgroups={},mgk=0;
+// Merge duration picker state (per-owner)
+let mergeDur={};
+let mergeCustom={};
+let mergeName={};
+let undoStack=null;
 
-// ══════════════════════════════════════════════════
+// ═══════════════════════════════════════
 // HELPERS
-// ══════════════════════════════════════════════════
+// ═══════════════════════════════════════
 const pd=s=>new Date(s+'T00:00:00');
 const fs=s=>{const d=pd(s);return(d.getMonth()+1)+'/'+(d.getDate())};
 const dd=(a,b)=>Math.round((b-a)/86400000);
 const now$=()=>new Date().toISOString();
+const datePlus=(d,n)=>new Date(pd(d).getTime()+n*86400000).toISOString().slice(0,10);
 const getP=id=>PEOPLE.find(p=>p.id===id)||{name:id,color:'#888'};
-const isDel=t=>pd(t.end)<TODAY&&t.prog<100;
-const isTod=t=>pd(t.start)<=TODAY&&pd(t.end)>=TODAY&&t.prog<100;
-const isMg=t=>!!(t.id&&t.id.startsWith('mg-'));
+const isDel=t=>pd(t.end)<TODAY&&t.prog<100&&!t.merged;
+const isTod=t=>pd(t.start)<=TODAY&&pd(t.end)>=TODAY&&t.prog<100&&!t.merged;
+const isMg=t=>!!(t.type==='merged_task');
 const isSyn=t=>!!t.google_event_id;
-const filt=()=>TASKS.filter(t=>visPeople.has(t.owner));
+const visTask=t=>!t.merged&&!t.archived&&t.visible!==false;
+const filt=()=>TASKS.filter(t=>visPeople.has(t.owner)&&visTask(t));
 const prio=t=>isMg(t)?0:isDel(t)?1:isTod(t)?2:3+Math.max(0,dd(TODAY,pd(t.start)))/365;
 const hasTok=()=>!!(gCalToken&&Date.now()<gCalExp);
 
-// ══════════════════════════════════════════════════
-// CONFIG / SCREENS
-// ══════════════════════════════════════════════════
+// ═══════════════════════════════════════
+// SETUP / SCREENS
+// ═══════════════════════════════════════
 function getCfg(){try{return JSON.parse(localStorage.getItem('pm_cfg')||'{}');}catch{return {};}}
 function saveConfig(){
   const raw=document.getElementById('cfg-fb').value.trim();
@@ -346,26 +387,25 @@ function saveConfig(){
   try{
     const fb=JSON.parse('{'+raw+'}');
     if(!fb.apiKey||!fb.projectId)throw new Error();
-    const cfg={firebase:fb,oauthClientId:oauth};
-    localStorage.setItem('pm_cfg',JSON.stringify(cfg));
+    localStorage.setItem('pm_cfg',JSON.stringify({firebase:fb,oauthClientId:oauth}));
     err.style.display='none';
-    initFB(cfg);
+    initFB({firebase:fb,oauthClientId:oauth});
   }catch{err.style.display='block';}
 }
-const showSetup=()=>{show('setup');};
-const showLogin=()=>{show('login');};
-const showApp=()=>{show('app');};
+const showSetup=()=>show('setup');
+const showLogin=()=>show('login');
+const showApp=()=>show('app');
 function show(s){
   ['setup','login','app'].forEach(n=>{
     const el=document.getElementById('screen-'+n);
-    if(n===s){el.classList.add('active');if(n==='app')el.style.cssText='display:flex;flex-direction:column;align-items:stretch;padding:0;min-height:100vh';}
+    if(n===s){el.classList.add('active');if(n==='app')Object.assign(el.style,{display:'flex',flexDirection:'column',alignItems:'stretch',padding:'0',minHeight:'100vh'});}
     else{el.classList.remove('active');if(n==='app')el.style.cssText='';}
   });
 }
 
-// ══════════════════════════════════════════════════
-// GIS — Calendar OAuth（Firebaseとは分離）
-// ══════════════════════════════════════════════════
+// ═══════════════════════════════════════
+// GIS — Calendar OAuth（Firebaseと分離）
+// ═══════════════════════════════════════
 function onGsiLoad(){
   gsiReady=true;
   const cfg=getCfg();
@@ -374,8 +414,7 @@ function onGsiLoad(){
 function initTokenClient(clientId){
   if(!gsiReady||!window.google?.accounts?.oauth2)return;
   tokenClient=google.accounts.oauth2.initTokenClient({
-    client_id:clientId,
-    scope:'https://www.googleapis.com/auth/calendar',
+    client_id:clientId,scope:'https://www.googleapis.com/auth/calendar',
     callback:onTokenResponse,
     error_callback:e=>showSyncErr('Calendar認証エラー: '+e.message),
   });
@@ -392,16 +431,12 @@ function onTokenResponse(resp){
 function requestCalendarAccess(){
   if(!tokenClient){
     const cfg=getCfg();
-    if(!cfg.oauthClientId){alert('OAuth Client IDが設定されていません。設定画面で入力してください。');closeSync();showSetup();return;}
+    if(!cfg.oauthClientId){alert('OAuth Client IDが設定されていません。');closeSync();showSetup();return;}
     initTokenClient(cfg.oauthClientId);
     if(!tokenClient){alert('Google Identity Servicesの読み込みが完了していません。ページを再読み込みしてください。');return;}
   }
   tokenClient.requestAccessToken({prompt:''});
 }
-
-// ══════════════════════════════════════════════════
-// GAPI
-// ══════════════════════════════════════════════════
 function onGapiLoad(){
   gapi.load('client',async()=>{
     try{
@@ -412,9 +447,9 @@ function onGapiLoad(){
   });
 }
 
-// ══════════════════════════════════════════════════
+// ═══════════════════════════════════════
 // FIREBASE
-// ══════════════════════════════════════════════════
+// ═══════════════════════════════════════
 function initFB(cfg){
   try{if(firebase.apps.length)firebase.apps.forEach(a=>a.delete());}catch{}
   firebase.initializeApp(cfg.firebase);
@@ -425,7 +460,6 @@ function initFB(cfg){
   if(cfg.oauthClientId&&gsiReady)initTokenClient(cfg.oauthClientId);
 }
 async function signIn(){
-  // Firebaseログインのみ。Calendarスコープは要求しない。
   const prov=new firebase.auth.GoogleAuthProvider();
   try{await auth.signInWithPopup(prov);}
   catch(e){if(e.code!=='auth/popup-closed-by-user')alert('ログインに失敗しました: '+e.message);}
@@ -433,8 +467,7 @@ async function signIn(){
 function confirmSignOut(){
   if(!confirm('ログアウトしますか？'))return;
   gCalToken=null;gCalExp=0;calList=[];
-  if(unsubT){unsubT();unsubT=null;}
-  if(unsubF){unsubF();unsubF=null;}
+  [unsubT,unsubF,unsubL,unsubCS].forEach(u=>{try{if(u)u();}catch{}});
   auth.signOut();
 }
 function onSignedIn(user){
@@ -445,32 +478,34 @@ function onSignedIn(user){
   setupListeners();
 }
 
-// ══════════════════════════════════════════════════
-// FIRESTORE
-// ══════════════════════════════════════════════════
+// ═══════════════════════════════════════
+// FIRESTORE LISTENERS
+// ═══════════════════════════════════════
 function setupListeners(){
-  if(unsubT)unsubT();if(unsubF)unsubF();
-  unsubT=db.collection('tasks').onSnapshot(snap=>{
-    TASKS=snap.docs.map(d=>({...d.data(),id:d.id}));
-    updateFxSel();renderAll();
-  },e=>console.error('tasks',e));
-  unsubF=db.collection('fixes').onSnapshot(snap=>{
-    FIXES=snap.docs.map(d=>({...d.data(),id:d.id}));
-    rFixList();rStatus();
-  },e=>console.error('fixes',e));
+  [unsubT,unsubF,unsubL,unsubCS].forEach(u=>{try{if(u)u();}catch{}});
+  unsubT=db.collection('tasks').onSnapshot(s=>{TASKS=s.docs.map(d=>({...d.data(),id:d.id}));updateFxSel();renderAll();},e=>console.error(e));
+  unsubF=db.collection('fixes').onSnapshot(s=>{FIXES=s.docs.map(d=>({...d.data(),id:d.id}));rFixList();rStatus();},e=>console.error(e));
+  unsubL=db.collection('op_logs').orderBy('created','desc').limit(50).onSnapshot(s=>{OPLOGS=s.docs.map(d=>({...d.data(),id:d.id}));rOpLog();},e=>console.error(e));
+  unsubCS=db.collection('calendar_sources').onSnapshot(s=>{CAL_SOURCES=s.docs.map(d=>({...d.data(),id:d.id}));rCalSrc();},e=>console.error(e));
   db.collection('tasks').limit(1).get().then(s=>{if(s.empty)initData();});
 }
+
+// ═══════════════════════════════════════
+// CRUD helpers
+// ═══════════════════════════════════════
 const updT=(id,p)=>db.collection('tasks').doc(id).update({...p,updated:now$()});
-const addT=t=>db.collection('tasks').add({...t,created:now$(),updated:now$(),google_event_id:null});
-const delT=id=>db.collection('tasks').doc(id).delete();
 const addFx=f=>db.collection('fixes').add({...f,created:now$()});
 const updFx=(id,p)=>db.collection('fixes').doc(id).update(p);
+async function opLog(icon,msg,detail=''){
+  await db.collection('op_logs').add({icon,msg,detail,created:now$()});
+}
 
-// ══════════════════════════════════════════════════
+// ═══════════════════════════════════════
 // INITIAL DATA
-// ══════════════════════════════════════════════════
+// ═══════════════════════════════════════
 function initData(){
-  const T=(id,proj,owner,name,start,end,prog=0,cond='')=>({id,proj,owner,name,start,end,prog,cond,google_event_id:null,created:now$(),updated:now$()});
+  const T=(id,proj,owner,name,start,end,prog=0,cond='')=>
+    ({id,proj,owner,name,start,end,prog,cond,google_event_id:null,merged:false,archived:false,visible:true,type:'task',created:now$(),updated:now$()});
   const tasks=[
     T('p1','poetry','senko','第1作 一連','2026-04-08','2026-04-13',100,'完了済み'),
     T('p1m','poetry','senko','第1作 本文修正','2026-04-22','2026-04-22',50,'修正版が通っている'),
@@ -523,11 +558,11 @@ function initData(){
   b.commit();
 }
 
-// ══════════════════════════════════════════════════
+// ═══════════════════════════════════════
 // TAB / PERSON
-// ══════════════════════════════════════════════════
+// ═══════════════════════════════════════
 function sw(t){
-  const names=['cal','gantt','overview','progress','delay','fixlist'];
+  const names=['cal','gantt','overview','progress','delay','fixlist','oplog'];
   document.querySelectorAll('.tab').forEach((el,i)=>el.classList.toggle('active',names[i]===t));
   document.querySelectorAll('.panel').forEach(el=>el.classList.remove('active'));
   document.getElementById('panel-'+t).classList.add('active');
@@ -543,11 +578,11 @@ function toggleP(id){
   document.getElementById('ptog-'+id).classList.toggle('off',!visPeople.has(id));
   renderAll();
 }
-function renderAll(){rCal();rGantt();rOv();rProg();rDelay();rFixList();rStatus();}
+function renderAll(){rCal();rGantt();rOv();rProg();rDelay();rFixList();rOpLog();rStatus();}
 
-// ══════════════════════════════════════════════════
-// CALENDAR
-// ══════════════════════════════════════════════════
+// ═══════════════════════════════════════
+// CALENDAR VIEW
+// ═══════════════════════════════════════
 function rCal(){
   const el=document.getElementById('panel-cal');if(!el.classList.contains('active'))return;
   const MN=['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
@@ -558,9 +593,8 @@ function rCal(){
   <div class="cal-head">${['日','月','火','水','木','金','土'].map((d,i)=>`<div class="cal-wd" style="color:${i===0?'#ea4335':i===6?'#1a73e8':''}">${d}</div>`).join('')}</div>
   <div class="cal-grid">`;
   for(let i=0;i<total;i++){
-    const dn=i-sdow+1, date=new Date(calY,calM,dn);
-    const thisMo=date.getMonth()===calM;
-    const isT=date.toDateString()===TODAY.toDateString();
+    const dn=i-sdow+1,date=new Date(calY,calM,dn);
+    const thisMo=date.getMonth()===calM,isT=date.toDateString()===TODAY.toDateString();
     const isSel=selDay&&date.toDateString()===selDay.toDateString();
     const ds=date.toISOString().slice(0,10);
     const dt=tasks.filter(t=>pd(t.start)<=date&&pd(t.end)>=date).sort((a,b)=>isMg(b)-isMg(a)||isDel(b)-isDel(a));
@@ -578,16 +612,13 @@ function rCal(){
   html+='</div>';
   if(selDay){
     const sdt=tasks.filter(t=>pd(t.start)<=selDay&&pd(t.end)>=selDay);
-    const mth=selDay.getMonth()+1,dt2=selDay.getDate();
-    html+=`<div class="cal-detail"><div style="font-size:13px;font-weight:600;margin-bottom:8px">${mth}月${dt2}日のタスク（${sdt.length}件）</div>`;
+    html+=`<div class="cal-detail"><div style="font-size:13px;font-weight:600;margin-bottom:8px">${selDay.getMonth()+1}月${selDay.getDate()}日のタスク（${sdt.length}件）</div>`;
     if(sdt.length){
       sdt.forEach(t=>{
         const p=getP(t.owner),pj=PROJ[t.proj];
-        html+=`<div class="tr"><span class="badge" style="background:${p.color}18;color:${p.color}">${p.name}</span>${pj?`<span class="badge" style="background:${pj.color}18;color:${pj.color}">${pj.name}</span>`:''}<span class="tn" title="${t.name}">${t.name}</span>${isDel(t)?'<span class="badge" style="background:#fce8e6;color:#c5221f">遅延</span>':isTod(t)?'<span class="badge" style="background:#fff8e1;color:#7c5400">今日</span>':''}${isSyn(t)?'<span class="rtag">🔄</span>':''}<span class="td">${fs(t.start)}〜${fs(t.end)}</span><div class="mpw"><div class="mpbar"><div class="mpfil" style="width:${t.prog}%;background:${isDel(t)?'#ea4335':p.color}"></div></div><div class="mplbl">${t.prog}%</div></div><button class="btn sm" onclick="sw('progress')">↗進捗</button></div>`;
+        html+=`<div class="tr"><span class="badge" style="background:${p.color}18;color:${p.color}">${p.name}</span>${pj?`<span class="badge" style="background:${pj.color}18;color:${pj.color}">${pj.name}</span>`:''}<span class="tn" title="${t.name}">${isMg(t)?'★ ':''}${t.name}</span>${isDel(t)?'<span class="badge" style="background:#fce8e6;color:#c5221f">遅延</span>':isTod(t)?'<span class="badge" style="background:#fff8e1;color:#7c5400">今日</span>':''}${isSyn(t)?'<span class="rtag">🔄</span>':''}<span class="td">${fs(t.start)}〜${fs(t.end)}</span><div class="mpw"><div class="mpbar"><div class="mpfil" style="width:${t.prog}%;background:${isDel(t)?'#ea4335':p.color}"></div></div><div class="mplbl">${t.prog}%</div></div><button class="btn sm" onclick="sw('progress')">↗進捗</button></div>`;
       });
-    }else{
-      html+='<div style="font-size:12px;color:#888">この日のタスクはありません</div>';
-    }
+    }else html+='<div style="font-size:12px;color:#888">この日のタスクはありません</div>';
     html+='</div>';
   }
   el.innerHTML=html;
@@ -596,9 +627,9 @@ function selDay$(ds){const d=pd(ds);selDay=selDay&&selDay.toDateString()===d.toD
 function prevM(){if(calM===0){calM=11;calY--;}else calM--;selDay=null;rCal();}
 function nextM(){if(calM===11){calM=0;calY++;}else calM++;selDay=null;rCal();}
 
-// ══════════════════════════════════════════════════
-// GANTT（ラベル幅225px、title属性でフルテキスト）
-// ══════════════════════════════════════════════════
+// ═══════════════════════════════════════
+// GANTT
+// ═══════════════════════════════════════
 function rGantt(){
   const el=document.getElementById('panel-gantt');if(!el.classList.contains('active'))return;
   const tasks=filt();
@@ -622,14 +653,9 @@ function rGantt(){
       const del=isDel(t),mg=isMg(t),tod=isTod(t);
       const bc=mg?'#4f46e5':del?'#ea4335':tod?person.color:person.color+'88';
       const pj=PROJ[t.proj];
-      const fullTip=`${t.name}（${fs(t.start)}〜${fs(t.end)}）${t.cond?' 通過条件: '+t.cond:''}`;
+      const tip=`${t.name}（${fs(t.start)}〜${fs(t.end)}）${t.cond?' 通過条件: '+t.cond:''}`;
       const lbl=(mg?'★ ':del?'⚠ ':'')+t.name;
-      html+=`<div class="gr">
-        <div class="gl" style="font-size:10px;padding-left:10px" title="${fullTip}">
-          ${lbl.substring(0,30)}${lbl.length>30?'…':''}${isSyn(t)?'<span style="font-size:8px;color:#16a34a;margin-left:2px">🔄</span>':''}${pj?`<span style="font-size:8px;color:${pj.color};margin-left:3px">[${pj.name}]</span>`:''}
-        </div>
-        <div class="gtrack"><div class="gtoday" style="left:${tp}"></div><div class="gbar" style="left:${lp(t.start)};width:${wp(t.start,t.end)};background:${bc}" title="${fullTip}">${t.prog?t.prog+'%':''}</div></div>
-      </div>`;
+      html+=`<div class="gr"><div class="gl" style="font-size:10px;padding-left:10px" title="${tip}">${lbl.substring(0,30)}${lbl.length>30?'…':''}${isSyn(t)?'<span style="font-size:8px;color:#16a34a;margin-left:2px">🔄</span>':''}${pj?`<span style="font-size:8px;color:${pj.color};margin-left:3px">[${pj.name}]</span>`:''}</div><div class="gtrack"><div class="gtoday" style="left:${tp}"></div><div class="gbar" style="left:${lp(t.start)};width:${wp(t.start,t.end)};background:${bc}" title="${tip}">${t.prog?t.prog+'%':''}</div></div></div>`;
     });
   });
   html+=`<div class="gr" style="margin-top:8px"><div class="gl" style="font-weight:600;font-size:10px;color:#888">マイルストーン</div><div class="gtrack"><div class="gtoday" style="left:${tp}"></div></div></div>`;
@@ -640,9 +666,9 @@ function rGantt(){
   el.innerHTML=html;
 }
 
-// ══════════════════════════════════════════════════
+// ═══════════════════════════════════════
 // OVERVIEW
-// ══════════════════════════════════════════════════
+// ═══════════════════════════════════════
 function rOv(){
   const el=document.getElementById('panel-overview');if(!el.classList.contains('active'))return;
   const tasks=[...filt()].sort((a,b)=>prio(a)-prio(b));
@@ -659,7 +685,7 @@ function rOv(){
     html+=`<div class="sec" style="color:${sec.color}">${sec.label}（${st.length}件）${sec.action?`<button class="btn sm" style="margin-left:8px" onclick="sw('${sec.action.tab}')">${sec.action.label}</button>`:''}</div><div class="card">`;
     st.forEach(t=>{
       const p=getP(t.owner),pj=PROJ[t.proj];
-      html+=`<div class="tr"><span class="badge" style="background:${p.color}18;color:${p.color}">${p.name}</span>${pj?`<span class="badge" style="background:${pj.color}18;color:${pj.color}">${pj.name}</span>`:''}<span class="tn" title="${t.name}">${isMg(t)?'★ ':''}${t.name}</span>${isSyn(t)?'<span class="rtag">🔄</span>':''}<span class="td">${fs(t.start)}〜${fs(t.end)}</span><div class="mpw"><div class="mpbar"><div class="mpfil" style="width:${t.prog}%;background:${isDel(t)?'#ea4335':p.color}"></div></div><div class="mplbl">${t.prog}%</div></div>${t.cond?`<span title="通過条件: ${t.cond}" style="cursor:help;font-size:13px">📋</span>`:''}<button class="btn sm" onclick="sw('progress')" title="進捗更新へ">↗</button></div>`;
+      html+=`<div class="tr"><span class="badge" style="background:${p.color}18;color:${p.color}">${p.name}</span>${pj?`<span class="badge" style="background:${pj.color}18;color:${pj.color}">${pj.name}</span>`:''}<span class="tn" title="${t.name}">${isMg(t)?'★ ':''}${t.name}</span>${isSyn(t)?'<span class="rtag">🔄</span>':''}<span class="td">${fs(t.start)}〜${fs(t.end)}</span><div class="mpw"><div class="mpbar"><div class="mpfil" style="width:${t.prog}%;background:${isDel(t)?'#ea4335':p.color}"></div></div><div class="mplbl">${t.prog}%</div></div>${t.cond?`<span title="通過条件: ${t.cond}" style="cursor:help;font-size:13px">📋</span>`:''}<button class="btn sm" onclick="sw('progress')">↗</button></div>`;
     });
     html+='</div>';
   });
@@ -667,33 +693,49 @@ function rOv(){
   el.innerHTML=html;
 }
 
-// ══════════════════════════════════════════════════
-// PROGRESS（完了タスク折りたたみ）
-// ══════════════════════════════════════════════════
+// ═══════════════════════════════════════
+// PROGRESS
+// ═══════════════════════════════════════
 function rProg(){
   const el=document.getElementById('panel-progress');if(!el.classList.contains('active'))return;
   const tasks=[...filt()].sort((a,b)=>prio(a)-prio(b));
-  let html=`<div class="prog-toolbar"><label><input type="checkbox" ${showDone?'checked':''} onchange="showDone=this.checked;rProg()"> 完了タスクを表示する</label><span style="font-size:11px;color:#888">変更は即時保存・全員の画面に反映されます</span></div>`;
+  let html=`<div class="prog-toolbar">
+    <label><input type="checkbox" ${showDone?'checked':''} onchange="showDone=this.checked;rProg()"> 完了タスクを表示</label>
+    <label><input type="checkbox" ${showMerged?'checked':''} onchange="showMerged=this.checked;rProg()"> 統合済み元タスクを表示</label>
+    <span style="font-size:11px;color:#888">変更は即時保存されます</span>
+  </div>`;
+  if(showMerged){
+    const merged=TASKS.filter(t=>visPeople.has(t.owner)&&t.merged===true);
+    if(merged.length){
+      html+=`<div class="notice">📦 統合済み元タスク（${merged.length}件）— 統合タスクを「元に戻す」と再表示されます</div>`;
+      merged.forEach(t=>{
+        const p=getP(t.owner);
+        html+=`<div style="display:flex;align-items:center;gap:8px;padding:4px 0;opacity:.55"><span class="badge" style="background:#e8e6e0;color:#888">統合済</span><span style="font-size:11px">${t.name}</span><span style="font-size:10px;color:#aaa">${fs(t.start)}〜${fs(t.end)}</span><span style="font-size:10px;color:#aaa">${t.prog}%</span></div>`;
+      });
+    }
+  }
   PEOPLE.filter(p=>visPeople.has(p.id)).forEach(person=>{
     const pt=tasks.filter(t=>t.owner===person.id);if(!pt.length)return;
     const active=pt.filter(t=>t.prog<100),done=pt.filter(t=>t.prog===100);
     html+=`<div class="card"><div class="card-t"><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${person.color};margin-right:6px"></span>${person.name}<span style="font-size:11px;font-weight:400;color:#888;margin-left:6px">未完了 ${active.length}件 / 完了 ${done.length}件</span></div>`;
-    if(!active.length&&!showDone){
-      html+=`<div style="font-size:12px;color:#059669;padding:4px 0">✓ このメンバーのタスクはすべて完了しています</div>`;
-    }
-    active.forEach(t=>html+=progRow(t,person));
+    if(!active.length&&!showDone)html+=`<div style="font-size:12px;color:#059669;padding:4px 0">✓ すべて完了</div>`;
+    active.forEach(t=>{
+      const del=isDel(t),mg=isMg(t),tod=isTod(t);
+      html+=progRow(t,person,false);
+      if(mg)html+=mgDetail(t);
+    });
     if(showDone&&done.length){
       html+=`<div style="border-top:1px solid #f0ede8;margin-top:6px;padding-top:6px">`;
       done.forEach(t=>html+=progRow(t,person,true));
       html+=`</div>`;
     }else if(!showDone&&done.length){
-      html+=`<div class="done-toggle" onclick="showDone=true;rProg()">▶ 完了済み ${done.length}件（クリックで表示）</div>`;
+      html+=`<div style="font-size:11px;color:#888;cursor:pointer;padding:4px 0" onclick="showDone=true;rProg()">▶ 完了済み ${done.length}件（クリックで表示）</div>`;
     }
     html+='</div>';
   });
   el.innerHTML=html;
 }
-function progRow(t,person,isDone=false){
+function progRow(t,person,isDone){
   const del=isDel(t),mg=isMg(t),tod=isTod(t);
   return `<div class="pir" style="opacity:${isDone?.4:1}">
     <label title="${t.name}（${fs(t.start)}〜${fs(t.end)}）${t.cond?' 通過条件: '+t.cond:''}">${mg?'★ ':del?'⚠ ':tod?'▶ ':''}<span style="color:${del?'#ea4335':'#333'}">${t.name}</span>${isSyn(t)?' 🔄':''}</label>
@@ -702,10 +744,45 @@ function progRow(t,person,isDone=false){
     ${t.prog===100?'<span class="badge" style="background:#e6f4ea;color:#137333;font-size:10px">完了</span>':del?'<span class="badge" style="background:#fce8e6;color:#c5221f;font-size:10px">遅延</span>':''}
   </div>`;
 }
+function mgDetail(t){
+  const origIds=t.merged_from_task_ids||[];
+  const dur=t.merge_duration_days||3;
+  const schedule=buildSchedule(origIds,dur);
+  return `<div class="mg-detail">
+    <div style="font-weight:600;margin-bottom:4px">★ 統合タスク — 元タスク ${origIds.length}件</div>
+    <ul class="mg-orig-list">${origIds.map(id=>{const ot=TASKS.find(x=>x.id===id);return `<li>${ot?ot.name:id}</li>`;}).join('')}</ul>
+    <div class="mg-schedule" style="margin-top:8px">${schedule}</div>
+    <button class="btn sm danger" style="margin-top:8px" onclick="confirmUnmerge('${t.id}','${t.merge_group_id||''}')">↩ 元のタスクに戻す</button>
+  </div>`;
+}
+function buildSchedule(origIds,dur){
+  const names=origIds.map(id=>{const t=TASKS.find(x=>x.id===id);return t?t.name.substring(0,14)+'…':id;});
+  const lines=[];
+  if(dur===1){lines.push('1日目: 最低限完了 → 次工程へ渡す');}
+  else if(dur===2){lines.push('1日目: '+names.slice(0,Math.ceil(names.length/2)).join('・')+' を通す');lines.push('2日目: 残り確認・修正 → 次工程へ渡す');}
+  else if(dur===3){lines.push('1日目: '+names.slice(0,Math.ceil(names.length/2)).join('・')+' 前半');lines.push('2日目: 残りタスク・接続確認');lines.push('3日目: 最低限修正 → 次工程へ渡す');}
+  else if(dur===5){lines.push('1日目: 残タスク確認・最小完成条件の整理');lines.push('2日目: 優先度の高い本文を通す');lines.push('3日目: 残り本文を通す');lines.push('4日目: 接続確認・不足補填');lines.push('5日目: 最低限修正 → 次工程へ渡す');}
+  else{
+    for(let i=1;i<=dur;i++){
+      if(i===1)lines.push(`1日目: 残タスク確認・着手`);
+      else if(i===dur)lines.push(`${i}日目: 修正 → 次工程へ渡す`);
+      else lines.push(`${i}日目: 作業継続`);
+    }
+  }
+  return lines.map(l=>`▶ ${l}`).join('<br>');
+}
 
-// ══════════════════════════════════════════════════
-// DELAY（3択比較提案）
-// ══════════════════════════════════════════════════
+// ═══════════════════════════════════════
+// DELAY（3択 + 日数指定）
+// ═══════════════════════════════════════
+function suggestDur(tasks){
+  const n=tasks.length,avgProg=tasks.reduce((s,t)=>s+(t.prog||0),0)/n;
+  if(n===1&&avgProg>=70)return 1;
+  if(n<=2&&avgProg>=50)return 2;
+  if(avgProg>=30)return 3;
+  return 5;
+}
+
 function rDelay(){
   const el=document.getElementById('panel-delay');if(!el.classList.contains('active'))return;
   const delayed=filt().filter(isDel);
@@ -716,32 +793,44 @@ function rDelay(){
     const person=getP(ownId);
     const maxDel=Math.max(...tasks.map(t=>dd(pd(t.end),TODAY)));
     const k=++mgk;mgroups[k]={ids:tasks.map(t=>t.id)};
+    if(!mergeDur[k])mergeDur[k]=suggestDur(tasks);
+    if(!mergeName[k])mergeName[k]=autoMgName(tasks);
+    const dur=mergeDur[k];
     const d0=TODAY.toISOString().slice(0,10);
-    const d2=new Date(TODAY.getTime()+172800000).toISOString().slice(0,10);
-    const d5=new Date(TODAY.getTime()+5*86400000).toISOString().slice(0,10);
+    const dEnd=datePlus(d0,dur-1);
+    const d5=datePlus(d0,5);
     const rec=tasks.length>1?'merge':maxDel<=3?'post':'fix';
     html+=`<div class="card" style="border-left:4px solid ${person.color}"><div class="card-t"><span class="badge" style="background:${person.color}18;color:${person.color}">${person.name}</span>遅延 ${tasks.length}件・最大${maxDel}日超過</div>`;
     tasks.forEach(t=>{const pj=PROJ[t.proj];html+=`<div class="tr"><span class="badge" style="background:${pj?pj.color+'18':'#eee'};color:${pj?pj.color:'#666'}">${pj?pj.name:t.proj}</span><span class="tn" title="${t.name}">${t.name}</span><span class="td" style="color:#ea4335">+${dd(pd(t.end),TODAY)}日超</span><div class="mpw"><div class="mpbar"><div class="mpfil" style="width:${t.prog||0}%;background:#ea4335"></div></div><div class="mplbl">${t.prog||0}%</div></div></div>`;});
     html+=`<div class="delay-opts">
       <div class="dopt${rec==='merge'?' rec':''}">
         <div class="dopt-badge" style="background:${rec==='merge'?'#1a73e8':'#e8e6e0'};color:${rec==='merge'?'#fff':'#555'}">${rec==='merge'?'★ 推奨':'案A'}</div>
-        <div class="dopt-title">3日圧縮統合</div>
-        <div class="dopt-desc">タスクをまとめて3日で次工程へ渡す。<br>1日目（${d0}）: 前半を閉じる<br>2日目: 後半・接続確認<br>3日目（${d2}）: 最低限修正→渡す</div>
+        <div class="dopt-title">圧縮統合</div>
+        <div class="dopt-desc">タスクをまとめ、指定日数で次工程へ渡す。</div>
+        <div style="font-size:11px;font-weight:600;color:#444;margin-bottom:4px">統合日数</div>
+        <div class="dur-picker">
+          ${[1,2,3,5,7].map(n=>`<button class="dur-btn${dur===n?' active':''}" onclick="setDur(${k},${n})">${n}日</button>`).join('')}
+          <button class="dur-btn${![1,2,3,5,7].includes(dur)?' active':''}" onclick="setDur(${k},'custom')">カスタム</button>
+        </div>
+        ${![1,2,3,5,7].includes(dur)?`<div class="dur-custom">終了日: <input type="date" value="${dEnd}" onchange="setDurByDate(${k},'${d0}',this.value)"></div>`:''}
+        <div style="font-size:11px;color:#666;margin-bottom:6px">期間: ${d0} 〜 ${dEnd}（${dur}日間）</div>
+        <div style="font-size:11px;color:#444;margin-bottom:4px;font-weight:600">統合タスク名</div>
+        <div class="mg-name-row"><input type="text" id="mgname-${k}" value="${mergeName[k]||''}" style="width:100%;font-size:11px;padding:4px 8px"></div>
         <div class="dopt-risk"><span class="rdot" style="background:${tasks.length>1?'#d97706':'#ea4335'}"></span>品質リスク: ${tasks.length>1?'中':'高'}</div>
-        ${tasks.length>1?`<button class="btn pr sm" onclick="applyMerge(${k})">適用する</button>`:
+        ${tasks.length>1?`<button class="btn pr sm" onclick="applyMerge(${k})">統合を適用する</button>`:
         '<div style="font-size:11px;color:#888">タスク1件のため統合不可</div>'}
       </div>
       <div class="dopt${rec==='post'?' rec':''}">
         <div class="dopt-badge" style="background:${rec==='post'?'#1a73e8':'#e8e6e0'};color:${rec==='post'?'#fff':'#555'}">${rec==='post'?'★ 推奨':'案B'}</div>
         <div class="dopt-title">終了日を延長</div>
-        <div class="dopt-desc">終了日を${d5}まで延長し作業継続。後続タスクへの影響を要確認。改善点は修正リストへ。</div>
+        <div class="dopt-desc">終了日を${d5}まで延長し作業継続。改善点は修正リストへ。</div>
         <div class="dopt-risk"><span class="rdot" style="background:#059669"></span>品質リスク: 低</div>
         <button class="btn sm" onclick="applyPost(${k},'${d5}')">${d5}まで延長</button>
       </div>
       <div class="dopt${rec==='fix'?' rec':''}">
         <div class="dopt-badge" style="background:${rec==='fix'?'#1a73e8':'#e8e6e0'};color:${rec==='fix'?'#fff':'#555'}">${rec==='fix'?'★ 推奨':'案C'}</div>
         <div class="dopt-title">修正リストへ回す</div>
-        <div class="dopt-desc">品質懸念を修正リストへ切り離し、本流は前進。次工程の最低条件を確認してから実施。</div>
+        <div class="dopt-desc">品質懸念を修正リストへ切り離し、本流は前進。</div>
         <div class="dopt-risk"><span class="rdot" style="background:#1a73e8"></span>スケジュールリスク: 低</div>
         <button class="btn sm" onclick="sendToFix(${k})">修正リストへ移す</button>
       </div>
@@ -749,24 +838,75 @@ function rDelay(){
   });
   el.innerHTML=html;
 }
+
+function setDur(k,n){
+  if(n==='custom'){
+    mergeDur[k]=4;// default custom
+  }else{
+    mergeDur[k]=n;
+  }
+  rDelay();
+}
+function setDurByDate(k,startStr,endStr){
+  const days=dd(pd(startStr),pd(endStr))+1;
+  mergeDur[k]=Math.max(1,days);
+  rDelay();
+}
+function autoMgName(tasks){
+  if(!tasks.length)return '統合タスク';
+  const pj=PROJ[tasks[0].proj];
+  if(tasks.length===1)return tasks[0].name;
+  const names=tasks.map(t=>{
+    const m=t.name.match(/第\d+作/);return m?m[0]:'';
+  }).filter(Boolean);
+  if(names.length>0)return names.join('・')+' 本文統合対応';
+  return (pj?pj.name+'：':'')+'遅延タスク統合対応';
+}
+
 async function applyMerge(k){
   const g=mgroups[k];if(!g)return;
   const tasks=TASKS.filter(t=>g.ids.includes(t.id));
-  const mg={proj:tasks[0].proj,owner:tasks[0].owner,name:'【統合★】'+tasks.map(t=>t.name.substring(0,8)).join('＋'),
-    start:TODAY.toISOString().slice(0,10),end:new Date(TODAY.getTime()+172800000).toISOString().slice(0,10),
-    prog:Math.min(...tasks.map(t=>t.prog||0)),cond:tasks.map(t=>t.cond||t.name).join(' / '),google_event_id:null};
+  const dur=mergeDur[k]||3;
+  const nameEl=document.getElementById('mgname-'+k);
+  const name=nameEl?nameEl.value.trim()||autoMgName(tasks):autoMgName(tasks);
+  const startD=TODAY.toISOString().slice(0,10);
+  const endD=datePlus(startD,dur-1);
+  const mgId='mg-'+Date.now();
+  const groupId='mgrp-'+Date.now();
+  // Save merge_group with original task snapshots
+  await db.collection('merge_groups').doc(groupId).set({
+    id:groupId,merged_task_id:mgId,status:'active',
+    original_tasks:tasks.map(t=>({id:t.id,name:t.name,start:t.start,end:t.end,prog:t.prog,owner:t.owner,proj:t.proj,cond:t.cond||''})),
+    created:now$(),restored_at:null,
+  });
+  const mergedDoc={
+    type:'merged_task',id:mgId,proj:tasks[0].proj,owner:tasks[0].owner,name,
+    start:startD,end:endD,prog:Math.min(...tasks.map(t=>t.prog||0)),
+    cond:tasks.map(t=>t.cond||t.name).join(' / '),
+    merged_from_task_ids:tasks.map(t=>t.id),
+    merge_group_id:groupId,merge_duration_days:dur,can_unmerge:true,
+    google_event_id:null,merged:false,archived:false,visible:true,
+    created:now$(),updated:now$(),
+  };
   const b=db.batch();
-  g.ids.forEach(id=>b.delete(db.collection('tasks').doc(id)));
-  b.set(db.collection('tasks').doc('mg-'+Date.now()),{...mg,created:now$(),updated:now$()});
-  b.set(db.collection('fixes').doc(),{task:(PROJ[tasks[0].proj]?.name||''),pri:'mid',status:'pending',done:false,
-    content:'統合タスク品質懸念（修正期間に対応）: '+tasks.map(t=>t.name).join('、'),when:'全体修正期間',created:now$()});
-  await b.commit();delete mgroups[k];
+  // Mark originals as merged (not deleted)
+  tasks.forEach(t=>{
+    b.update(db.collection('tasks').doc(t.id),{merged:true,visible:false,merged_into:mgId,merge_group_id:groupId,updated:now$()});
+  });
+  b.set(db.collection('tasks').doc(mgId),mergedDoc);
+  await b.commit();
+  await opLog('🔀','タスクを統合しました',`${name}（${dur}日間）← ${tasks.map(t=>t.name).join('、')}`);
+  showToast(`「${name}」を作成しました`,()=>unmergeByGroupId(groupId));
+  delete mgroups[k];delete mergeDur[k];delete mergeName[k];
 }
+
 async function applyPost(k,newEnd){
   const g=mgroups[k];if(!g)return;
   const b=db.batch();
   g.ids.forEach(id=>b.update(db.collection('tasks').doc(id),{end:newEnd,updated:now$()}));
-  await b.commit();delete mgroups[k];
+  await b.commit();
+  await opLog('📅','終了日を延長しました',`→ ${newEnd}`);
+  delete mgroups[k];
 }
 async function sendToFix(k){
   const g=mgroups[k];if(!g)return;
@@ -775,26 +915,55 @@ async function sendToFix(k){
   tasks.forEach(t=>{
     b.set(db.collection('fixes').doc(),{task:t.name,pri:'high',status:'pending',done:false,
       content:`遅延により修正リストへ移動。次工程最低条件: ${t.cond||'未設定'}`,when:'全体修正期間',created:now$()});
-    b.update(db.collection('tasks').doc(t.id),{end:new Date(TODAY.getTime()+3*86400000).toISOString().slice(0,10),updated:now$()});
+    b.update(db.collection('tasks').doc(t.id),{end:datePlus(TODAY.toISOString().slice(0,10),3),updated:now$()});
   });
-  await b.commit();delete mgroups[k];sw('fixlist');
+  await b.commit();
+  await opLog('📝','修正リストへ移しました',tasks.map(t=>t.name).join('、'));
+  delete mgroups[k];sw('fixlist');
 }
 
-// ══════════════════════════════════════════════════
+// ═══════════════════════════════════════
+// UNMERGE
+// ═══════════════════════════════════════
+async function confirmUnmerge(mgTaskId,groupId){
+  if(!confirm('この統合タスクを解除し、元のタスクを復元します。統合タスクは無効化されます。実行しますか？'))return;
+  await unmergeByGroupId(groupId,mgTaskId);
+}
+async function unmergeByGroupId(groupId,mgTaskId){
+  // Load merge_group
+  const grpSnap=await db.collection('merge_groups').doc(groupId).get();
+  if(!grpSnap.exists){alert('統合グループ情報が見つかりません。');return;}
+  const grp=grpSnap.data();
+  const b=db.batch();
+  // Restore original tasks
+  grp.original_tasks.forEach(orig=>{
+    b.update(db.collection('tasks').doc(orig.id),{merged:false,visible:true,merged_into:null,merge_group_id:null,
+      start:orig.start,end:orig.end,prog:orig.prog,cond:orig.cond,updated:now$()});
+  });
+  // Archive merged task
+  if(!mgTaskId)mgTaskId=grp.merged_task_id;
+  b.update(db.collection('tasks').doc(mgTaskId),{archived:true,updated:now$()});
+  b.update(db.collection('merge_groups').doc(groupId),{status:'restored',restored_at:now$()});
+  await b.commit();
+  await opLog('↩','統合タスクを元に戻しました',`元タスク ${grp.original_tasks.length}件 を復元`);
+}
+
+// ═══════════════════════════════════════
 // FIX LIST
-// ══════════════════════════════════════════════════
+// ═══════════════════════════════════════
 function updateFxSel(){
   const sel=document.getElementById('fx-sel');if(!sel)return;
   const v=sel.value;
-  sel.innerHTML='<option value="">-- タスクを選択 --</option>'+TASKS.map(t=>`<option value="${t.name.replace(/"/g,'&quot;')}">${t.name}</option>`).join('');
+  sel.innerHTML='<option value="">-- タスクを選択 --</option>'+
+    TASKS.filter(visTask).map(t=>`<option value="${t.name.replace(/"/g,'&quot;')}">${t.name}</option>`).join('');
   sel.value=v;
   sel.onchange=()=>{if(sel.value)document.getElementById('fx-task').value=sel.value;};
 }
 async function addFix(){
-  const selv=document.getElementById('fx-sel').value;
+  const sel=document.getElementById('fx-sel').value;
   const direct=document.getElementById('fx-task').value.trim();
   const content=document.getElementById('fx-content').value.trim();if(!content)return;
-  await addFx({task:direct||selv,pri:document.getElementById('fx-pri').value,
+  await addFx({task:direct||sel,pri:document.getElementById('fx-pri').value,
     status:document.getElementById('fx-status').value,content,
     when:document.getElementById('fx-when').value.trim(),done:false});
   ['fx-task','fx-content','fx-when'].forEach(id=>document.getElementById(id).value='');
@@ -819,7 +988,7 @@ function rFixList(){
           <div style="font-size:13px;font-weight:500">${f.content}</div>
           <div class="fix-meta">
             ${f.task?`<span class="badge" style="background:#f1f3f4;color:#555">${f.task}</span>`:''}
-            <span class="fix-status" style="background:${sm.bg};color:${sm.c};border-color:${sm.c}" onclick="cycleFix('${f.id}','${f.status||'pending'}')" title="クリックで状態を変更">${sm.l}</span>
+            <span class="fix-status" style="background:${sm.bg};color:${sm.c};border-color:${sm.c}" onclick="cycleFix('${f.id}','${f.status||'pending'}')" title="クリックで変更">${sm.l}</span>
             ${f.when?`<span style="font-size:10px;color:#888">🗓 ${f.when}</span>`:''}
           </div>
         </div>
@@ -831,9 +1000,25 @@ function rFixList(){
   el.innerHTML=html;
 }
 
-// ══════════════════════════════════════════════════
+// ═══════════════════════════════════════
+// OP LOG
+// ═══════════════════════════════════════
+function rOpLog(){
+  const el=document.getElementById('panel-oplog');if(!el.classList.contains('active'))return;
+  if(!OPLOGS.length){el.innerHTML='<div class="notice">操作ログはまだありません</div>';return;}
+  let html='<div class="card"><div class="card-t">操作履歴（直近50件）</div>';
+  OPLOGS.forEach(l=>{
+    const d=new Date(l.created);
+    const t=`${d.getMonth()+1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`;
+    html+=`<div class="oplog-row"><span class="oplog-time">${t}</span><span class="oplog-icon">${l.icon||'📋'}</span><div><div style="font-size:12px;font-weight:500">${l.msg}</div>${l.detail?`<div style="font-size:11px;color:#888;margin-top:1px">${l.detail}</div>`:''}</div></div>`;
+  });
+  html+='</div>';
+  el.innerHTML=html;
+}
+
+// ═══════════════════════════════════════
 // STATUS BAR
-// ══════════════════════════════════════════════════
+// ═══════════════════════════════════════
 function rStatus(){
   const all=filt(),del=all.filter(isDel).length,mg=all.filter(isMg).length;
   const syn=all.filter(isSyn).length,fl=FIXES.filter(f=>!f.done).length;
@@ -848,9 +1033,35 @@ function rStatus(){
   `<span><span class="sdot" style="background:#d97706"></span>修正リスト残 ${fl}件</span>`;
 }
 
-// ══════════════════════════════════════════════════
-// SYNC MODAL
-// ══════════════════════════════════════════════════
+// ═══════════════════════════════════════
+// UNDO TOAST
+// ═══════════════════════════════════════
+let undoTimer=null;
+function showToast(msg,undoFn){
+  clearTimeout(undoTimer);
+  undoStack=undoFn;
+  document.getElementById('undo-msg').textContent=msg;
+  document.getElementById('undo-toast').classList.add('show');
+  undoTimer=setTimeout(()=>{document.getElementById('undo-toast').classList.remove('show');undoStack=null;},5000);
+}
+function execUndo(){
+  document.getElementById('undo-toast').classList.remove('show');
+  clearTimeout(undoTimer);
+  if(undoStack)undoStack();
+  undoStack=null;
+}
+
+// ═══════════════════════════════════════
+// SYNC MODAL TABS
+// ═══════════════════════════════════════
+function syncTabSw(name,el){
+  document.querySelectorAll('.modal-tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('st-sync').style.display=name==='sync'?'block':'none';
+  document.getElementById('st-sources').style.display=name==='sources'?'block':'none';
+  if(name==='sources')rCalSrc();
+}
+
 async function openSync(){
   document.getElementById('sync-modal').classList.add('open');
   if(hasTok()){
@@ -864,6 +1075,7 @@ async function openSync(){
   }
 }
 function closeSync(){document.getElementById('sync-modal').classList.remove('open');}
+
 async function loadCalList(){
   if(!gapiReady||!hasTok())return;
   gapi.client.setToken({access_token:gCalToken});
@@ -889,53 +1101,103 @@ function renderCalList(){
 }
 function toggleCal(id){if(selCalIds.has(id))selCalIds.delete(id);else selCalIds.add(id);}
 function showSyncErr(msg){const el=document.getElementById('sync-res');if(!el)return;el.className='sync-res err';el.textContent=msg;el.style.display='block';}
-function t2ev(t){
-  let end=t.end;
-  if(t.start===t.end)end=new Date(pd(end).getTime()+86400000).toISOString().slice(0,10);
-  return{summary:t.name,start:{date:t.start},end:{date:end},
-    description:`進捗: ${t.prog||0}%\n担当: ${t.owner}\nPJ: ${t.proj}\n通過条件: ${t.cond||''}`,
-    colorId:OC[t.owner]||'9',
-    extendedProperties:{private:{pm_id:t.id,pm_owner:t.owner||'',pm_proj:t.proj||'',pm_prog:String(t.prog||0),pm_cond:t.cond||'',pm_source:'waterfall-pm',pm_updated:t.updated||now$()}}};
+
+// ═══════════════════════════════════════
+// CALENDAR SOURCE MANAGEMENT
+// ═══════════════════════════════════════
+function rCalSrc(){
+  const el=document.getElementById('cal-src-list');if(!el)return;
+  if(!CAL_SOURCES.length){el.innerHTML='<div class="notice">まだカレンダーを取り込んでいません。「同期」タブからPullを実行してください。</div>';return;}
+  let html='<div class="card"><div class="card-t">取り込み済みカレンダー</div>';
+  CAL_SOURCES.forEach(src=>{
+    const taskCount=TASKS.filter(t=>t.source_calendar_id===src.calendar_id&&!t.archived).length;
+    const lastPull=src.last_imported_at?new Date(src.last_imported_at).toLocaleString('ja-JP',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}):'なし';
+    const enabled=src.enabled!==false;
+    html+=`<div class="cal-source-row">
+      <div class="cal-src-info">
+        <div class="cal-src-name">${src.calendar_name||src.calendar_id}</div>
+        <div class="cal-src-meta">取込済み: ${taskCount}件 ／ 最終取込: ${lastPull}</div>
+        <div style="margin-top:3px"><span class="src-badge" style="background:${enabled?'#e6f4ea':'#f1f3f4'};color:${enabled?'#137333':'#888'}">${enabled?'取込中':'停止中'}</span></div>
+      </div>
+      <div class="cal-src-btns">
+        ${enabled
+          ?`<button class="btn sm" onclick="toggleCalSource('${src.id}',false)">${enabled?'取込停止':''}</button>`
+          :`<button class="btn sm" onclick="toggleCalSource('${src.id}',true)">再取込</button>`}
+        <button class="btn sm danger" onclick="confirmDeleteCalSource('${src.id}','${src.calendar_name||src.calendar_id}','${src.calendar_id}')">タスク削除</button>
+      </div>
+    </div>`;
+  });
+  html+='</div>';
+  el.innerHTML=html;
 }
-function ev2t(ev,calId){
-  const p=ev.extendedProperties?.private||{};
-  const start=ev.start?.date||ev.start?.dateTime?.slice(0,10)||'';
-  let end=ev.end?.date||ev.end?.dateTime?.slice(0,10)||'';
-  if(dd(pd(start),pd(end))===1)end=start;
-  return{id:p.pm_id||('gcal-'+ev.id.slice(0,8)),name:ev.summary||'（タイトルなし）',start,end,
-    owner:p.pm_owner||'senko',proj:p.pm_proj||'poetry',prog:parseInt(p.pm_prog||'0')||0,
-    cond:p.pm_cond||'',google_event_id:ev.id,google_calendar_id:calId,updated:ev.updated||'',created:ev.created||''};
+async function toggleCalSource(srcId,enable){
+  await db.collection('calendar_sources').doc(srcId).update({enabled:enable,updated:now$()});
+  await opLog(enable?'▶':'⏸',enable?'カレンダー取込を再開しました':'カレンダー取込を停止しました','');
 }
+async function confirmDeleteCalSource(srcId,calName,calId){
+  const tasks=TASKS.filter(t=>t.source_calendar_id===calId&&!t.archived);
+  if(!confirm(`「${calName}」から取り込まれたタスクをアプリ内から削除します（${tasks.length}件）。\nGoogle Calendar上の予定は削除されません。実行しますか？`))return;
+  const b=db.batch();
+  tasks.forEach(t=>b.update(db.collection('tasks').doc(t.id),{archived:true,updated:now$()}));
+  await b.commit();
+  await opLog('🗑','カレンダー由来のタスクを削除しました',`${calName}（${tasks.length}件）`);
+  showToast(`${calName}のタスク${tasks.length}件を削除しました（Google Calendar側は変更されていません）`);
+  rCalSrc();
+}
+
+// ═══════════════════════════════════════
+// GOOGLE CALENDAR SYNC
+// ═══════════════════════════════════════
 async function doSync(dir){
   const res=document.getElementById('sync-res');res.style.display='none';res.className='sync-res';
   if(!hasTok()){showSyncErr('Calendarへのアクセスがありません。「アクセスを許可する」ボタンを押してください。');return;}
-  if(!gapiReady){showSyncErr('Calendar APIの読み込みが完了していません。しばらく待って再試行してください。');return;}
+  if(!gapiReady){showSyncErr('Calendar APIの読み込みが完了していません。');return;}
   gapi.client.setToken({access_token:gCalToken});
   const pcm={poetry:document.getElementById('pcal-poetry')?.value||'primary',audio:document.getElementById('pcal-audio')?.value||'primary',exhibit:document.getElementById('pcal-exhibit')?.value||'primary'};
-  const calIds=[...selCalIds];
+  // Only pull from enabled sources (if any), else all selected
+  const enabledCalIds=CAL_SOURCES.filter(s=>s.enabled!==false).map(s=>s.calendar_id);
+  const calIds=enabledCalIds.length?enabledCalIds:[...selCalIds];
   try{
     let msg='';
     if(dir==='pull'||dir==='both'){
+      const importSession='import-'+Date.now();
       const tmin=new Date(Date.now()-30*86400000).toISOString();
       const tmax=new Date(Date.now()+200*86400000).toISOString();
       let nc=0,uc=0;
-      const byId=Object.fromEntries(TASKS.map(t=>[t.id,t]));
-      const byG=Object.fromEntries(TASKS.filter(t=>t.google_event_id).map(t=>[t.google_event_id,t]));
+      const byGcal=Object.fromEntries(TASKS.filter(t=>t.google_event_id).map(t=>[t.source_calendar_id+'|'+t.google_event_id,t]));
       for(const cid of calIds){
+        const calInfo=calList.find(c=>c.id===cid);
+        const calName=calInfo?.name||cid;
         const r=await gapi.client.calendar.events.list({calendarId:cid,timeMin:tmin,timeMax:tmax,maxResults:500,singleEvents:true,orderBy:'startTime'});
         for(const ev of r.result.items||[]){
           if(ev.status==='cancelled')continue;
-          const task=ev2t(ev,cid),pmId=ev.extendedProperties?.private?.pm_id;
-          if(pmId&&byId[pmId]){if((ev.updated||'')>(byId[pmId].updated||'')){await db.collection('tasks').doc(pmId).update({...task,id:pmId});uc++;}}
-          else if(byG[ev.id]){if((ev.updated||'')>(byG[ev.id].updated||'')){await db.collection('tasks').doc(byG[ev.id].id).update(task);uc++;}}
-          else{await db.collection('tasks').doc(task.id).set({...task,created:now$(),updated:now$()});nc++;}
+          const dedupeKey=cid+'|'+ev.id;
+          const task=ev2t(ev,cid,calName,importSession);
+          if(byGcal[dedupeKey]){
+            // Existing: update if newer
+            const local=byGcal[dedupeKey];
+            if((ev.updated||'')>(local.updated||'')){
+              await db.collection('tasks').doc(local.id).update({...task,id:local.id});uc++;
+            }
+          }else{
+            // New: create
+            await db.collection('tasks').doc(task.id).set({...task,created:now$(),updated:now$()});nc++;
+          }
+        }
+        // Upsert calendar_source record
+        const existSrc=CAL_SOURCES.find(s=>s.calendar_id===cid);
+        if(existSrc){
+          await db.collection('calendar_sources').doc(existSrc.id).update({last_imported_at:now$(),enabled:true});
+        }else{
+          await db.collection('calendar_sources').add({calendar_id:cid,calendar_name:calName,enabled:true,last_imported_at:now$(),created:now$()});
         }
       }
+      await opLog('⬇','Googleから取込完了',`新規${nc}件・更新${uc}件`);
       msg+=`取込: 新規${nc}件・更新${uc}件　`;
     }
     if(dir==='push'||dir==='both'){
       let cc=0,uc=0,ec=0;
-      for(const t of TASKS){
+      for(const t of TASKS.filter(visTask)){
         const cid=pcm[t.proj]||'primary',ev=t2ev(t);
         try{
           if(t.google_event_id){
@@ -944,16 +1206,39 @@ async function doSync(dir){
           }else{const r=await gapi.client.calendar.events.insert({calendarId:cid,resource:ev});await updT(t.id,{google_event_id:r.result.id,google_calendar_id:cid});cc++;}
         }catch(e2){ec++;console.error('push',t.id,e2);}
       }
+      await opLog('⬆','Googleへ書出完了',`作成${cc}件・更新${uc}件`);
       msg+=`書出: 作成${cc}件・更新${uc}件${ec?`・失敗${ec}件`:''}`;
     }
     res.className='sync-res ok';res.textContent='✓ '+msg.trim();
-  }catch(e){res.className='sync-res err';res.textContent='エラー: '+e.message;console.error('doSync',e);}
+  }catch(e){res.className='sync-res err';res.textContent='エラー: '+e.message;console.error(e);}
   res.style.display='block';
 }
 
-// ══════════════════════════════════════════════════
+function t2ev(t){
+  let end=t.end;
+  if(t.start===t.end)end=datePlus(end,1);
+  return{summary:t.name,start:{date:t.start},end:{date:end},
+    description:`進捗: ${t.prog||0}%\n担当: ${t.owner}\nPJ: ${t.proj}\n通過条件: ${t.cond||''}`,
+    colorId:OC[t.owner]||'9',
+    extendedProperties:{private:{pm_id:t.id,pm_owner:t.owner||'',pm_proj:t.proj||'',pm_prog:String(t.prog||0),pm_cond:t.cond||'',pm_source:'waterfall-pm',pm_updated:t.updated||now$()}}};
+}
+function ev2t(ev,calId,calName,sessionId){
+  const p=ev.extendedProperties?.private||{};
+  const start=ev.start?.date||ev.start?.dateTime?.slice(0,10)||'';
+  let end=ev.end?.date||ev.end?.dateTime?.slice(0,10)||'';
+  if(dd(pd(start),pd(end))===1)end=start;
+  return{id:p.pm_id||('gcal-'+ev.id.slice(0,8)),name:ev.summary||'（タイトルなし）',start,end,
+    owner:p.pm_owner||'senko',proj:p.pm_proj||'poetry',prog:parseInt(p.pm_prog||'0')||0,
+    cond:p.pm_cond||'',google_event_id:ev.id,google_calendar_id:calId,
+    source_type:'google_calendar',source_calendar_id:calId,source_calendar_name:calName||calId,
+    import_session_id:sessionId,imported_at:now$(),
+    merged:false,archived:false,visible:true,type:'task',
+    updated:ev.updated||''};
+}
+
+// ═══════════════════════════════════════
 // BOOT
-// ══════════════════════════════════════════════════
+// ═══════════════════════════════════════
 (function boot(){
   document.getElementById('hdr-today').textContent='今日: '+(TODAY.getMonth()+1)+'月'+TODAY.getDate()+'日（'+['日','月','火','水','木','金','土'][TODAY.getDay()]+'）';
   initPBar();
