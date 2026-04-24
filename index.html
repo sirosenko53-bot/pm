@@ -350,7 +350,7 @@ let gapiReady=false,gsiReady=false;
 let calList=[],selCalIds=new Set();
 let visPeople=new Set(PEOPLE.map(p=>p.id));
 let calY=TODAY.getFullYear(),calM=TODAY.getMonth(),selDay=null;
-let showDone=false,showMergedOrig=false;
+let showDone=false,showMergedOrig=false,showAddTask=false;
 let mgroups={},mgk=0; // {k: {ids, days, customStart, customEnd}}
 
 // ══════════════════════════════════════════
@@ -488,6 +488,28 @@ function setupListeners(){
 // ══════════════════════════════════════════
 const updT=(id,p)=>db.collection('tasks').doc(id).update({...p,updated:now$()});
 const addFx=f=>db.collection('fixes').add({...f,created:now$()});
+async function deleteTask(id,name){
+  if(!confirm(`「${name}」を削除しますか？\nこの操作は取り消せません。`))return;
+  await db.collection('tasks').doc(id).delete();
+  await logOp('delete_task',{task_id:id,task_name:name});
+}
+async function createTaskFromForm(){
+  const name=document.getElementById('at-name').value.trim();
+  if(!name){document.getElementById('at-name').focus();return;}
+  const owner=document.getElementById('at-owner').value;
+  const proj=document.getElementById('at-proj').value;
+  const start=document.getElementById('at-start').value||TODAY_STR;
+  const end=document.getElementById('at-end').value||start;
+  const cond=document.getElementById('at-cond').value.trim();
+  const prog=parseInt(document.getElementById('at-prog').value)||0;
+  const id='t-'+Date.now();
+  await db.collection('tasks').doc(id).set({id,name,owner,proj,start,end,cond,prog,visible:true,archived:false,merged:false,google_event_id:null,created:now$(),updated:now$()});
+  // reset
+  ['at-name','at-cond'].forEach(k=>document.getElementById(k).value='');
+  document.getElementById('at-prog').value='0';
+  document.getElementById('at-start').value='';
+  document.getElementById('at-end').value='';
+}
 const updFx=(id,p)=>db.collection('fixes').doc(id).update(p);
 async function logOp(type,detail){
   try{await db.collection('op_logs').add({type,detail,created:now$()});}catch{}
@@ -610,7 +632,7 @@ function rCal(){
     if(sdt.length){
       sdt.forEach(t=>{
         const p=getP(t.owner),pj=PROJ[t.proj];
-        html+=`<div class="tr"><span class="badge" style="background:${p.color}18;color:${p.color}">${p.name}</span>${pj?`<span class="badge" style="background:${pj.color}18;color:${pj.color}">${pj.name}</span>`:''}<span class="tn" title="${t.name}">${isMg(t)?'★ ':''}${t.name}</span>${isDel(t)?'<span class="badge" style="background:#fce8e6;color:#c5221f">遅延</span>':''}${isSyn(t)?'<span class="rtag">🔄</span>':''}<span class="td">${fs(t.start)}〜${fs(t.end)}</span><div class="mpw"><div class="mpbar"><div class="mpfil" style="width:${t.prog}%;background:${isDel(t)?'#ea4335':p.color}"></div></div><div class="mplbl">${t.prog}%</div></div><button class="btn sm" onclick="sw('progress')">↗進捗</button></div>`;
+        html+=`<div class="tr"><span class="badge" style="background:${p.color}18;color:${p.color}">${p.name}</span>${pj?`<span class="badge" style="background:${pj.color}18;color:${pj.color}">${pj.name}</span>`:''}<span class="tn" title="${t.name}">${isMg(t)?'★ ':''}${t.name}</span>${isDel(t)?'<span class="badge" style="background:#fce8e6;color:#c5221f">遅延</span>':''}${isSyn(t)?'<span class="rtag">🔄</span>':''}<span class="td">${fs(t.start)}〜${fs(t.end)}</span><div class="mpw"><div class="mpbar"><div class="mpfil" style="width:${t.prog}%;background:${isDel(t)?'#ea4335':p.color}"></div></div><div class="mplbl">${t.prog}%</div></div><button class="btn sm" onclick="sw('progress')">↗進捗</button><button class="btn sm danger" onclick="deleteTask('${t.id}','${t.name.replace(/'/g,"\\'")}')">🗑</button></div>`;
       });
     }else html+='<div style="font-size:12px;color:#888">この日のタスクはありません</div>';
     html+='</div>';
@@ -680,7 +702,7 @@ function rOv(){
     html+=`<div class="sec" style="color:${sec.color}">${sec.label}（${st.length}件）${sec.action?`<button class="btn sm" style="margin-left:8px" onclick="sw('${sec.action.tab}')">${sec.action.label}</button>`:''}</div><div class="card">`;
     st.forEach(t=>{
       const p=getP(t.owner),pj=PROJ[t.proj];
-      html+=`<div class="tr"><span class="badge" style="background:${p.color}18;color:${p.color}">${p.name}</span>${pj?`<span class="badge" style="background:${pj.color}18;color:${pj.color}">${pj.name}</span>`:''}<span class="tn" title="${t.name}">${isMg(t)?'★ ':''}${t.name}</span>${isSyn(t)?'<span class="rtag">🔄</span>':''}<span class="td">${fs(t.start)}〜${fs(t.end)}</span><div class="mpw"><div class="mpbar"><div class="mpfil" style="width:${t.prog}%;background:${isDel(t)?'#ea4335':p.color}"></div></div><div class="mplbl">${t.prog}%</div></div>${t.cond?`<span title="通過条件: ${t.cond}" style="cursor:help">📋</span>`:''}<button class="btn sm" onclick="sw('progress')">↗</button>${isMg(t)&&t.merge_group_id?`<button class="btn sm danger" onclick="restoreMerge('${t.id}','${t.merge_group_id}')">元に戻す</button>`:''}</div>`;
+      html+=`<div class="tr"><span class="badge" style="background:${p.color}18;color:${p.color}">${p.name}</span>${pj?`<span class="badge" style="background:${pj.color}18;color:${pj.color}">${pj.name}</span>`:''}<span class="tn" title="${t.name}">${isMg(t)?'★ ':''}${t.name}</span>${isSyn(t)?'<span class="rtag">🔄</span>':''}<span class="td">${fs(t.start)}〜${fs(t.end)}</span><div class="mpw"><div class="mpbar"><div class="mpfil" style="width:${t.prog}%;background:${isDel(t)?'#ea4335':p.color}"></div></div><div class="mplbl">${t.prog}%</div></div>${t.cond?`<span title="通過条件: ${t.cond}" style="cursor:help">📋</span>`:''}<button class="btn sm" onclick="sw('progress')">↗</button>${isMg(t)&&t.merge_group_id?`<button class="btn sm danger" onclick="restoreMerge('${t.id}','${t.merge_group_id}')">元に戻す</button>`:''}<button class="btn sm danger" onclick="deleteTask('${t.id}','${t.name.replace(/'/g,"\\'")}')">🗑</button></div>`;
       // Show merged task detail
       if(isMg(t)&&t.merged_from_task_ids?.length){
         html+=`<div class="merge-detail"><div style="font-size:11px;font-weight:600;margin-bottom:3px">この統合タスクに含まれる元タスク:</div><ul>${t.merged_from_task_ids.map(id=>{const orig=TASKS.find(x=>x.id===id);return`<li>${orig?orig.name:id}</li>`;}).join('')}</ul>`;
@@ -702,11 +724,34 @@ function rOv(){
 function rProg(){
   const el=document.getElementById('panel-progress');if(!el.classList.contains('active'))return;
   const tasks=[...filt()].sort((a,b)=>prio(a)-prio(b));
+  const todayStr=TODAY_STR;
+  // タスク追加フォーム
+  const addForm=showAddTask?`
+  <div class="card" style="border:1.5px solid #1a73e8;margin-bottom:10px">
+    <div class="card-t" style="color:#1a73e8">＋ タスクを追加</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:9px">
+      <div style="grid-column:1/-1"><label class="flbl" style="margin-top:0">タスク名 *</label><input type="text" id="at-name" placeholder="例: 第5作 後半を書く" /></div>
+      <div><label class="flbl" style="margin-top:0">担当者</label>
+        <select id="at-owner">${PEOPLE.map(p=>`<option value="${p.id}">${p.name}</option>`).join('')}</select></div>
+      <div><label class="flbl" style="margin-top:0">プロジェクト</label>
+        <select id="at-proj">${Object.entries(PROJ).map(([k,v])=>`<option value="${k}">${v.name}</option>`).join('')}</select></div>
+      <div><label class="flbl" style="margin-top:0">開始日</label><input type="date" id="at-start" value="${todayStr}" style="width:100%"/></div>
+      <div><label class="flbl" style="margin-top:0">終了日</label><input type="date" id="at-end" value="${todayStr}" style="width:100%"/></div>
+      <div><label class="flbl" style="margin-top:0">初期進捗（%）</label><input type="number" id="at-prog" value="0" min="0" max="100" step="10"/></div>
+      <div><label class="flbl" style="margin-top:0">通過条件（次工程へ渡せる最低条件）</label><input type="text" id="at-cond" placeholder="例: 本文が最後まで1本通っている"/></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn pr" onclick="createTaskFromForm()">追加する</button>
+      <button class="btn" onclick="showAddTask=false;rProg()">キャンセル</button>
+    </div>
+  </div>`:'';
+
   let html=`<div class="prog-toolbar">
+    <button class="btn pr sm" onclick="showAddTask=!showAddTask;rProg()">＋ タスクを追加</button>
     <label><input type="checkbox" ${showDone?'checked':''} onchange="showDone=this.checked;rProg()"> 完了タスクを表示</label>
     <label><input type="checkbox" ${showMergedOrig?'checked':''} onchange="showMergedOrig=this.checked;rProg()"> 統合済み元タスクを表示</label>
     <span style="font-size:11px;color:#888;flex:1;text-align:right">変更は即時保存・全員に反映</span>
-  </div>`;
+  </div>${addForm}`;
   const dispTasks=showMergedOrig?filtAll():tasks;
   PEOPLE.filter(p=>visPeople.has(p.id)).forEach(person=>{
     const pt=dispTasks.filter(t=>t.owner===person.id);if(!pt.length)return;
@@ -741,11 +786,13 @@ function rProg(){
 }
 function progRow(t,person,isDone=false,isOrig=false){
   const del=isDel(t),mg=isMg(t),tod=isTod(t);
+  const safeName=t.name.replace(/'/g,"\\'");
   return `<div class="pir" style="opacity:${isDone||isOrig?.4:1}">
     <label title="${t.name}（${fs(t.start)}〜${fs(t.end)}）${t.cond?' 通過条件: '+t.cond:''}">${mg?'★ ':del?'⚠ ':tod?'▶ ':''}<span style="color:${del?'#ea4335':'#333'}">${t.name}</span>${isSyn(t)?' 🔄':''}</label>
     <input type="range" min="0" max="100" step="10" value="${t.prog||0}" ${isOrig?'disabled':''} onchange="updT('${t.id}',{prog:+this.value})" oninput="this.nextElementSibling.textContent=this.value+'%'"/>
     <span class="pival">${t.prog||0}%</span>
     ${t.prog===100?'<span class="badge" style="background:#e6f4ea;color:#137333;font-size:10px">完了</span>':del?'<span class="badge" style="background:#fce8e6;color:#c5221f;font-size:10px">遅延</span>':''}
+    <button class="btn sm danger" onclick="deleteTask('${t.id}','${safeName}')" title="削除">🗑</button>
   </div>`;
 }
 
