@@ -1,0 +1,1113 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>直進優先ウォーターフォール PM</title>
+<!-- Firebase compat SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<!-- Google API -->
+<script src="https://apis.google.com/js/api.js" onload="onGapiLoad()" defer></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans','Yu Gothic UI',sans-serif;background:#f5f4f0;color:#1a1a1a;font-size:14px}
+
+/* ── Screens ── */
+.screen{min-height:100vh;display:none;align-items:center;justify-content:center;padding:20px}
+.screen.active{display:flex}
+.setup-card,.login-card{background:#fff;border-radius:20px;padding:36px;width:500px;max-width:100%;box-shadow:0 8px 32px rgba(0,0,0,.1)}
+.setup-card h1,.login-card h1{font-size:20px;font-weight:700;margin-bottom:8px}
+.setup-card p,.login-card p{font-size:13px;color:#666;margin-bottom:20px;line-height:1.7}
+.step{display:flex;gap:12px;margin-bottom:16px;align-items:start}
+.step-n{width:22px;height:22px;border-radius:50%;background:#1a73e8;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.step p{font-size:12px;color:#444;line-height:1.7}
+.step code{background:#f1f3f4;padding:1px 5px;border-radius:4px;font-size:11px;font-family:monospace}
+textarea.config-input{width:100%;height:120px;border:1px solid #dadce0;border-radius:10px;padding:10px;font-size:12px;font-family:monospace;resize:vertical;margin:12px 0}
+.setup-err{color:#c5221f;font-size:12px;margin-top:6px;display:none}
+/* Login */
+.google-btn{display:flex;align-items:center;gap:10px;padding:12px 20px;border:1px solid #dadce0;border-radius:10px;background:#fff;cursor:pointer;font-size:14px;font-weight:500;width:100%;justify-content:center;margin-top:16px}
+.google-btn:hover{background:#f8f9fa}
+.google-btn svg{width:20px;height:20px}
+/* Header */
+.hdr{background:#fff;border-bottom:1px solid #e8e6e0;padding:0 16px;display:flex;align-items:center;gap:10px;height:50px;position:sticky;top:0;z-index:100}
+.hdr-title{font-size:14px;font-weight:700;flex:1}
+.hdr-today{font-size:11px;color:#888;flex-shrink:0}
+.avatar{width:28px;height:28px;border-radius:50%;object-fit:cover;flex-shrink:0;cursor:pointer}
+.avatar-placeholder{width:28px;height:28px;border-radius:50%;background:#1a73e8;color:#fff;font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer}
+.hbtn{padding:5px 11px;border-radius:7px;font-size:12px;font-weight:500;cursor:pointer;border:1px solid #dadce0;background:#fff;color:#3c4043;white-space:nowrap;flex-shrink:0}
+.hbtn:hover{background:#f1f3f4}
+.hbtn.primary{background:#1a73e8;color:#fff;border-color:#1a73e8}
+/* Person bar */
+.person-bar{background:#fff;border-bottom:1px solid #e8e6e0;padding:7px 16px;display:flex;gap:7px;flex-wrap:wrap}
+.ptog{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:500;cursor:pointer;border:1.5px solid;user-select:none;transition:opacity .15s}
+.ptog.off{opacity:.28}
+.pdot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+/* Tabs */
+.tabs{background:#fff;border-bottom:1px solid #e8e6e0;display:flex;overflow-x:auto}
+.tab{padding:9px 14px;font-size:12px;cursor:pointer;border-bottom:2.5px solid transparent;color:#666;white-space:nowrap;flex-shrink:0}
+.tab.active{color:#1a73e8;border-bottom-color:#1a73e8;font-weight:600}
+.tab:hover:not(.active){background:#f8f9fa}
+/* Content */
+.content{padding:14px;max-width:1050px;margin:0 auto;padding-bottom:58px}
+.panel{display:none}.panel.active{display:block}
+/* Cards */
+.card{background:#fff;border:1px solid #e8e6e0;border-radius:12px;padding:13px;margin-bottom:11px}
+.card-title{font-size:13px;font-weight:600;margin-bottom:9px;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.sec{font-size:11px;font-weight:700;color:#666;text-transform:uppercase;letter-spacing:.05em;margin:13px 0 5px}
+/* Task rows */
+.tr{display:flex;align-items:center;gap:7px;padding:5px 0;border-top:1px solid #f0ede8;flex-wrap:wrap}
+.tr:first-of-type{border-top:none}
+.tn{font-size:13px;font-weight:500;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.td{font-size:10px;color:#888;white-space:nowrap}
+.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:12px;font-size:10px;font-weight:600;white-space:nowrap}
+.mpw{width:58px;flex-shrink:0}
+.mpbar{height:4px;background:#f0ede8;border-radius:2px;overflow:hidden}
+.mpfil{height:100%;border-radius:2px;transition:width .3s}
+.mplbl{font-size:9px;color:#aaa;text-align:right;margin-top:1px}
+.rtag{font-size:9px;background:#e6f4ea;color:#137333;padding:1px 5px;border-radius:8px;font-weight:600;flex-shrink:0}
+/* Calendar */
+.cal-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:11px}
+.cal-nav span{font-size:14px;font-weight:700}
+.cal-head{display:grid;grid-template-columns:repeat(7,1fr);margin-bottom:3px}
+.cal-wd{font-size:10px;color:#888;text-align:center;padding:3px 0;font-weight:600}
+.cal-week{border-top:1px solid #e8e6e0}
+.cal-days{display:grid;grid-template-columns:repeat(7,1fr)}
+.cal-cell{padding:3px 3px 2px}
+.cal-dn{font-size:10px;color:#555;text-align:right;line-height:1}
+.cal-dn.today{background:#1a73e8;color:#fff;border-radius:50%;width:17px;height:17px;display:flex;align-items:center;justify-content:center;margin-left:auto;font-weight:700}
+.cal-dn.other-month{color:#ccc}
+.cal-evs{position:relative}
+.cev{position:absolute;height:16px;border-radius:3px;font-size:9px;color:#fff;display:flex;align-items:center;padding:0 4px;overflow:hidden;white-space:nowrap;cursor:default;z-index:1}
+.cev.cl{border-top-left-radius:0;border-bottom-left-radius:0;padding-left:2px}
+.cev.cr{border-top-right-radius:0;border-bottom-right-radius:0}
+.cal-more{position:absolute;font-size:9px;color:#999;right:3px}
+/* Gantt */
+.gantt-wrap{overflow-x:auto}
+.gantt{min-width:500px}
+.gh{display:flex;margin-left:140px;margin-bottom:3px;position:relative;height:13px}
+.glc{font-size:9px;color:#aaa;position:absolute;transform:translateX(-50%)}
+.gr{display:flex;align-items:center;min-height:21px;margin-bottom:2px}
+.gl{width:140px;min-width:140px;font-size:10px;padding-right:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#666}
+.gtrack{flex:1;position:relative;height:21px}
+.gbar{position:absolute;height:13px;top:4px;border-radius:3px;font-size:9px;color:#fff;display:flex;align-items:center;padding:0 4px;overflow:hidden;white-space:nowrap;min-width:3px}
+.gtoday{position:absolute;width:2px;top:0;bottom:0;background:#ea4335;opacity:.55;pointer-events:none}
+.gdia{position:absolute;width:9px;height:9px;top:6px;transform:rotate(45deg);border-radius:1px}
+/* Progress */
+.pir{display:flex;align-items:center;gap:8px;margin:4px 0}
+.pir label{font-size:11px;color:#444;min-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:0}
+.pir input[type=range]{flex:1;min-width:50px;cursor:pointer}
+.pival{font-size:11px;min-width:28px;text-align:right;color:#666}
+/* Delay */
+.merge-box{background:#f8f9fa;border:1px dashed #dadce0;border-radius:10px;padding:11px;margin-top:9px}
+/* Sync modal */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;align-items:center;justify-content:center}
+.modal-bg.open{display:flex}
+.modal{background:#fff;border-radius:18px;padding:24px;width:520px;max-width:95vw;max-height:90vh;overflow-y:auto}
+.modal h2{font-size:16px;font-weight:700;margin-bottom:16px}
+.modal-sec{margin-bottom:18px}
+.modal-sec h3{font-size:11px;font-weight:700;color:#666;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px}
+.cal-check{display:flex;align-items:center;gap:8px;padding:5px 0;font-size:13px}
+.cal-check input[type=checkbox]{width:15px;height:15px;cursor:pointer}
+.cal-pick{width:100%;border:1px solid #dadce0;border-radius:8px;padding:6px 9px;font-size:12px;font-family:inherit}
+.proj-row{display:flex;align-items:center;gap:8px;margin-bottom:7px;font-size:12px}
+.proj-row label{min-width:80px;font-weight:600}
+.sync-actions{display:flex;gap:8px;margin-top:18px;flex-wrap:wrap}
+.sync-act{flex:1;padding:10px 8px;border:1px solid #dadce0;border-radius:9px;font-size:12px;font-weight:500;cursor:pointer;background:#fff;text-align:center;font-family:inherit}
+.sync-act:hover{background:#f8f9fa}
+.sync-act.primary{background:#1a73e8;color:#fff;border-color:#1a73e8}
+.sync-act.primary:hover{background:#1557b0}
+.sync-res{margin-top:11px;padding:10px;border-radius:8px;font-size:12px;display:none}
+.sync-res.ok{background:#e6f4ea;color:#137333}
+.sync-res.err{background:#fce8e6;color:#c5221f}
+.cal-warn{background:#fff8e1;border:1px solid #fdd835;border-radius:8px;padding:10px;font-size:12px;color:#7c5400;margin-bottom:12px;display:none}
+/* Buttons */
+.btn{display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border:1px solid #dadce0;border-radius:8px;font-size:12px;cursor:pointer;background:#fff;color:#3c4043;font-family:inherit}
+.btn:hover{background:#f1f3f4}
+.btn.primary{background:#1a73e8;color:#fff;border-color:#1a73e8}
+.btn-row{display:flex;gap:8px;margin-top:9px;flex-wrap:wrap}
+/* Form */
+input[type=text],select,textarea{border:1px solid #dadce0;border-radius:8px;padding:6px 10px;font-size:12px;font-family:inherit;width:100%;color:#1a1a1a}
+textarea{resize:vertical;min-height:48px}
+input[type=checkbox]{width:14px;height:14px;cursor:pointer}
+/* Fix list */
+.fix-row{display:flex;gap:8px;padding:6px 0;border-top:1px solid #f0ede8;align-items:start}
+.fix-row:first-child{border-top:none}
+/* Alert */
+.alert-card{border-left:4px solid #ea4335;background:#fff;border:1px solid #e8e6e0;border-left-width:4px;border-radius:12px;padding:12px;margin-bottom:11px}
+.notice{background:#f8f9fa;border-radius:8px;padding:9px 12px;font-size:12px;color:#666;margin-bottom:11px}
+/* Status bar */
+.sbar{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid #e8e6e0;padding:6px 16px;display:flex;gap:14px;font-size:11px;color:#666;z-index:50;flex-wrap:wrap}
+.sdot{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:3px;flex-shrink:0}
+/* Realtime badge */
+.live-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#16a34a;animation:pulse 2s infinite;margin-right:4px}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+/* Spinner */
+.spinner{display:inline-block;width:14px;height:14px;border:2px solid #e8e6e0;border-top-color:#1a73e8;border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<!-- ── SETUP SCREEN ── -->
+<div id="screen-setup" class="screen">
+  <div class="setup-card">
+    <h1>🔧 初期設定</h1>
+    <p>Firebaseの設定情報を貼り付けてください。<br>設定はこのブラウザにのみ保存されます。</p>
+    <div class="step"><div class="step-n">1</div><p><strong>console.firebase.google.com</strong> でプロジェクトを作成<br>→ 「ウェブアプリを追加」→ アプリ名を入力 → 「Firebase SDK の追加」</p></div>
+    <div class="step"><div class="step-n">2</div><p>表示された <code>firebaseConfig</code> の <strong>{ } の中身をコピー</strong><br>（apiKey, authDomain, projectId ... が含まれるJSON）</p></div>
+    <div class="step"><div class="step-n">3</div><p>以下に貼り付けて「保存して開始」</p></div>
+    <textarea class="config-input" id="config-input" placeholder='{
+  "apiKey": "AIza...",
+  "authDomain": "xxx.firebaseapp.com",
+  "projectId": "xxx",
+  "storageBucket": "xxx.appspot.com",
+  "messagingSenderId": "123456",
+  "appId": "1:xxx:web:xxx"
+}'></textarea>
+    <div class="setup-err" id="setup-err">設定の形式が正しくありません。JSONを確認してください。</div>
+    <div class="btn-row">
+      <button class="btn primary" onclick="saveConfig()" style="width:100%;justify-content:center;padding:10px">保存して開始</button>
+    </div>
+    <p style="font-size:11px;color:#999;margin-top:12px;text-align:center">詳しい設定手順は付属の README.md を参照してください</p>
+  </div>
+</div>
+
+<!-- ── LOGIN SCREEN ── -->
+<div id="screen-login" class="screen">
+  <div class="login-card">
+    <h1>📋 直進優先 PM</h1>
+    <p>Googleアカウントでログインします。<br>Google Calendarとの同期も、このログインで完結します。</p>
+    <button class="google-btn" onclick="signIn()">
+      <svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+      Googleでログイン
+    </button>
+    <p style="font-size:11px;color:#999;margin-top:16px;text-align:center">
+      ログイン時にGoogle Calendarへのアクセス許可を求められます。同期機能を使う場合は「許可」してください。
+    </p>
+    <div style="margin-top:12px;text-align:center">
+      <button class="btn" onclick="showSetup()" style="font-size:11px">設定を変更する</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── MAIN APP ── -->
+<div id="screen-app" style="display:none;flex-direction:column;min-height:100vh">
+  <!-- Header -->
+  <div class="hdr">
+    <div class="hdr-title">直進優先ウォーターフォール PM</div>
+    <div class="hdr-today" id="hdr-today"></div>
+    <span><span class="live-dot"></span><span style="font-size:11px;color:#16a34a">リアルタイム同期</span></span>
+    <button class="hbtn" onclick="openSync()">🔄 カレンダー同期</button>
+    <img id="user-photo" class="avatar" src="" alt="" onclick="confirmSignOut()" title="クリックでログアウト" onerror="this.style.display='none';document.getElementById('user-init').style.display='flex'">
+    <div id="user-init" class="avatar-placeholder" onclick="confirmSignOut()" title="クリックでログアウト" style="display:none">?</div>
+  </div>
+
+  <!-- Person bar -->
+  <div class="person-bar" id="person-bar"></div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <div class="tab active" onclick="sw('cal')">カレンダー</div>
+    <div class="tab" onclick="sw('gantt')">人別ガント</div>
+    <div class="tab" onclick="sw('overview')">概要・優先度</div>
+    <div class="tab" onclick="sw('progress')">進捗更新</div>
+    <div class="tab" onclick="sw('delay')">遅延対応</div>
+    <div class="tab" onclick="sw('fixlist')">修正リスト</div>
+  </div>
+
+  <!-- Content -->
+  <div class="content">
+    <div class="panel active" id="panel-cal"></div>
+    <div class="panel" id="panel-gantt"></div>
+    <div class="panel" id="panel-overview"></div>
+    <div class="panel" id="panel-progress"></div>
+    <div class="panel" id="panel-delay"></div>
+    <div class="panel" id="panel-fixlist">
+      <div class="card">
+        <div class="card-title">修正リストへ追加</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+          <div><label style="font-size:11px;color:#666;display:block;margin-bottom:3px">対象タスク</label><input type="text" id="fx-task" placeholder="タスク名" /></div>
+          <div><label style="font-size:11px;color:#666;display:block;margin-bottom:3px">優先度</label>
+            <select id="fx-pri"><option value="high">高（修正期間前半）</option><option value="mid">中</option><option value="low">低</option></select></div>
+        </div>
+        <div><label style="font-size:11px;color:#666;display:block;margin-bottom:3px">修正内容</label><textarea id="fx-content"></textarea></div>
+        <div class="btn-row"><button class="btn primary" onclick="addFix()">追加</button></div>
+      </div>
+      <div id="fix-body"></div>
+    </div>
+  </div>
+
+  <div class="sbar" id="sbar"></div>
+</div>
+
+<!-- ── SYNC MODAL ── -->
+<div class="modal-bg" id="sync-modal">
+  <div class="modal">
+    <h2>🔄 Google Calendar 同期</h2>
+    <div class="cal-warn" id="cal-warn">
+      Calendarへのアクセス権がありません。一度ログアウトして再ログイン時に「許可」してください。
+    </div>
+    <div class="modal-sec">
+      <h3>取込元カレンダー（Pull）</h3>
+      <div id="cal-checklist"><div style="font-size:12px;color:#999;display:flex;align-items:center;gap:6px"><span class="spinner"></span>読み込み中...</div></div>
+    </div>
+    <div class="modal-sec">
+      <h3>プッシュ先（プロジェクトごとに選択）</h3>
+      <div class="proj-row"><label>詩集</label><select id="pcal-poetry" class="cal-pick"><option value="primary">メインカレンダー</option></select></div>
+      <div class="proj-row"><label>音声作品</label><select id="pcal-audio" class="cal-pick"><option value="primary">メインカレンダー</option></select></div>
+      <div class="proj-row"><label>展示</label><select id="pcal-exhibit" class="cal-pick"><option value="primary">メインカレンダー</option></select></div>
+    </div>
+    <div class="sync-actions">
+      <button class="sync-act" onclick="doSync('pull')">⬇ Googleから取込</button>
+      <button class="sync-act" onclick="doSync('push')">⬆ Googleへ書出</button>
+      <button class="sync-act primary" onclick="doSync('both')">⇄ 双方向同期</button>
+    </div>
+    <div class="sync-res" id="sync-res"></div>
+    <div style="text-align:right;margin-top:16px"><button class="btn" onclick="closeSync()">閉じる</button></div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// CONSTANTS
+// ═══════════════════════════════════════════════════════════
+const TODAY = new Date(); TODAY.setHours(0,0,0,0);
+const PEOPLE = [
+  {id:'senko',    name:'線香（私）', color:'#4f46e5'},
+  {id:'sato',     name:'さと',       color:'#059669'},
+  {id:'sunayuki', name:'すなゆき',   color:'#b45309'},
+  {id:'shikamii', name:'しかみぃ',   color:'#1d4ed8'},
+  {id:'b',        name:'B（声優）',  color:'#d97706'},
+];
+const PROJ = {
+  poetry: {name:'詩集',    color:'#4f46e5',
+    ms:[{name:'第5作到達',date:'2026-04-26'},{name:'第10作到達',date:'2026-05-11'},{name:'第15作到達',date:'2026-05-26'},{name:'最終入稿',date:'2026-06-30'}]},
+  audio:  {name:'音声作品',color:'#059669',
+    ms:[{name:'仮台本前半',date:'2026-05-01'},{name:'初回読み合わせ',date:'2026-05-13'},{name:'本台本確定',date:'2026-06-03'}]},
+  exhibit:{name:'展示',    color:'#b45309',
+    ms:[{name:'文言確定稿',date:'2026-05-09'},{name:'通し確認',date:'2026-05-27'},{name:'公開準備完了',date:'2026-05-31'}]},
+};
+const OWNER_COLOR_ID = {senko:'9',sato:'2',sunayuki:'6',shikamii:'1',b:'5'};
+
+// ═══════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════
+let TASKS=[], FIXES=[];
+let db=null, auth=null;
+let unsubTasks=null, unsubFixes=null;
+let gCalToken=null, gCalTokenExpiry=0;
+let calendarList=[], selectedCalIds=new Set();
+let visPersons=new Set(PEOPLE.map(p=>p.id));
+let calYear=TODAY.getFullYear(), calMonth=TODAY.getMonth();
+let mgroups={}, mgk=0;
+let gapiReady=false;
+
+// ═══════════════════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════════════════
+const pd=s=>{ const d=new Date(s+'T00:00:00'); return d; };
+const fs=s=>{ const d=pd(s); return (d.getMonth()+1)+'/'+(d.getDate()); };
+const dd=(a,b)=>Math.round((b-a)/86400000);
+const getPerson=id=>PEOPLE.find(p=>p.id===id)||{name:id,color:'#888'};
+const isDelayed=t=>pd(t.end)<TODAY&&t.prog<100;
+const isToday=t=>pd(t.start)<=TODAY&&pd(t.end)>=TODAY&&t.prog<100;
+const isMerged=t=>t.id&&t.id.startsWith('mg-');
+const isSynced=t=>!!t.google_event_id;
+
+function filteredTasks(){
+  return TASKS.filter(t=>visPersons.has(t.owner));
+}
+function taskPrio(t){
+  if(isMerged(t))return 0;
+  if(isDelayed(t))return 1;
+  if(isToday(t))return 2;
+  const d=dd(TODAY,pd(t.start));
+  if(d>=0&&d<=7)return 3;
+  return 4+Math.max(d,0)/365;
+}
+
+// ═══════════════════════════════════════════════════════════
+// SETUP & CONFIG
+// ═══════════════════════════════════════════════════════════
+function showSetup(){
+  document.getElementById('screen-setup').classList.add('active');
+  document.getElementById('screen-login').classList.remove('active');
+  document.getElementById('screen-app').style.display='none';
+}
+function showLogin(){
+  document.getElementById('screen-setup').classList.remove('active');
+  document.getElementById('screen-login').classList.add('active');
+  document.getElementById('screen-app').style.display='none';
+}
+function showApp(){
+  document.getElementById('screen-setup').classList.remove('active');
+  document.getElementById('screen-login').classList.remove('active');
+  document.getElementById('screen-app').style.display='flex';
+  document.getElementById('screen-app').style.flexDirection='column';
+  document.getElementById('screen-app').style.minHeight='100vh';
+}
+
+function saveConfig(){
+  const raw=document.getElementById('config-input').value.trim();
+  const errEl=document.getElementById('setup-err');
+  try{
+    const cfg=JSON.parse(raw);
+    if(!cfg.apiKey||!cfg.projectId) throw new Error('invalid');
+    localStorage.setItem('pm_firebase_config',JSON.stringify(cfg));
+    errEl.style.display='none';
+    initFirebase(cfg);
+  }catch(e){
+    errEl.style.display='block';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// FIREBASE INIT
+// ═══════════════════════════════════════════════════════════
+function initFirebase(cfg){
+  if(firebase.apps.length){ firebase.apps.forEach(a=>a.delete()); }
+  firebase.initializeApp(cfg);
+  db=firebase.firestore();
+  auth=firebase.auth();
+
+  // Enable offline persistence
+  db.enablePersistence({synchronizeTabs:true}).catch(()=>{});
+
+  auth.onAuthStateChanged(user=>{
+    if(user){
+      onSignedIn(user);
+    } else {
+      showLogin();
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+// AUTH
+// ═══════════════════════════════════════════════════════════
+async function signIn(){
+  const provider=new firebase.auth.GoogleAuthProvider();
+  provider.addScope('https://www.googleapis.com/auth/calendar');
+  try{
+    const result=await auth.signInWithPopup(provider);
+    const cred=firebase.auth.GoogleAuthProvider.credentialFromResult(result);
+    gCalToken=cred.accessToken;
+    gCalTokenExpiry=Date.now()+50*60*1000;
+  }catch(e){
+    console.error('sign-in error',e);
+    alert('ログインに失敗しました: '+e.message);
+  }
+}
+
+function confirmSignOut(){
+  if(confirm('ログアウトしますか？')){
+    if(unsubTasks)unsubTasks();
+    if(unsubFixes)unsubFixes();
+    gCalToken=null;
+    auth.signOut();
+  }
+}
+
+async function onSignedIn(user){
+  showApp();
+  // Update avatar
+  const photo=document.getElementById('user-photo');
+  const init=document.getElementById('user-init');
+  if(user.photoURL){
+    photo.src=user.photoURL; photo.style.display='block'; init.style.display='none';
+  } else {
+    photo.style.display='none';
+    init.textContent=(user.displayName||'?')[0];
+    init.style.display='flex';
+  }
+
+  // Setup Firestore listeners
+  setupListeners();
+
+  // Try to get gCal token from current credential
+  try{
+    const result=await auth.currentUser.getIdTokenResult();
+    // Token might already exist from sign-in
+  }catch(e){}
+}
+
+// ═══════════════════════════════════════════════════════════
+// FIRESTORE REAL-TIME LISTENERS
+// ═══════════════════════════════════════════════════════════
+function setupListeners(){
+  if(unsubTasks)unsubTasks();
+  if(unsubFixes)unsubFixes();
+
+  unsubTasks=db.collection('tasks').onSnapshot(snap=>{
+    TASKS=snap.docs.map(d=>({...d.data(), id:d.id}));
+    renderAll();
+  }, err=>console.error('tasks listener',err));
+
+  unsubFixes=db.collection('fixes').onSnapshot(snap=>{
+    FIXES=snap.docs.map(d=>({...d.data(), id:d.id}));
+    rFixList();
+    rStatus();
+  }, err=>console.error('fixes listener',err));
+
+  // Populate initial data if collection empty
+  db.collection('tasks').limit(1).get().then(snap=>{
+    if(snap.empty) populateInitialData();
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+// FIRESTORE CRUD
+// ═══════════════════════════════════════════════════════════
+const now=()=>new Date().toISOString();
+
+async function updateTask(id,patch){
+  await db.collection('tasks').doc(id).update({...patch, updated:now()});
+}
+async function createTask(task){
+  const ref=await db.collection('tasks').add({...task, created:now(), updated:now(), google_event_id:null});
+  return ref.id;
+}
+async function deleteTask(id){
+  await db.collection('tasks').doc(id).delete();
+}
+async function createFix(fix){
+  await db.collection('fixes').add({...fix, created:now()});
+}
+async function updateFix(id,patch){
+  await db.collection('fixes').doc(id).update(patch);
+}
+
+// ═══════════════════════════════════════════════════════════
+// INITIAL DATA (first run only)
+// ═══════════════════════════════════════════════════════════
+function populateInitialData(){
+  const def=(id,proj,owner,name,start,end,prog=0,cond='')=>({id,proj,owner,name,start,end,prog,cond});
+  const tasks=[
+    def('p1','poetry','senko','第1作 一連','2026-04-08','2026-04-13',100,'完了済み'),
+    def('p1m','poetry','senko','第1作 本文修正','2026-04-22','2026-04-22',50,'修正版が通っている'),
+    def('p2','poetry','senko','第2作 詩本文','2026-04-14','2026-04-22',60,'本文が最後まで1本通っている'),
+    def('p3','poetry','senko','第3作 詩本文','2026-04-18','2026-04-23',30,'本文が最後まで1本通っている'),
+    def('p4','poetry','senko','第4作 詩本文','2026-04-21','2026-04-24',10,'本文が最後まで1本通っている'),
+    def('p5a','poetry','senko','第5作 詩本文前半','2026-04-25','2026-04-26',0,'前半が書き切れている'),
+    def('p5b','poetry','senko','第5作 詩本文後半','2026-04-26','2026-04-27',0,'第5作本文通し完了'),
+    def('p6_8','poetry','senko','第6〜8作 詩本文群','2026-04-28','2026-05-05',0,'各作本文が通っている'),
+    def('p9_10','poetry','senko','第9〜10作 詩本文群','2026-05-06','2026-05-11',0,'第10作まで完了'),
+    def('p11_15','poetry','senko','第11〜15作 詩本文群','2026-05-11','2026-05-26',0,'第15作まで完了'),
+    def('p16_20','poetry','senko','第16〜20作 詩本文群','2026-05-26','2026-06-10',0,'第20作まで完了'),
+    def('pcover','poetry','senko','表紙確定','2026-06-11','2026-06-11',0,'表紙デザイン確定'),
+    def('pfinal','poetry','senko','本文確定','2026-06-24','2026-06-26',0,'全文確定稿が出た'),
+    def('a1','audio','senko','理論・関係・シーン構成','2026-04-21','2026-04-22',70,'4要素が揃っている'),
+    def('a2','audio','senko','声優確認用に整える','2026-04-21','2026-04-22',70,'声優確認用資料が渡せる'),
+    def('a3','audio','senko','トラック内容を決める','2026-04-21','2026-04-22',60,'トラック構成が確定'),
+    def('a4','audio','senko','導入〜前半 仮台本','2026-04-27','2026-05-01',0,'前半が仮台本として通っている'),
+    def('a5','audio','senko','転換点まで書く','2026-04-30','2026-05-04',0,'転換部まで書けている'),
+    def('a6','audio','senko','終盤まで書く','2026-05-03','2026-05-07',0,'終盤まで書けている'),
+    def('a7','audio','senko','演技確認用に調整','2026-05-07','2026-05-09',0,'演技確認版が渡せる'),
+    def('a8','audio','senko','修正版を書く','2026-05-09','2026-05-12',0,'修正版が完成'),
+    def('a9','audio','senko','初回読み合わせ','2026-05-13','2026-05-13',0,'読み合わせ実施'),
+    def('a10','audio','senko','第一修正版完成','2026-05-15','2026-05-18',0,'第一修正版が完成'),
+    def('a11','audio','senko','本台本 前半〜転換部確定','2026-05-23','2026-05-30',0,'前半〜転換部が確定'),
+    def('a12','audio','senko','本台本 終盤・全体確定','2026-05-29','2026-06-03',0,'本台本全体が確定'),
+    def('a13','audio','b','収録・演技（B）','2026-05-14','2026-06-11',0,'収録・編集完了'),
+    def('a14','audio','senko','商品ページ構築','2026-06-12','2026-06-23',0,'商品ページ公開準備完了'),
+    def('e1','exhibit','senko','朗読音源確認・受領','2026-04-18','2026-04-25',50,'音源が受領されている'),
+    def('e2','exhibit','sunayuki','砂雪_80%確認','2026-04-23','2026-04-23',0,'80%状態を確認・FB済み'),
+    def('e3','exhibit','senko','アセット仮納品確認②③','2026-04-23','2026-04-27',0,'仮納品が確認済み'),
+    def('e4','exhibit','sato','sato_朗読','2026-04-25','2026-04-26',0,'朗読が実施・受領済み'),
+    def('e5','exhibit','senko','キャプション初稿','2026-04-25','2026-04-27',0,'キャプション初稿が完成'),
+    def('e6','exhibit','senko','イントロダクション初稿','2026-04-25','2026-04-27',0,'イントロ初稿が完成'),
+    def('e7','exhibit','senko','キュレーターの問いかけ初稿','2026-04-25','2026-04-27',0,'問いかけ文の初稿が完成'),
+    def('e8','exhibit','sunayuki','砂雪_骨組み実装','2026-04-27','2026-05-06',0,'骨組みが仮置き可能'),
+    def('e9','exhibit','senko','最小ギミック監修','2026-05-03','2026-05-06',0,'ギミック方向性が確定'),
+    def('e10','exhibit','senko','文言確定稿作成','2026-05-07','2026-05-09',0,'文言が確定稿として揃っている'),
+    def('e11','exhibit','sunayuki','砂雪_ギミック本実装','2026-05-07','2026-05-16',0,'ギミックが空間に実装'),
+    def('e12','exhibit','senko','配置後確認・見え方監修','2026-05-11','2026-05-23',0,'配置と見え方が承認済み'),
+    def('e13','exhibit','senko','通し確認・最終文言修正','2026-05-24','2026-05-27',0,'通しで問題なし'),
+    def('e14','exhibit','sunayuki','砂雪_公開準備・撮影','2026-05-28','2026-06-01',0,'公開準備が整っている'),
+    def('e15','exhibit','shikamii','ポスター制作（しかみぃ）','2026-06-02','2026-06-14',0,'ポスターが完成'),
+  ];
+  const batch=db.batch();
+  tasks.forEach(t=>{
+    const ref=db.collection('tasks').doc(t.id);
+    batch.set(ref,{...t, created:now(), updated:now(), google_event_id:null});
+  });
+  [{task:'詩集',pri:'mid',content:'第1作 本文修正（本流へ戻さず修正期間に対応）',done:false},
+   {task:'音声作品',pri:'high',content:'理論・シーン構成の4要素整合確認',done:false}
+  ].forEach(f=>{
+    batch.set(db.collection('fixes').doc(),{...f,created:now()});
+  });
+  batch.commit();
+}
+
+// ═══════════════════════════════════════════════════════════
+// GOOGLE CALENDAR API
+// ═══════════════════════════════════════════════════════════
+function onGapiLoad(){
+  gapi.load('client',async()=>{
+    await gapi.client.load('https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest');
+    gapiReady=true;
+  });
+}
+
+function hasCalToken(){
+  return gCalToken && Date.now()<gCalTokenExpiry;
+}
+
+function setGapiToken(){
+  if(hasCalToken()) gapi.client.setToken({access_token:gCalToken});
+}
+
+function taskToEvent(t){
+  let end=t.end;
+  if(t.start===t.end){
+    const d=new Date(pd(end).getTime()+86400000);
+    end=d.toISOString().slice(0,10);
+  }
+  return {
+    summary: t.name,
+    start:{date:t.start}, end:{date:end},
+    description:`進捗: ${t.prog||0}%\n担当: ${t.owner}\nPJ: ${t.proj}\n通過条件: ${t.cond||''}`,
+    colorId: OWNER_COLOR_ID[t.owner]||'9',
+    extendedProperties:{private:{
+      pm_id:t.id, pm_owner:t.owner||'', pm_proj:t.proj||'',
+      pm_prog:String(t.prog||0), pm_cond:t.cond||'',
+      pm_source:'waterfall-pm', pm_updated:t.updated||now(),
+    }}
+  };
+}
+
+function eventToTask(ev,calId){
+  const p=ev.extendedProperties?.private||{};
+  const start=ev.start?.date||ev.start?.dateTime?.slice(0,10)||'';
+  let end=ev.end?.date||ev.end?.dateTime?.slice(0,10)||'';
+  const sd=pd(start), ed=pd(end);
+  if(dd(sd,ed)===1) end=start;
+  return {
+    id: p.pm_id||('gcal-'+ev.id.slice(0,8)),
+    name: ev.summary||'（タイトルなし）',
+    start, end,
+    owner: p.pm_owner||'senko',
+    proj:  p.pm_proj||'poetry',
+    prog:  parseInt(p.pm_prog||'0')||0,
+    cond:  p.pm_cond||'',
+    google_event_id:     ev.id,
+    google_calendar_id:  calId,
+    updated: ev.updated||'',
+    created: ev.created||'',
+  };
+}
+
+async function loadCalendars(){
+  if(!gapiReady||!hasCalToken())return;
+  setGapiToken();
+  try{
+    const res=await gapi.client.calendar.calendarList.list();
+    calendarList=(res.result.items||[]).map(c=>({id:c.id,name:c.summary,primary:!!c.primary}));
+    if(selectedCalIds.size===0) calendarList.forEach(c=>selectedCalIds.add(c.id));
+    renderSyncModal();
+  }catch(e){ console.error('load calendars',e); }
+}
+
+async function pullFromGoogle(calIds){
+  if(!gapiReady||!hasCalToken()) return {new:0,updated:0,error:'カレンダーアクセス権なし'};
+  setGapiToken();
+  const tmin=new Date(Date.now()-30*86400000).toISOString();
+  const tmax=new Date(Date.now()+200*86400000).toISOString();
+  let nc=0,uc=0;
+
+  for(const calId of calIds){
+    try{
+      const res=await gapi.client.calendar.events.list({
+        calendarId:calId, timeMin:tmin, timeMax:tmax,
+        maxResults:500, singleEvents:true, orderBy:'startTime'
+      });
+      const existing=TASKS.reduce((m,t)=>{
+        if(t.id)m.byId[t.id]=t;
+        if(t.google_event_id)m.byGcal[t.google_event_id]=t;
+        return m;
+      },{byId:{},byGcal:{}});
+
+      for(const ev of res.result.items||[]){
+        if(ev.status==='cancelled')continue;
+        const pp=ev.extendedProperties?.private||{};
+        const pmId=pp.pm_id, gcalId=ev.id;
+        const task=eventToTask(ev,calId);
+
+        if(pmId&&existing.byId[pmId]){
+          const local=existing.byId[pmId];
+          if((ev.updated||'')>(local.updated||'')){
+            await db.collection('tasks').doc(pmId).update({...task, id:pmId});
+            uc++;
+          }
+        } else if(existing.byGcal[gcalId]){
+          const local=existing.byGcal[gcalId];
+          if((ev.updated||'')>(local.updated||'')){
+            await db.collection('tasks').doc(local.id).update(task);
+            uc++;
+          }
+        } else {
+          const ref=db.collection('tasks').doc(task.id);
+          await ref.set({...task, created:now(), updated:now()});
+          nc++;
+        }
+      }
+    }catch(e){ console.error('pull error',calId,e); }
+  }
+  return {new:nc, updated:uc};
+}
+
+async function pushToGoogle(projCalMap, defaultCal){
+  if(!gapiReady||!hasCalToken()) return {created:0,updated:0,error:'カレンダーアクセス権なし'};
+  setGapiToken();
+  let cc=0,uc=0,ec=0;
+
+  for(const t of TASKS){
+    const calId=projCalMap[t.proj]||defaultCal||'primary';
+    const evBody=taskToEvent(t);
+    try{
+      if(t.google_event_id){
+        try{
+          await gapi.client.calendar.events.update({
+            calendarId:t.google_calendar_id||calId,
+            eventId:t.google_event_id, resource:evBody
+          });
+          uc++;
+        }catch{
+          const r=await gapi.client.calendar.events.insert({calendarId:calId, resource:evBody});
+          await db.collection('tasks').doc(t.id).update({google_event_id:r.result.id, google_calendar_id:calId});
+          cc++;
+        }
+      }else{
+        const r=await gapi.client.calendar.events.insert({calendarId:calId, resource:evBody});
+        await db.collection('tasks').doc(t.id).update({google_event_id:r.result.id, google_calendar_id:calId});
+        cc++;
+      }
+    }catch(e){ ec++; console.error('push error',t.id,e); }
+  }
+  return {created:cc, updated:uc, errors:ec};
+}
+
+// ═══════════════════════════════════════════════════════════
+// SYNC MODAL
+// ═══════════════════════════════════════════════════════════
+async function openSync(){
+  document.getElementById('sync-modal').classList.add('open');
+  const warn=document.getElementById('cal-warn');
+  warn.style.display=hasCalToken()?'none':'block';
+  if(hasCalToken()&&calendarList.length===0) await loadCalendars();
+  renderSyncModal();
+}
+function closeSync(){ document.getElementById('sync-modal').classList.remove('open'); }
+
+function renderSyncModal(){
+  const cl=document.getElementById('cal-checklist');
+  if(!calendarList.length){
+    cl.innerHTML='<div style="font-size:12px;color:#999">ログイン時にCalendar権限を許可するとここに一覧が出ます</div>';
+    return;
+  }
+  cl.innerHTML=calendarList.map(c=>`<div class="cal-check">
+    <input type="checkbox" id="chk-${c.id.replace(/[^a-z0-9]/gi,'_')}" ${selectedCalIds.has(c.id)?'checked':''} onchange="toggleCal('${c.id}')">
+    <label for="chk-${c.id.replace(/[^a-z0-9]/gi,'_')}">${c.name}${c.primary?' ✦':''}</label>
+  </div>`).join('');
+  const opts=calendarList.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+  ['poetry','audio','exhibit'].forEach(proj=>{
+    const s=document.getElementById('pcal-'+proj);
+    if(s)s.innerHTML='<option value="primary">メインカレンダー</option>'+opts;
+  });
+}
+function toggleCal(id){ if(selectedCalIds.has(id))selectedCalIds.delete(id);else selectedCalIds.add(id); }
+
+async function doSync(dir){
+  const res=document.getElementById('sync-res');
+  res.style.display='none'; res.className='sync-res';
+  if(!hasCalToken()){
+    res.className='sync-res err';
+    res.textContent='ログアウトして再ログインし、Calendar権限を許可してください。';
+    res.style.display='block'; return;
+  }
+  const projCalMap={
+    poetry: document.getElementById('pcal-poetry')?.value||'primary',
+    audio:  document.getElementById('pcal-audio')?.value||'primary',
+    exhibit:document.getElementById('pcal-exhibit')?.value||'primary',
+  };
+  const calIds=[...selectedCalIds];
+  try{
+    let msg='';
+    if(dir==='pull'||dir==='both'){
+      const r=await pullFromGoogle(calIds);
+      if(r.error){throw new Error(r.error);}
+      msg+=`取込: 新規${r.new}件・更新${r.updated}件 `;
+    }
+    if(dir==='push'||dir==='both'){
+      const r=await pushToGoogle(projCalMap,'primary');
+      if(r.error){throw new Error(r.error);}
+      msg+=`書出: 作成${r.created}件・更新${r.updated}件`;
+    }
+    res.className='sync-res ok'; res.textContent='✓ '+msg.trim();
+  }catch(e){
+    res.className='sync-res err'; res.textContent='エラー: '+e.message;
+  }
+  res.style.display='block';
+}
+
+// ═══════════════════════════════════════════════════════════
+// TABS
+// ═══════════════════════════════════════════════════════════
+function sw(t){
+  const names=['cal','gantt','overview','progress','delay','fixlist'];
+  document.querySelectorAll('.tab').forEach((el,i)=>el.classList.toggle('active',names[i]===t));
+  document.querySelectorAll('.panel').forEach(el=>el.classList.remove('active'));
+  document.getElementById('panel-'+t).classList.add('active');
+  renderAll();
+}
+
+// ═══════════════════════════════════════════════════════════
+// PERSON BAR
+// ═══════════════════════════════════════════════════════════
+function initPersonBar(){
+  document.getElementById('person-bar').innerHTML=PEOPLE.map(p=>
+    `<div class="ptog" id="ptog-${p.id}" style="background:${p.color}18;border-color:${p.color};color:${p.color}" onclick="togglePerson('${p.id}')">
+      <span class="pdot" style="background:${p.color}"></span>${p.name}
+    </div>`
+  ).join('');
+}
+function togglePerson(id){
+  if(visPersons.has(id))visPersons.delete(id);else visPersons.add(id);
+  document.getElementById('ptog-'+id).classList.toggle('off',!visPersons.has(id));
+  renderAll();
+}
+
+// ═══════════════════════════════════════════════════════════
+// RENDER ALL
+// ═══════════════════════════════════════════════════════════
+function renderAll(){ rCal();rGantt();rOverview();rProgress();rDelay();rFixList();rStatus(); }
+
+// ═══════════════════════════════════════════════════════════
+// CALENDAR VIEW
+// ═══════════════════════════════════════════════════════════
+function rCal(){
+  const el=document.getElementById('panel-cal'); if(!el.classList.contains('active'))return;
+  const tasks=filteredTasks();
+  const first=new Date(calYear,calMonth,1), last=new Date(calYear,calMonth+1,0);
+  const startDOW=first.getDay(), total=Math.ceil((startDOW+last.getDate())/7)*7;
+  const mn=['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'][calMonth];
+  let html=`<div class="cal-nav"><button class="cal-btn" onclick="prevMonth()">◀ 前月</button><span>${calYear}年 ${mn}</span><button class="cal-btn" onclick="nextMonth()">次月 ▶</button></div>
+  <div class="cal-head">${['日','月','火','水','木','金','土'].map((d,i)=>`<div class="cal-wd" style="color:${i===0?'#ea4335':i===6?'#1a73e8':''}">${d}</div>`).join('')}</div>`;
+
+  for(let w=0;w<total/7;w++){
+    const wDays=Array.from({length:7},(_,d)=>{
+      const dn=w*7+d-startDOW+1;
+      return{dn,date:new Date(calYear,calMonth,dn)};
+    });
+    const wStart=wDays[0].date, wEnd=wDays[6].date;
+    const wTasks=tasks.filter(t=>pd(t.start)<=wEnd&&pd(t.end)>=wStart)
+      .sort((a,b)=>(isMerged(b)-isMerged(a))||(isDelayed(b)-isDelayed(a))||(pd(a.start)-pd(b.start)));
+
+    const slots=[]; const tsm={};
+    wTasks.forEach(t=>{
+      const ts=new Date(Math.max(pd(t.start),wStart)), te=new Date(Math.min(pd(t.end),wEnd));
+      let s=0;
+      while(true){
+        if(!slots[s])slots[s]=[];
+        if(!slots[s].some(x=>{const xs=new Date(Math.max(pd(x.start),wStart)),xe=new Date(Math.min(pd(x.end),wEnd));return xs<=te&&xe>=ts;})){slots[s].push(t);tsm[t.id]=s;break;}
+        s++;
+      }
+    });
+    const MAX=3, evHt=Math.min(Object.keys(tsm).length?Math.max(0,...Object.values(tsm))+1:0,MAX)*18+2;
+    let ovf=0;
+
+    html+=`<div class="cal-week" style="min-height:${22+evHt}px">
+      <div class="cal-days">${wDays.map(({dn,date},di)=>{
+        const thisMo=date.getMonth()===calMonth, isT=date.toDateString()===TODAY.toDateString();
+        return `<div class="cal-cell" style="${!thisMo?'opacity:.22':''}"><div class="cal-dn${isT?' today':''}" style="${di===0?'color:#ea4335':di===6?'color:#1a73e8':''}">${date.getDate()}</div></div>`;
+      }).join('')}</div>
+      <div class="cal-evs" style="height:${evHt}px;position:relative;margin:0 2px">`;
+
+    wTasks.forEach(t=>{
+      const slot=tsm[t.id]; if(slot>=MAX){ovf++;return;}
+      const ts=new Date(Math.max(pd(t.start),wStart)), te=new Date(Math.min(pd(t.end),wEnd));
+      const si=ts.getDay(), span=dd(ts,te)+1;
+      const L=(si/7*100).toFixed(1), W=(span/7*100).toFixed(1);
+      const conL=pd(t.start)<wStart, conR=pd(t.end)>wEnd;
+      const p=getPerson(t.owner);
+      const col=isDelayed(t)?'#ea4335':isMerged(t)?'#4f46e5':p.color;
+      html+=`<div class="cev${conL?' cl':''}${conR?' cr':''}" style="left:${L}%;width:${W}%;top:${slot*18}px;background:${col}" title="${t.name} | ${p.name} | ${fs(t.start)}〜${fs(t.end)} | ${t.prog}%">${isMerged(t)?'★ ':''}${t.name}</div>`;
+    });
+    if(ovf) html+=`<div class="cal-more" style="top:${MAX*18}px">+${ovf}件</div>`;
+    html+='</div></div>';
+  }
+  el.innerHTML=html;
+}
+function prevMonth(){if(calMonth===0){calMonth=11;calYear--;}else calMonth--;rCal();}
+function nextMonth(){if(calMonth===11){calMonth=0;calYear++;}else calMonth++;rCal();}
+
+// ═══════════════════════════════════════════════════════════
+// GANTT
+// ═══════════════════════════════════════════════════════════
+function rGantt(){
+  const el=document.getElementById('panel-gantt'); if(!el.classList.contains('active'))return;
+  const tasks=filteredTasks();
+  if(!tasks.length){el.innerHTML='<div class="notice">表示するタスクがありません</div>';return;}
+  const allD=[TODAY,...tasks.flatMap(t=>[pd(t.start),pd(t.end)]),...Object.values(PROJ).flatMap(p=>p.ms.map(m=>pd(m.date)))];
+  const minD=new Date(Math.min(...allD)), maxD=new Date(Math.max(...allD));
+  minD.setDate(minD.getDate()-2); maxD.setDate(maxD.getDate()+3);
+  const tot=Math.max(1,dd(minD,maxD));
+  const lp=d=>{const s=typeof d==='string'?pd(d):d;return((dd(minD,s)/tot)*100).toFixed(2)+'%'};
+  const wp=(s,e)=>(Math.max(0.3,dd(pd(s),pd(e)))/tot*100).toFixed(2)+'%';
+  const step=Math.max(1,Math.floor(tot/7));
+  const labels=[];
+  for(let i=0;i<=tot;i+=step){const d=new Date(minD.getTime()+i*86400000);labels.push({x:lp(d),t:(d.getMonth()+1)+'/'+(d.getDate())});}
+  const tp=lp(TODAY);
+
+  let html=`<div class="gantt-wrap"><div class="gantt"><div class="gh">${labels.map(l=>`<div class="glc" style="left:${l.x}">${l.t}</div>`).join('')}</div>`;
+
+  PEOPLE.filter(p=>visPersons.has(p.id)).forEach(person=>{
+    const pt=[...tasks.filter(t=>t.owner===person.id)].sort((a,b)=>taskPrio(a)-taskPrio(b));
+    if(!pt.length)return;
+    html+=`<div class="gr"><div class="gl" style="font-weight:700;color:${person.color}">${person.name}</div><div class="gtrack" style="background:${person.color}0d"><div class="gtoday" style="left:${tp}"></div></div></div>`;
+    pt.forEach(t=>{
+      const del=isDelayed(t),mg=isMerged(t),tod=isToday(t);
+      const bc=mg?'#4f46e5':del?'#ea4335':tod?person.color:person.color+'99';
+      const proj=PROJ[t.proj];
+      html+=`<div class="gr"><div class="gl" style="font-size:9px;padding-left:10px">${mg?'★ ':del?'⚠ ':''}<span style="color:#444">${t.name.substring(0,22)}</span>${isSynced(t)?'<span style="font-size:8px;color:#16a34a;margin-left:3px">🔄</span>':''}</div>
+        <div class="gtrack"><div class="gtoday" style="left:${tp}"></div><div class="gbar" style="left:${lp(t.start)};width:${wp(t.start,t.end)};background:${bc}" title="${t.name} | ${t.prog}%">${t.prog?t.prog+'%':''}</div></div></div>`;
+    });
+  });
+
+  html+=`<div class="gr" style="margin-top:8px"><div class="gl" style="font-weight:600;font-size:10px;color:#888">マイルストーン</div><div class="gtrack"><div class="gtoday" style="left:${tp}"></div></div></div>`;
+  Object.values(PROJ).forEach(p=>{
+    p.ms.forEach(m=>{
+      html+=`<div class="gr"><div class="gl" style="font-size:9px;padding-left:10px;color:#999">${m.name}</div><div class="gtrack"><div class="gtoday" style="left:${tp}"></div><div class="gdia" style="left:calc(${lp(m.date)} - 4px);background:${p.color}"></div></div></div>`;
+    });
+  });
+  html+='</div></div>';
+  el.innerHTML=html;
+}
+
+// ═══════════════════════════════════════════════════════════
+// OVERVIEW
+// ═══════════════════════════════════════════════════════════
+function rOverview(){
+  const el=document.getElementById('panel-overview'); if(!el.classList.contains('active'))return;
+  const tasks=[...filteredTasks()].sort((a,b)=>taskPrio(a)-taskPrio(b));
+  const secs=[
+    {label:'★ 統合タスク（要対応）',color:'#4f46e5',f:t=>isMerged(t)},
+    {label:'⚠ 遅延中',color:'#ea4335',f:t=>!isMerged(t)&&isDelayed(t)},
+    {label:'▶ 今日対応中',color:'#d97706',f:t=>!isMerged(t)&&!isDelayed(t)&&isToday(t)},
+    {label:'今週着手予定',color:'#059669',f:t=>{const d=dd(TODAY,pd(t.start));return d>0&&d<=7&&t.prog<100&&!isMerged(t)&&!isDelayed(t)}},
+    {label:'今後のタスク',color:'#888',f:t=>{const d=dd(TODAY,pd(t.start));return d>7&&t.prog<100&&!isMerged(t)&&!isDelayed(t)}},
+  ];
+  let html='';
+  secs.forEach(sec=>{
+    const st=tasks.filter(sec.f); if(!st.length)return;
+    html+=`<div class="sec" style="color:${sec.color}">${sec.label}（${st.length}件）</div><div class="card">`;
+    st.forEach(t=>{
+      const p=getPerson(t.owner), pj=PROJ[t.proj];
+      html+=`<div class="tr">
+        <span class="badge" style="background:${p.color}18;color:${p.color}">${p.name}</span>
+        ${pj?`<span class="badge" style="background:${pj.color}18;color:${pj.color}">${pj.name}</span>`:''}
+        <span class="tn">${isMerged(t)?'★ ':''}${t.name}</span>
+        ${isSynced(t)?'<span class="rtag">🔄 同期済み</span>':''}
+        <span class="td">${fs(t.start)}〜${fs(t.end)}</span>
+        <div class="mpw"><div class="mpbar"><div class="mpfil" style="width:${t.prog}%;background:${isDelayed(t)?'#ea4335':p.color}"></div></div><div class="mplbl">${t.prog}%</div></div>
+        ${t.cond?`<span title="通過条件: ${t.cond}" style="cursor:help;font-size:13px">📋</span>`:''}
+      </div>`;
+    });
+    html+='</div>';
+  });
+  if(!html)html='<div class="notice">表示するタスクがありません</div>';
+  el.innerHTML=html;
+}
+
+// ═══════════════════════════════════════════════════════════
+// PROGRESS
+// ═══════════════════════════════════════════════════════════
+function rProgress(){
+  const el=document.getElementById('panel-progress'); if(!el.classList.contains('active'))return;
+  const tasks=[...filteredTasks()].sort((a,b)=>taskPrio(a)-taskPrio(b));
+  let html='<div class="notice">スライダーで進捗を更新。変更は即時Firestoreへ保存され、全員の画面に反映されます。</div>';
+  PEOPLE.filter(p=>visPersons.has(p.id)).forEach(person=>{
+    const pt=tasks.filter(t=>t.owner===person.id); if(!pt.length)return;
+    html+=`<div class="card"><div class="card-title"><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${person.color}"></span>${person.name}</div>`;
+    pt.forEach(t=>{
+      const del=isDelayed(t),mg=isMerged(t),tod=isToday(t);
+      html+=`<div class="pir" style="opacity:${t.prog===100?.45:1}">
+        <label title="${t.name}">${mg?'★ ':del?'⚠ ':tod?'▶ ':''}<span style="color:${del?'#ea4335':'#333'}">${t.name}</span>${isSynced(t)?' 🔄':''}</label>
+        <input type="range" min="0" max="100" step="10" value="${t.prog||0}"
+          onchange="updateTask('${t.id}',{prog:+this.value})"
+          oninput="this.nextElementSibling.textContent=this.value+'%'" />
+        <span class="pival">${t.prog||0}%</span>
+        ${t.prog===100?'<span class="badge" style="background:#e6f4ea;color:#137333;font-size:10px">完了</span>':del?'<span class="badge" style="background:#fce8e6;color:#c5221f;font-size:10px">遅延</span>':''}
+      </div>`;
+    });
+    html+='</div>';
+  });
+  el.innerHTML=html;
+}
+
+// ═══════════════════════════════════════════════════════════
+// DELAY
+// ═══════════════════════════════════════════════════════════
+function rDelay(){
+  const el=document.getElementById('panel-delay'); if(!el.classList.contains('active'))return;
+  const delayed=filteredTasks().filter(isDelayed);
+  if(!delayed.length){el.innerHTML='<div class="notice">遅延タスクなし。順調です。</div>';return;}
+  const byOwner={};
+  delayed.forEach(t=>{if(!byOwner[t.owner])byOwner[t.owner]=[];byOwner[t.owner].push(t);});
+  let html='<div class="notice">「統合を適用」するとFirestoreが更新され、全員の画面に即時反映されます。</div>';
+
+  Object.entries(byOwner).forEach(([ownerId,tasks])=>{
+    const person=getPerson(ownerId), maxDel=Math.max(...tasks.map(t=>dd(pd(t.end),TODAY)));
+    const k=++mgk; mgroups[k]={ids:tasks.map(t=>t.id)};
+
+    html+=`<div class="card" style="border-left:4px solid ${person.color}">
+      <div class="card-title"><span class="badge" style="background:${person.color}18;color:${person.color}">${person.name}</span> 遅延 ${tasks.length}件・最大${maxDel}日超過</div>`;
+
+    tasks.forEach(t=>{
+      const pj=PROJ[t.proj];
+      html+=`<div class="tr">
+        <span class="badge" style="background:${pj?pj.color+'18':'#eee'};color:${pj?pj.color:'#666'}">${pj?pj.name:t.proj}</span>
+        <span class="tn">${t.name}</span>
+        <span class="td" style="color:#ea4335">期限 ${fs(t.end)}（${dd(pd(t.end),TODAY)}日超）</span>
+        <div class="mpw"><div class="mpbar"><div class="mpfil" style="width:${t.prog||0}%;background:#ea4335"></div></div><div class="mplbl">${t.prog||0}%</div></div>
+      </div>`;
+    });
+
+    const d0=TODAY.toISOString().slice(0,10);
+    const d1=new Date(TODAY.getTime()+86400000).toISOString().slice(0,10);
+    const d2=new Date(TODAY.getTime()+172800000).toISOString().slice(0,10);
+
+    if(tasks.length>1){
+      html+=`<div class="merge-box">
+        <div style="font-size:12px;font-weight:600;color:#444;margin-bottom:7px">3日圧縮ブロック統合案</div>
+        <div style="font-size:12px;color:#666;line-height:2">
+          <div>▶ 1日目（${d0}）: ${tasks[0].name.substring(0,16)} — 前半を閉じる</div>
+          <div>▶ 2日目（${d1}）: ${tasks.slice(1).map(x=>x.name.substring(0,10)).join('＋')} — 後半・接続確認</div>
+          <div>▶ 3日目（${d2}）: 最低限修正のみ → 次工程へ渡す</div>
+        </div>
+        <div class="btn-row">
+          <button class="btn primary" onclick="applyMerge(${k})">★ 統合を適用する</button>
+          <button class="btn" onclick="applyPost(${k},'${d2}')">3日後ろ倒し</button>
+        </div>
+      </div>`;
+    }else{
+      html+=`<div class="merge-box">
+        <div style="font-size:12px;color:#666;margin-bottom:7px">後ろ倒し案（${d2}まで延長）</div>
+        <div class="btn-row"><button class="btn primary" onclick="applyPost(${k},'${d2}')">終了日を延長する</button></div>
+      </div>`;
+    }
+    html+='</div>';
+  });
+  el.innerHTML=html;
+}
+
+async function applyMerge(k){
+  const g=mgroups[k]; if(!g)return;
+  const tasks=TASKS.filter(t=>g.ids.includes(t.id));
+  const merged={
+    proj:tasks[0].proj, owner:tasks[0].owner,
+    name:'【統合★】'+tasks.map(t=>t.name.substring(0,8)).join('＋'),
+    start:TODAY.toISOString().slice(0,10),
+    end:new Date(TODAY.getTime()+172800000).toISOString().slice(0,10),
+    prog:Math.min(...tasks.map(t=>t.prog||0)),
+    cond:tasks.map(t=>t.cond||t.name).join(' / '),
+    google_event_id:null,
+  };
+  const batch=db.batch();
+  g.ids.forEach(id=>batch.delete(db.collection('tasks').doc(id)));
+  const mRef=db.collection('tasks').doc('mg-'+Date.now());
+  batch.set(mRef,{...merged,created:now(),updated:now()});
+  batch.set(db.collection('fixes').doc(),{
+    task:(PROJ[tasks[0].proj]?.name||''),pri:'mid',done:false,created:now(),
+    content:'統合タスク品質懸念（修正期間に対応）: '+tasks.map(t=>t.name).join('、'),
+  });
+  await batch.commit();
+  delete mgroups[k];
+}
+
+async function applyPost(k,newEnd){
+  const g=mgroups[k]; if(!g)return;
+  const batch=db.batch();
+  g.ids.forEach(id=>batch.update(db.collection('tasks').doc(id),{end:newEnd,updated:now()}));
+  await batch.commit();
+  delete mgroups[k];
+}
+
+// ═══════════════════════════════════════════════════════════
+// FIX LIST
+// ═══════════════════════════════════════════════════════════
+async function addFix(){
+  const c=document.getElementById('fx-content').value.trim(); if(!c)return;
+  await createFix({task:document.getElementById('fx-task').value.trim(),pri:document.getElementById('fx-pri').value,content:c,done:false});
+  document.getElementById('fx-task').value=''; document.getElementById('fx-content').value='';
+}
+async function toggleFix(id){
+  const f=FIXES.find(x=>x.id===id); if(!f)return;
+  await updateFix(id,{done:!f.done});
+}
+function rFixList(){
+  const el=document.getElementById('fix-body'); if(!el)return;
+  const bp={high:[],mid:[],low:[]};
+  FIXES.forEach(f=>bp[f.pri||'mid'].push(f));
+  const lbl={high:'高（修正期間前半）',mid:'中（修正期間中盤）',low:'低（時間があれば）'};
+  let html='';
+  ['high','mid','low'].forEach(p=>{
+    if(!bp[p].length)return;
+    html+=`<div class="card"><div class="card-title">${lbl[p]}</div>`;
+    bp[p].forEach(f=>{
+      html+=`<div class="fix-row"><input type="checkbox" ${f.done?'checked':''} onchange="toggleFix('${f.id}')" />
+        <div style="flex:1;opacity:${f.done?.4:1};text-decoration:${f.done?'line-through':'none'}">
+          <div style="font-size:13px;font-weight:500">${f.content}</div>
+          ${f.task?`<div style="font-size:11px;color:#888;margin-top:2px">対象: ${f.task}</div>`:''}</div></div>`;
+    });
+    html+='</div>';
+  });
+  if(!html)html='<div class="notice">修正リストは空です</div>';
+  el.innerHTML=html;
+}
+
+// ═══════════════════════════════════════════════════════════
+// STATUS BAR
+// ═══════════════════════════════════════════════════════════
+function rStatus(){
+  const all=filteredTasks();
+  const del=all.filter(isDelayed).length, mg=all.filter(isMerged).length;
+  const synced=all.filter(isSynced).length, fl=FIXES.filter(f=>!f.done).length;
+  const sbar=document.getElementById('sbar'); if(!sbar)return;
+  sbar.innerHTML=PEOPLE.filter(p=>visPersons.has(p.id)).map(p=>{
+    const pt=all.filter(t=>t.owner===p.id);
+    return `<span><span class="sdot" style="background:${p.color}"></span>${p.name}: ${pt.filter(t=>t.prog===100).length}/${pt.length}</span>`;
+  }).join('')+
+  `<span><span class="sdot" style="background:#ea4335"></span>遅延 ${del}件</span>`+
+  (mg?`<span><span class="sdot" style="background:#4f46e5"></span>統合 ${mg}件</span>`:'')+
+  `<span><span class="sdot" style="background:#16a34a"></span>同期済み ${synced}件</span>`+
+  `<span><span class="sdot" style="background:#d97706"></span>修正リスト残 ${fl}件</span>`;
+}
+
+// ═══════════════════════════════════════════════════════════
+// BOOT
+// ═══════════════════════════════════════════════════════════
+(function boot(){
+  document.getElementById('hdr-today').textContent=
+    '今日: '+(TODAY.getMonth()+1)+'月'+TODAY.getDate()+'日（'+['日','月','火','水','木','金','土'][TODAY.getDay()]+'）';
+  initPersonBar();
+
+  const stored=localStorage.getItem('pm_firebase_config');
+  if(stored){
+    try{
+      initFirebase(JSON.parse(stored));
+    }catch(e){ showSetup(); }
+  }else{
+    showSetup();
+  }
+
+  // Close sync modal on bg click
+  document.getElementById('sync-modal').addEventListener('click',e=>{
+    if(e.target===e.currentTarget)closeSync();
+  });
+})();
+</script>
+</body>
+</html>
