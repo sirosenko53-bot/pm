@@ -388,16 +388,22 @@ function initFirebase(cfg){
 // AUTH
 // ═══════════════════════════════════════════════════════════
 async function signIn(){
-  const provider=new firebase.auth.GoogleAuthProvider();
+  const provider = new firebase.auth.GoogleAuthProvider();
   provider.addScope('https://www.googleapis.com/auth/calendar');
   try{
-    const result=await auth.signInWithPopup(provider);
-    const cred=firebase.auth.GoogleAuthProvider.credentialFromResult(result);
-    gCalToken=cred.accessToken;
-    gCalTokenExpiry=Date.now()+50*60*1000;
+    const result = await auth.signInWithPopup(provider);
+    const cred = firebase.auth.GoogleAuthProvider.credentialFromResult(result);
+
+    gCalToken = cred?.accessToken || null;
+    if (gCalToken) {
+      gCalTokenExpiry = Date.now() + 50 * 60 * 1000;
+    } else {
+      gCalTokenExpiry = 0;
+      console.warn('Google Calendar access token was not returned.');
+    }
   }catch(e){
-    console.error('sign-in error',e);
-    alert('ログインに失敗しました: '+e.message);
+    console.error('sign-in error', e);
+    alert('ログインに失敗しました: ' + e.message);
   }
 }
 
