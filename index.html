@@ -4,210 +4,198 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>直進優先ウォーターフォール PM</title>
-<!-- Firebase compat SDK -->
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
-<!-- Google API -->
-<script src="https://apis.google.com/js/api.js" onload="onGapiLoad()" defer></script>
+<!-- GIS: Calendar用OAuthトークン取得（Firebaseログインとは完全に分離） -->
+<script src="https://accounts.google.com/gsi/client" async onload="onGsiLoad()"></script>
+<!-- GAPI: Calendar API呼び出し -->
+<script src="https://apis.google.com/js/api.js" async onload="onGapiLoad()"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans','Yu Gothic UI',sans-serif;background:#f5f4f0;color:#1a1a1a;font-size:14px}
-
-/* ── Screens ── */
-.screen{min-height:100vh;display:none;align-items:center;justify-content:center;padding:20px}
+body{font-family:-apple-system,'Hiragino Sans','Yu Gothic UI',sans-serif;background:#f4f3ef;color:#1a1a1a;font-size:14px}
+.screen{min-height:100vh;display:none;align-items:center;justify-content:center;padding:20px;flex-direction:column}
 .screen.active{display:flex}
-.setup-card,.login-card{background:#fff;border-radius:20px;padding:36px;width:500px;max-width:100%;box-shadow:0 8px 32px rgba(0,0,0,.1)}
-.setup-card h1,.login-card h1{font-size:20px;font-weight:700;margin-bottom:8px}
-.setup-card p,.login-card p{font-size:13px;color:#666;margin-bottom:20px;line-height:1.7}
-.step{display:flex;gap:12px;margin-bottom:16px;align-items:start}
+.setup-card,.login-card{background:#fff;border-radius:20px;padding:36px;width:520px;max-width:100%;box-shadow:0 8px 32px rgba(0,0,0,.09)}
+h1.setup-h{font-size:20px;font-weight:700;margin-bottom:6px}
+p.setup-p{font-size:13px;color:#666;line-height:1.7;margin-bottom:16px}
+.step{display:flex;gap:12px;margin-bottom:14px;align-items:start}
 .step-n{width:22px;height:22px;border-radius:50%;background:#1a73e8;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
-.step p{font-size:12px;color:#444;line-height:1.7}
+.step p{font-size:12px;color:#444;line-height:1.7;margin:0}
 .step code{background:#f1f3f4;padding:1px 5px;border-radius:4px;font-size:11px;font-family:monospace}
-textarea.config-input{width:100%;height:120px;border:1px solid #dadce0;border-radius:10px;padding:10px;font-size:12px;font-family:monospace;resize:vertical;margin:12px 0}
-.setup-err{color:#c5221f;font-size:12px;margin-top:6px;display:none}
-/* Login */
+.fld-lbl{font-size:11px;color:#666;display:block;margin-bottom:4px;margin-top:12px}
+textarea.fld{width:100%;height:108px;border:1px solid #dadce0;border-radius:8px;padding:9px;font-size:12px;font-family:monospace;resize:vertical}
+input.fld{width:100%;border:1px solid #dadce0;border-radius:8px;padding:9px 10px;font-size:12px}
+.cfg-err{color:#c5221f;font-size:12px;margin-top:6px;display:none}
 .google-btn{display:flex;align-items:center;gap:10px;padding:12px 20px;border:1px solid #dadce0;border-radius:10px;background:#fff;cursor:pointer;font-size:14px;font-weight:500;width:100%;justify-content:center;margin-top:16px}
 .google-btn:hover{background:#f8f9fa}
-.google-btn svg{width:20px;height:20px}
-/* Header */
+#screen-app{flex-direction:column;align-items:stretch;padding:0}
 .hdr{background:#fff;border-bottom:1px solid #e8e6e0;padding:0 16px;display:flex;align-items:center;gap:10px;height:50px;position:sticky;top:0;z-index:100}
 .hdr-title{font-size:14px;font-weight:700;flex:1}
 .hdr-today{font-size:11px;color:#888;flex-shrink:0}
-.avatar{width:28px;height:28px;border-radius:50%;object-fit:cover;flex-shrink:0;cursor:pointer}
-.avatar-placeholder{width:28px;height:28px;border-radius:50%;background:#1a73e8;color:#fff;font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer}
+.live{display:flex;align-items:center;gap:4px;font-size:11px;color:#16a34a;flex-shrink:0}
+.live-dot{width:7px;height:7px;border-radius:50%;background:#16a34a;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
 .hbtn{padding:5px 11px;border-radius:7px;font-size:12px;font-weight:500;cursor:pointer;border:1px solid #dadce0;background:#fff;color:#3c4043;white-space:nowrap;flex-shrink:0}
 .hbtn:hover{background:#f1f3f4}
-.hbtn.primary{background:#1a73e8;color:#fff;border-color:#1a73e8}
-/* Person bar */
-.person-bar{background:#fff;border-bottom:1px solid #e8e6e0;padding:7px 16px;display:flex;gap:7px;flex-wrap:wrap}
+.avatar{width:28px;height:28px;border-radius:50%;background:#1a73e8;color:#fff;font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;overflow:hidden}
+.avatar img{width:100%;height:100%;object-fit:cover}
+.pbar-wrap{background:#fff;border-bottom:1px solid #e8e6e0;padding:7px 16px;display:flex;gap:6px;flex-wrap:wrap}
 .ptog{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:500;cursor:pointer;border:1.5px solid;user-select:none;transition:opacity .15s}
 .ptog.off{opacity:.28}
-.pdot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
-/* Tabs */
+.pdot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
 .tabs{background:#fff;border-bottom:1px solid #e8e6e0;display:flex;overflow-x:auto}
-.tab{padding:9px 14px;font-size:12px;cursor:pointer;border-bottom:2.5px solid transparent;color:#666;white-space:nowrap;flex-shrink:0}
+.tab{padding:9px 15px;font-size:12px;cursor:pointer;border-bottom:2.5px solid transparent;color:#666;white-space:nowrap;flex-shrink:0}
 .tab.active{color:#1a73e8;border-bottom-color:#1a73e8;font-weight:600}
 .tab:hover:not(.active){background:#f8f9fa}
-/* Content */
-.content{padding:14px;max-width:1050px;margin:0 auto;padding-bottom:58px}
+.content{padding:14px;max-width:1100px;margin:0 auto;padding-bottom:58px}
 .panel{display:none}.panel.active{display:block}
-/* Cards */
 .card{background:#fff;border:1px solid #e8e6e0;border-radius:12px;padding:13px;margin-bottom:11px}
-.card-title{font-size:13px;font-weight:600;margin-bottom:9px;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
-.sec{font-size:11px;font-weight:700;color:#666;text-transform:uppercase;letter-spacing:.05em;margin:13px 0 5px}
-/* Task rows */
+.card-t{font-size:13px;font-weight:600;margin-bottom:9px;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.sec{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin:13px 0 5px}
+.notice{background:#f8f9fa;border-radius:8px;padding:9px 12px;font-size:12px;color:#555;margin-bottom:11px;line-height:1.6}
 .tr{display:flex;align-items:center;gap:7px;padding:5px 0;border-top:1px solid #f0ede8;flex-wrap:wrap}
 .tr:first-of-type{border-top:none}
-.tn{font-size:13px;font-weight:500;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tn{font-size:12px;font-weight:500;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .td{font-size:10px;color:#888;white-space:nowrap}
 .badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:12px;font-size:10px;font-weight:600;white-space:nowrap}
 .mpw{width:58px;flex-shrink:0}
 .mpbar{height:4px;background:#f0ede8;border-radius:2px;overflow:hidden}
-.mpfil{height:100%;border-radius:2px;transition:width .3s}
+.mpfil{height:100%;border-radius:2px}
 .mplbl{font-size:9px;color:#aaa;text-align:right;margin-top:1px}
-.rtag{font-size:9px;background:#e6f4ea;color:#137333;padding:1px 5px;border-radius:8px;font-weight:600;flex-shrink:0}
-/* Calendar */
+.rtag{font-size:9px;background:#e6f4ea;color:#137333;padding:1px 5px;border-radius:8px;font-weight:600}
 .cal-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:11px}
 .cal-nav span{font-size:14px;font-weight:700}
 .cal-head{display:grid;grid-template-columns:repeat(7,1fr);margin-bottom:3px}
 .cal-wd{font-size:10px;color:#888;text-align:center;padding:3px 0;font-weight:600}
-.cal-week{border-top:1px solid #e8e6e0}
-.cal-days{display:grid;grid-template-columns:repeat(7,1fr)}
-.cal-cell{padding:3px 3px 2px}
-.cal-dn{font-size:10px;color:#555;text-align:right;line-height:1}
-.cal-dn.today{background:#1a73e8;color:#fff;border-radius:50%;width:17px;height:17px;display:flex;align-items:center;justify-content:center;margin-left:auto;font-weight:700}
-.cal-dn.other-month{color:#ccc}
-.cal-evs{position:relative}
-.cev{position:absolute;height:16px;border-radius:3px;font-size:9px;color:#fff;display:flex;align-items:center;padding:0 4px;overflow:hidden;white-space:nowrap;cursor:default;z-index:1}
-.cev.cl{border-top-left-radius:0;border-bottom-left-radius:0;padding-left:2px}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr)}
+.cal-cell{border-top:1px solid #e8e6e0;padding:3px 3px 4px;cursor:pointer;transition:background .1s;min-height:68px}
+.cal-cell:hover{background:#f8f9fa}
+.cal-cell.sel{background:#e8f0fe}
+.cal-dn{font-size:10px;color:#555;text-align:right;line-height:1;margin-bottom:2px}
+.cal-dn.today{background:#1a73e8;color:#fff;border-radius:50%;width:17px;height:17px;display:flex;align-items:center;justify-content:center;margin-left:auto;font-weight:700;margin-bottom:2px}
+.cal-dn.other{opacity:.3}
+.cev{height:15px;border-radius:3px;font-size:9px;color:#fff;display:flex;align-items:center;padding:0 3px;overflow:hidden;white-space:nowrap;margin-bottom:1px}
+.cev.cl{border-top-left-radius:0;border-bottom-left-radius:0}
 .cev.cr{border-top-right-radius:0;border-bottom-right-radius:0}
-.cal-more{position:absolute;font-size:9px;color:#999;right:3px}
-/* Gantt */
-.gantt-wrap{overflow-x:auto}
-.gantt{min-width:500px}
-.gh{display:flex;margin-left:140px;margin-bottom:3px;position:relative;height:13px}
+.cal-more{font-size:9px;color:#999;text-align:right}
+.cal-detail{background:#fff;border:1px solid #e8e6e0;border-radius:12px;padding:13px;margin-top:10px}
+.gantt-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.gantt{min-width:600px}
+.gh{display:flex;margin-left:225px;margin-bottom:3px;position:relative;height:13px}
 .glc{font-size:9px;color:#aaa;position:absolute;transform:translateX(-50%)}
-.gr{display:flex;align-items:center;min-height:21px;margin-bottom:2px}
-.gl{width:140px;min-width:140px;font-size:10px;padding-right:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#666}
-.gtrack{flex:1;position:relative;height:21px}
-.gbar{position:absolute;height:13px;top:4px;border-radius:3px;font-size:9px;color:#fff;display:flex;align-items:center;padding:0 4px;overflow:hidden;white-space:nowrap;min-width:3px}
+.gr{display:flex;align-items:center;min-height:22px;margin-bottom:2px}
+.gl{width:225px;min-width:225px;font-size:10px;padding-right:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#555}
+.gtrack{flex:1;position:relative;height:22px}
+.gbar{position:absolute;height:13px;top:4.5px;border-radius:3px;font-size:9px;color:#fff;display:flex;align-items:center;padding:0 4px;overflow:hidden;white-space:nowrap;min-width:4px}
 .gtoday{position:absolute;width:2px;top:0;bottom:0;background:#ea4335;opacity:.55;pointer-events:none}
 .gdia{position:absolute;width:9px;height:9px;top:6px;transform:rotate(45deg);border-radius:1px}
-/* Progress */
+.prog-toolbar{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+.prog-toolbar label{font-size:12px;color:#444;display:flex;align-items:center;gap:6px;cursor:pointer}
 .pir{display:flex;align-items:center;gap:8px;margin:4px 0}
-.pir label{font-size:11px;color:#444;min-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:0}
-.pir input[type=range]{flex:1;min-width:50px;cursor:pointer}
+.pir label{font-size:11px;color:#444;min-width:165px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:0;cursor:default}
+.pir input[type=range]{flex:1;min-width:60px;cursor:pointer}
 .pival{font-size:11px;min-width:28px;text-align:right;color:#666}
-/* Delay */
-.merge-box{background:#f8f9fa;border:1px dashed #dadce0;border-radius:10px;padding:11px;margin-top:9px}
-/* Sync modal */
+.done-toggle{font-size:11px;color:#888;cursor:pointer;padding:4px 0;display:block}
+.done-toggle:hover{color:#555}
+.delay-opts{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px}
+@media(max-width:640px){.delay-opts{grid-template-columns:1fr}}
+.dopt{border:1px solid #e8e6e0;border-radius:10px;padding:11px;background:#fff}
+.dopt.rec{border-color:#1a73e8;box-shadow:0 0 0 2px #e8f0fe}
+.dopt-badge{font-size:10px;font-weight:600;padding:2px 7px;border-radius:10px;display:inline-block;margin-bottom:7px}
+.dopt-title{font-size:13px;font-weight:600;margin-bottom:5px}
+.dopt-desc{font-size:11px;color:#666;line-height:1.65;margin-bottom:8px}
+.dopt-risk{font-size:10px;display:flex;align-items:center;gap:5px;margin-bottom:8px}
+.rdot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.fix-purpose{background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:11px;font-size:12px;color:#78350f;line-height:1.7;margin-bottom:12px}
+.fix-purpose strong{display:block;font-size:13px;margin-bottom:4px}
+.fix-row{display:flex;gap:8px;padding:7px 0;border-top:1px solid #f0ede8;align-items:start}
+.fix-row:first-child{border-top:none}
+.fix-meta{display:flex;gap:6px;margin-top:3px;flex-wrap:wrap;align-items:center}
+.fix-status{font-size:10px;padding:1px 7px;border-radius:10px;cursor:pointer;border:1px solid;font-weight:500}
 .modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;align-items:center;justify-content:center}
 .modal-bg.open{display:flex}
-.modal{background:#fff;border-radius:18px;padding:24px;width:520px;max-width:95vw;max-height:90vh;overflow-y:auto}
-.modal h2{font-size:16px;font-weight:700;margin-bottom:16px}
+.modal{background:#fff;border-radius:18px;padding:24px;width:540px;max-width:95vw;max-height:90vh;overflow-y:auto}
+.modal h2{font-size:16px;font-weight:700;margin-bottom:4px}
+.modal-sub{font-size:12px;color:#666;margin-bottom:16px}
 .modal-sec{margin-bottom:18px}
 .modal-sec h3{font-size:11px;font-weight:700;color:#666;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px}
-.cal-check{display:flex;align-items:center;gap:8px;padding:5px 0;font-size:13px}
-.cal-check input[type=checkbox]{width:15px;height:15px;cursor:pointer}
+.cal-warn{background:#fff8e1;border:1px solid #fdd835;border-radius:9px;padding:12px;font-size:12px;color:#7c5400;margin-bottom:14px}
+.cal-access-btn{display:flex;align-items:center;gap:8px;padding:10px 16px;border:1px solid #1a73e8;border-radius:9px;background:#e8f0fe;cursor:pointer;font-size:13px;font-weight:500;color:#1a56db;width:100%;justify-content:center;margin-top:8px}
+.cal-access-btn:hover{background:#d2e3fc}
+.cal-check{display:flex;align-items:center;gap:8px;padding:5px 0;font-size:12px}
+.cal-check input{width:15px;height:15px;cursor:pointer}
 .cal-pick{width:100%;border:1px solid #dadce0;border-radius:8px;padding:6px 9px;font-size:12px;font-family:inherit}
 .proj-row{display:flex;align-items:center;gap:8px;margin-bottom:7px;font-size:12px}
 .proj-row label{min-width:80px;font-weight:600}
-.sync-actions{display:flex;gap:8px;margin-top:18px;flex-wrap:wrap}
-.sync-act{flex:1;padding:10px 8px;border:1px solid #dadce0;border-radius:9px;font-size:12px;font-weight:500;cursor:pointer;background:#fff;text-align:center;font-family:inherit}
+.sync-actions{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap}
+.sync-act{flex:1;padding:10px 8px;border:1px solid #dadce0;border-radius:9px;font-size:12px;font-weight:500;cursor:pointer;background:#fff;text-align:center;font-family:inherit;min-width:100px}
 .sync-act:hover{background:#f8f9fa}
-.sync-act.primary{background:#1a73e8;color:#fff;border-color:#1a73e8}
-.sync-act.primary:hover{background:#1557b0}
+.sync-act.pr{background:#1a73e8;color:#fff;border-color:#1a73e8}
+.sync-act.pr:hover{background:#1557b0}
 .sync-res{margin-top:11px;padding:10px;border-radius:8px;font-size:12px;display:none}
 .sync-res.ok{background:#e6f4ea;color:#137333}
 .sync-res.err{background:#fce8e6;color:#c5221f}
-.cal-warn{background:#fff8e1;border:1px solid #fdd835;border-radius:8px;padding:10px;font-size:12px;color:#7c5400;margin-bottom:12px;display:none}
-/* Buttons */
-.btn{display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border:1px solid #dadce0;border-radius:8px;font-size:12px;cursor:pointer;background:#fff;color:#3c4043;font-family:inherit}
+.btn{display:inline-flex;align-items:center;gap:4px;padding:5px 11px;border:1px solid #dadce0;border-radius:8px;font-size:12px;cursor:pointer;background:#fff;color:#3c4043;font-family:inherit;transition:background .1s}
 .btn:hover{background:#f1f3f4}
-.btn.primary{background:#1a73e8;color:#fff;border-color:#1a73e8}
-.btn-row{display:flex;gap:8px;margin-top:9px;flex-wrap:wrap}
-/* Form */
+.btn.pr{background:#1a73e8;color:#fff;border-color:#1a73e8}
+.btn.pr:hover{background:#1557b0}
+.btn.sm{padding:3px 8px;font-size:11px}
+.btn-row{display:flex;gap:7px;margin-top:9px;flex-wrap:wrap}
 input[type=text],select,textarea{border:1px solid #dadce0;border-radius:8px;padding:6px 10px;font-size:12px;font-family:inherit;width:100%;color:#1a1a1a}
 textarea{resize:vertical;min-height:48px}
 input[type=checkbox]{width:14px;height:14px;cursor:pointer}
-/* Fix list */
-.fix-row{display:flex;gap:8px;padding:6px 0;border-top:1px solid #f0ede8;align-items:start}
-.fix-row:first-child{border-top:none}
-/* Alert */
-.alert-card{border-left:4px solid #ea4335;background:#fff;border:1px solid #e8e6e0;border-left-width:4px;border-radius:12px;padding:12px;margin-bottom:11px}
-.notice{background:#f8f9fa;border-radius:8px;padding:9px 12px;font-size:12px;color:#666;margin-bottom:11px}
-/* Status bar */
 .sbar{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid #e8e6e0;padding:6px 16px;display:flex;gap:14px;font-size:11px;color:#666;z-index:50;flex-wrap:wrap}
 .sdot{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:3px;flex-shrink:0}
-/* Realtime badge */
-.live-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#16a34a;animation:pulse 2s infinite;margin-right:4px}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
-/* Spinner */
-.spinner{display:inline-block;width:14px;height:14px;border:2px solid #e8e6e0;border-top-color:#1a73e8;border-radius:50%;animation:spin .7s linear infinite}
+.spinner{display:inline-block;width:14px;height:14px;border:2px solid #dadce0;border-top-color:#1a73e8;border-radius:50%;animation:spin .7s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 </style>
 </head>
 <body>
 
-<!-- ── SETUP SCREEN ── -->
+<!-- SETUP -->
 <div id="screen-setup" class="screen">
   <div class="setup-card">
-    <h1>🔧 初期設定</h1>
-    <p>Firebaseの設定情報を貼り付けてください。<br>設定はこのブラウザにのみ保存されます。</p>
-    <div class="step"><div class="step-n">1</div><p><strong>console.firebase.google.com</strong> でプロジェクトを作成<br>→ 「ウェブアプリを追加」→ アプリ名を入力 → 「Firebase SDK の追加」</p></div>
-    <div class="step"><div class="step-n">2</div><p>表示された <code>firebaseConfig</code> の <strong>{ } の中身をコピー</strong><br>（apiKey, authDomain, projectId ... が含まれるJSON）</p></div>
-    <div class="step"><div class="step-n">3</div><p>以下に貼り付けて「保存して開始」</p></div>
-    <textarea class="config-input" id="config-input" placeholder='{
-  "apiKey": "AIza...",
-  "authDomain": "xxx.firebaseapp.com",
-  "projectId": "xxx",
-  "storageBucket": "xxx.appspot.com",
-  "messagingSenderId": "123456",
-  "appId": "1:xxx:web:xxx"
-}'></textarea>
-    <div class="setup-err" id="setup-err">設定の形式が正しくありません。JSONを確認してください。</div>
-    <div class="btn-row">
-      <button class="btn primary" onclick="saveConfig()" style="width:100%;justify-content:center;padding:10px">保存して開始</button>
+    <h1 class="setup-h">🔧 初期設定</h1>
+    <p class="setup-p">Firebase設定とGoogle OAuth Client IDを入力してください。</p>
+    <div class="step"><div class="step-n">1</div><p><strong>console.firebase.google.com</strong> でプロジェクト作成 → ウェブアプリ追加 → <code>firebaseConfig</code> の <strong>{ }の中身</strong>をコピー</p></div>
+    <div class="step"><div class="step-n">2</div><p><strong>console.cloud.google.com</strong> → 「APIとサービス」→「認証情報」→ OAuthクライアントID（ウェブ） の <strong>クライアントID</strong> をコピー<br>（例: <code>123456.apps.googleusercontent.com</code>）</p></div>
+    <label class="fld-lbl">Firebase設定 JSON の中身</label>
+    <textarea class="fld" id="cfg-fb" placeholder='  "apiKey": "AIza...",&#10;  "authDomain": "xxx.firebaseapp.com",&#10;  "projectId": "xxx",&#10;  "storageBucket": "xxx.appspot.com",&#10;  "messagingSenderId": "123456",&#10;  "appId": "1:xxx:web:xxx"'></textarea>
+    <label class="fld-lbl">Google OAuth Client ID（Calendar同期に必要）</label>
+    <input class="fld" id="cfg-oauth" type="text" placeholder="123456789-xxx.apps.googleusercontent.com">
+    <div class="cfg-err" id="cfg-err">JSONの形式が正しくありません。</div>
+    <div class="btn-row" style="margin-top:14px">
+      <button class="btn pr" onclick="saveConfig()" style="width:100%;justify-content:center;padding:10px">保存して開始</button>
     </div>
-    <p style="font-size:11px;color:#999;margin-top:12px;text-align:center">詳しい設定手順は付属の README.md を参照してください</p>
+    <p style="font-size:11px;color:#999;margin-top:12px;text-align:center">詳細はREADME.mdを参照してください</p>
   </div>
 </div>
 
-<!-- ── LOGIN SCREEN ── -->
+<!-- LOGIN -->
 <div id="screen-login" class="screen">
   <div class="login-card">
-    <h1>📋 直進優先 PM</h1>
-    <p>Googleアカウントでログインします。<br>Google Calendarとの同期も、このログインで完結します。</p>
+    <h1 class="setup-h">📋 直進優先 PM</h1>
+    <p class="setup-p">Googleアカウントでログインします。<br>Google Calendar連携はログイン後に「🔄 カレンダー同期」から個別に許可します。<br>（Firebaseログインと Calendar OAuth は別のステップです）</p>
     <button class="google-btn" onclick="signIn()">
-      <svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
-      Googleでログイン
+      <svg width="20" height="20" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+      Googleでログイン（アプリ認証のみ）
     </button>
-    <p style="font-size:11px;color:#999;margin-top:16px;text-align:center">
-      ログイン時にGoogle Calendarへのアクセス許可を求められます。同期機能を使う場合は「許可」してください。
-    </p>
-    <div style="margin-top:12px;text-align:center">
-      <button class="btn" onclick="showSetup()" style="font-size:11px">設定を変更する</button>
-    </div>
+    <p style="font-size:11px;color:#999;margin-top:14px;text-align:center">Calendar権限は別途「🔄 カレンダー同期」ボタンから取得します</p>
+    <div style="text-align:center;margin-top:10px"><button class="btn sm" onclick="showSetup()">設定を変更する</button></div>
   </div>
 </div>
 
-<!-- ── MAIN APP ── -->
-<div id="screen-app" style="display:none;flex-direction:column;min-height:100vh">
-  <!-- Header -->
+<!-- APP -->
+<div id="screen-app" class="screen">
   <div class="hdr">
     <div class="hdr-title">直進優先ウォーターフォール PM</div>
     <div class="hdr-today" id="hdr-today"></div>
-    <span><span class="live-dot"></span><span style="font-size:11px;color:#16a34a">リアルタイム同期</span></span>
+    <div class="live"><div class="live-dot"></div>リアルタイム同期</div>
     <button class="hbtn" onclick="openSync()">🔄 カレンダー同期</button>
-    <img id="user-photo" class="avatar" src="" alt="" onclick="confirmSignOut()" title="クリックでログアウト" onerror="this.style.display='none';document.getElementById('user-init').style.display='flex'">
-    <div id="user-init" class="avatar-placeholder" onclick="confirmSignOut()" title="クリックでログアウト" style="display:none">?</div>
+    <div class="avatar" id="user-av" onclick="confirmSignOut()" title="クリックでログアウト">?</div>
   </div>
-
-  <!-- Person bar -->
-  <div class="person-bar" id="person-bar"></div>
-
-  <!-- Tabs -->
+  <div class="pbar-wrap" id="pbar"></div>
   <div class="tabs">
     <div class="tab active" onclick="sw('cal')">カレンダー</div>
     <div class="tab" onclick="sw('gantt')">人別ガント</div>
@@ -216,8 +204,6 @@ input[type=checkbox]{width:14px;height:14px;cursor:pointer}
     <div class="tab" onclick="sw('delay')">遅延対応</div>
     <div class="tab" onclick="sw('fixlist')">修正リスト</div>
   </div>
-
-  <!-- Content -->
   <div class="content">
     <div class="panel active" id="panel-cal"></div>
     <div class="panel" id="panel-gantt"></div>
@@ -225,542 +211,321 @@ input[type=checkbox]{width:14px;height:14px;cursor:pointer}
     <div class="panel" id="panel-progress"></div>
     <div class="panel" id="panel-delay"></div>
     <div class="panel" id="panel-fixlist">
+      <div class="fix-purpose">
+        <strong>📌 修正リストとは</strong>
+        「今は直さない」と決めた修正事項を蓄積する場所です。次工程へ渡せる最低条件を満たしていれば修正はここへ回し、本流を止めません。全体修正期間にまとめて処理します。
+      </div>
       <div class="card">
-        <div class="card-title">修正リストへ追加</div>
+        <div class="card-t">修正リストへ追加</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
-          <div><label style="font-size:11px;color:#666;display:block;margin-bottom:3px">対象タスク</label><input type="text" id="fx-task" placeholder="タスク名" /></div>
-          <div><label style="font-size:11px;color:#666;display:block;margin-bottom:3px">優先度</label>
-            <select id="fx-pri"><option value="high">高（修正期間前半）</option><option value="mid">中</option><option value="low">低</option></select></div>
+          <div>
+            <label class="fld-lbl" style="margin-top:0">対象タスク</label>
+            <select id="fx-sel" style="margin-bottom:5px"><option value="">-- タスクを選択 --</option></select>
+            <input type="text" id="fx-task" placeholder="または直接入力" />
+          </div>
+          <div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+              <div><label class="fld-lbl" style="margin-top:0">優先度</label>
+                <select id="fx-pri"><option value="high">高（前半）</option><option value="mid" selected>中</option><option value="low">低</option></select></div>
+              <div><label class="fld-lbl" style="margin-top:0">状態</label>
+                <select id="fx-status"><option value="pending">未着手</option><option value="wip">対応中</option><option value="done">完了</option></select></div>
+            </div>
+          </div>
         </div>
-        <div><label style="font-size:11px;color:#666;display:block;margin-bottom:3px">修正内容</label><textarea id="fx-content"></textarea></div>
-        <div class="btn-row"><button class="btn primary" onclick="addFix()">追加</button></div>
+        <label class="fld-lbl" style="margin-top:0">修正内容（今直さない理由も書くと◎）</label>
+        <textarea id="fx-content"></textarea>
+        <label class="fld-lbl">対応予定時期</label>
+        <input type="text" id="fx-when" placeholder="例: 全体修正期間（6月下旬）" />
+        <div class="btn-row"><button class="btn pr" onclick="addFix()">修正リストへ追加</button></div>
       </div>
       <div id="fix-body"></div>
     </div>
   </div>
-
   <div class="sbar" id="sbar"></div>
 </div>
 
-<!-- ── SYNC MODAL ── -->
+<!-- SYNC MODAL -->
 <div class="modal-bg" id="sync-modal">
   <div class="modal">
     <h2>🔄 Google Calendar 同期</h2>
-    <div class="cal-warn" id="cal-warn">
-      Calendarへのアクセス権がありません。一度ログアウトして再ログイン時に「許可」してください。
+    <div class="modal-sub">Firebaseログインとは別に、Calendar用のアクセス権を取得します。</div>
+
+    <div id="cal-notcon">
+      <div class="cal-warn">
+        <strong>📅 Google Calendarへのアクセスがまだ許可されていません</strong><br>
+        下のボタンを押してCalendar専用のアクセス権を許可してください。Googleのポップアップが開きます。
+      </div>
+      <button class="cal-access-btn" onclick="requestCalendarAccess()">
+        <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+        Google Calendarへのアクセスを許可する
+      </button>
     </div>
-    <div class="modal-sec">
-      <h3>取込元カレンダー（Pull）</h3>
-      <div id="cal-checklist"><div style="font-size:12px;color:#999;display:flex;align-items:center;gap:6px"><span class="spinner"></span>読み込み中...</div></div>
+
+    <div id="cal-con" style="display:none">
+      <div style="background:#e6f4ea;border-radius:8px;padding:9px 12px;font-size:12px;color:#137333;margin-bottom:14px;display:flex;align-items:center;gap:8px">
+        ✓ Google Calendarに接続済み
+        <button class="btn sm" onclick="requestCalendarAccess()" style="margin-left:auto">再取得</button>
+      </div>
+      <div class="modal-sec">
+        <h3>取込元カレンダー（Pull）</h3>
+        <div id="cal-klist"><div style="display:flex;align-items:center;gap:8px;font-size:12px;color:#999"><div class="spinner"></div>読み込み中...</div></div>
+      </div>
+      <div class="modal-sec">
+        <h3>プッシュ先（プロジェクト別）</h3>
+        <div class="proj-row"><label>詩集</label><select id="pcal-poetry" class="cal-pick"><option value="primary">メインカレンダー</option></select></div>
+        <div class="proj-row"><label>音声作品</label><select id="pcal-audio" class="cal-pick"><option value="primary">メインカレンダー</option></select></div>
+        <div class="proj-row"><label>展示</label><select id="pcal-exhibit" class="cal-pick"><option value="primary">メインカレンダー</option></select></div>
+      </div>
+      <div class="sync-actions">
+        <button class="sync-act" onclick="doSync('pull')">⬇ Googleから取込</button>
+        <button class="sync-act" onclick="doSync('push')">⬆ Googleへ書出</button>
+        <button class="sync-act pr" onclick="doSync('both')">⇄ 双方向同期</button>
+      </div>
+      <div class="sync-res" id="sync-res"></div>
     </div>
-    <div class="modal-sec">
-      <h3>プッシュ先（プロジェクトごとに選択）</h3>
-      <div class="proj-row"><label>詩集</label><select id="pcal-poetry" class="cal-pick"><option value="primary">メインカレンダー</option></select></div>
-      <div class="proj-row"><label>音声作品</label><select id="pcal-audio" class="cal-pick"><option value="primary">メインカレンダー</option></select></div>
-      <div class="proj-row"><label>展示</label><select id="pcal-exhibit" class="cal-pick"><option value="primary">メインカレンダー</option></select></div>
-    </div>
-    <div class="sync-actions">
-      <button class="sync-act" onclick="doSync('pull')">⬇ Googleから取込</button>
-      <button class="sync-act" onclick="doSync('push')">⬆ Googleへ書出</button>
-      <button class="sync-act primary" onclick="doSync('both')">⇄ 双方向同期</button>
-    </div>
-    <div class="sync-res" id="sync-res"></div>
     <div style="text-align:right;margin-top:16px"><button class="btn" onclick="closeSync()">閉じる</button></div>
   </div>
 </div>
 
 <script>
-// ═══════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════
 // CONSTANTS
-// ═══════════════════════════════════════════════════════════
-const TODAY = new Date(); TODAY.setHours(0,0,0,0);
-const PEOPLE = [
-  {id:'senko',    name:'線香（私）', color:'#4f46e5'},
-  {id:'sato',     name:'さと',       color:'#059669'},
-  {id:'sunayuki', name:'すなゆき',   color:'#b45309'},
-  {id:'shikamii', name:'しかみぃ',   color:'#1d4ed8'},
-  {id:'b',        name:'B（声優）',  color:'#d97706'},
+// ══════════════════════════════════════════════════
+const TODAY=new Date();TODAY.setHours(0,0,0,0);
+const PEOPLE=[
+  {id:'senko',    name:'線香（私）',color:'#4f46e5'},
+  {id:'sato',     name:'さと',      color:'#059669'},
+  {id:'sunayuki', name:'すなゆき',  color:'#b45309'},
+  {id:'shikamii', name:'しかみぃ',  color:'#1d4ed8'},
+  {id:'b',        name:'B（声優）', color:'#d97706'},
 ];
-const PROJ = {
-  poetry: {name:'詩集',    color:'#4f46e5',
-    ms:[{name:'第5作到達',date:'2026-04-26'},{name:'第10作到達',date:'2026-05-11'},{name:'第15作到達',date:'2026-05-26'},{name:'最終入稿',date:'2026-06-30'}]},
-  audio:  {name:'音声作品',color:'#059669',
-    ms:[{name:'仮台本前半',date:'2026-05-01'},{name:'初回読み合わせ',date:'2026-05-13'},{name:'本台本確定',date:'2026-06-03'}]},
-  exhibit:{name:'展示',    color:'#b45309',
-    ms:[{name:'文言確定稿',date:'2026-05-09'},{name:'通し確認',date:'2026-05-27'},{name:'公開準備完了',date:'2026-05-31'}]},
+const PROJ={
+  poetry:{name:'詩集',    color:'#4f46e5',ms:[{name:'第5作到達',date:'2026-04-26'},{name:'第10作到達',date:'2026-05-11'},{name:'第15作到達',date:'2026-05-26'},{name:'最終入稿',date:'2026-06-30'}]},
+  audio: {name:'音声作品',color:'#059669',ms:[{name:'仮台本前半',date:'2026-05-01'},{name:'初回読み合わせ',date:'2026-05-13'},{name:'本台本確定',date:'2026-06-03'}]},
+  exhibit:{name:'展示',   color:'#b45309',ms:[{name:'文言確定稿',date:'2026-05-09'},{name:'通し確認',date:'2026-05-27'},{name:'公開準備完了',date:'2026-05-31'}]},
 };
-const OWNER_COLOR_ID = {senko:'9',sato:'2',sunayuki:'6',shikamii:'1',b:'5'};
+const OC={senko:'9',sato:'2',sunayuki:'6',shikamii:'1',b:'5'};
 
-// ═══════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════
 // STATE
-// ═══════════════════════════════════════════════════════════
-let TASKS=[], FIXES=[];
-let db=null, auth=null;
-let unsubTasks=null, unsubFixes=null;
-let gCalToken=null, gCalTokenExpiry=0;
-let calendarList=[], selectedCalIds=new Set();
-let visPersons=new Set(PEOPLE.map(p=>p.id));
-let calYear=TODAY.getFullYear(), calMonth=TODAY.getMonth();
-let mgroups={}, mgk=0;
-let gapiReady=false;
+// ══════════════════════════════════════════════════
+let TASKS=[],FIXES=[];
+let db=null,auth=null,unsubT=null,unsubF=null;
+// Calendar OAuth - Firebase認証とは完全に分離
+let tokenClient=null,gCalToken=null,gCalExp=0;
+let gapiReady=false,gsiReady=false;
+let calList=[],selCalIds=new Set();
+let visPeople=new Set(PEOPLE.map(p=>p.id));
+let calY=TODAY.getFullYear(),calM=TODAY.getMonth(),selDay=null;
+let showDone=false,mgroups={},mgk=0;
 
-// ═══════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════
 // HELPERS
-// ═══════════════════════════════════════════════════════════
-const pd=s=>{ const d=new Date(s+'T00:00:00'); return d; };
-const fs=s=>{ const d=pd(s); return (d.getMonth()+1)+'/'+(d.getDate()); };
+// ══════════════════════════════════════════════════
+const pd=s=>new Date(s+'T00:00:00');
+const fs=s=>{const d=pd(s);return(d.getMonth()+1)+'/'+(d.getDate())};
 const dd=(a,b)=>Math.round((b-a)/86400000);
-const getPerson=id=>PEOPLE.find(p=>p.id===id)||{name:id,color:'#888'};
-const isDelayed=t=>pd(t.end)<TODAY&&t.prog<100;
-const isToday=t=>pd(t.start)<=TODAY&&pd(t.end)>=TODAY&&t.prog<100;
-const isMerged=t=>t.id&&t.id.startsWith('mg-');
-const isSynced=t=>!!t.google_event_id;
+const now$=()=>new Date().toISOString();
+const getP=id=>PEOPLE.find(p=>p.id===id)||{name:id,color:'#888'};
+const isDel=t=>pd(t.end)<TODAY&&t.prog<100;
+const isTod=t=>pd(t.start)<=TODAY&&pd(t.end)>=TODAY&&t.prog<100;
+const isMg=t=>!!(t.id&&t.id.startsWith('mg-'));
+const isSyn=t=>!!t.google_event_id;
+const filt=()=>TASKS.filter(t=>visPeople.has(t.owner));
+const prio=t=>isMg(t)?0:isDel(t)?1:isTod(t)?2:3+Math.max(0,dd(TODAY,pd(t.start)))/365;
+const hasTok=()=>!!(gCalToken&&Date.now()<gCalExp);
 
-function filteredTasks(){
-  return TASKS.filter(t=>visPersons.has(t.owner));
-}
-function taskPrio(t){
-  if(isMerged(t))return 0;
-  if(isDelayed(t))return 1;
-  if(isToday(t))return 2;
-  const d=dd(TODAY,pd(t.start));
-  if(d>=0&&d<=7)return 3;
-  return 4+Math.max(d,0)/365;
-}
-
-// ═══════════════════════════════════════════════════════════
-// SETUP & CONFIG
-// ═══════════════════════════════════════════════════════════
-function showSetup(){
-  document.getElementById('screen-setup').classList.add('active');
-  document.getElementById('screen-login').classList.remove('active');
-  document.getElementById('screen-app').style.display='none';
-}
-function showLogin(){
-  document.getElementById('screen-setup').classList.remove('active');
-  document.getElementById('screen-login').classList.add('active');
-  document.getElementById('screen-app').style.display='none';
-}
-function showApp(){
-  document.getElementById('screen-setup').classList.remove('active');
-  document.getElementById('screen-login').classList.remove('active');
-  document.getElementById('screen-app').style.display='flex';
-  document.getElementById('screen-app').style.flexDirection='column';
-  document.getElementById('screen-app').style.minHeight='100vh';
-}
-
+// ══════════════════════════════════════════════════
+// CONFIG / SCREENS
+// ══════════════════════════════════════════════════
+function getCfg(){try{return JSON.parse(localStorage.getItem('pm_cfg')||'{}');}catch{return {};}}
 function saveConfig(){
-  const raw=document.getElementById('config-input').value.trim();
-  const errEl=document.getElementById('setup-err');
+  const raw=document.getElementById('cfg-fb').value.trim();
+  const oauth=document.getElementById('cfg-oauth').value.trim();
+  const err=document.getElementById('cfg-err');
   try{
-    const cfg=JSON.parse(raw);
-    if(!cfg.apiKey||!cfg.projectId) throw new Error('invalid');
-    localStorage.setItem('pm_firebase_config',JSON.stringify(cfg));
-    errEl.style.display='none';
-    initFirebase(cfg);
-  }catch(e){
-    errEl.style.display='block';
-  }
+    const fb=JSON.parse('{'+raw+'}');
+    if(!fb.apiKey||!fb.projectId)throw new Error();
+    const cfg={firebase:fb,oauthClientId:oauth};
+    localStorage.setItem('pm_cfg',JSON.stringify(cfg));
+    err.style.display='none';
+    initFB(cfg);
+  }catch{err.style.display='block';}
 }
-
-// ═══════════════════════════════════════════════════════════
-// FIREBASE INIT
-// ═══════════════════════════════════════════════════════════
-function initFirebase(cfg){
-  if(firebase.apps.length){ firebase.apps.forEach(a=>a.delete()); }
-  firebase.initializeApp(cfg);
-  db=firebase.firestore();
-  auth=firebase.auth();
-
-  // Enable offline persistence
-  db.enablePersistence({synchronizeTabs:true}).catch(()=>{});
-
-  auth.onAuthStateChanged(user=>{
-    if(user){
-      onSignedIn(user);
-    } else {
-      showLogin();
-    }
+const showSetup=()=>{show('setup');};
+const showLogin=()=>{show('login');};
+const showApp=()=>{show('app');};
+function show(s){
+  ['setup','login','app'].forEach(n=>{
+    const el=document.getElementById('screen-'+n);
+    if(n===s){el.classList.add('active');if(n==='app')el.style.cssText='display:flex;flex-direction:column;align-items:stretch;padding:0;min-height:100vh';}
+    else{el.classList.remove('active');if(n==='app')el.style.cssText='';}
   });
 }
 
-// ═══════════════════════════════════════════════════════════
-// AUTH
-// ═══════════════════════════════════════════════════════════
-async function signIn(){
-  const provider = new firebase.auth.GoogleAuthProvider();
-  provider.addScope('https://www.googleapis.com/auth/calendar');
-  try{
-    const result = await auth.signInWithPopup(provider);
-    const cred = firebase.auth.GoogleAuthProvider.credentialFromResult(result);
-
-    gCalToken = cred?.accessToken || null;
-    if (gCalToken) {
-      gCalTokenExpiry = Date.now() + 50 * 60 * 1000;
-    } else {
-      gCalTokenExpiry = 0;
-      console.warn('Google Calendar access token was not returned.');
-    }
-  }catch(e){
-    console.error('sign-in error', e);
-    alert('ログインに失敗しました: ' + e.message);
-  }
+// ══════════════════════════════════════════════════
+// GIS — Calendar OAuth（Firebaseとは分離）
+// ══════════════════════════════════════════════════
+function onGsiLoad(){
+  gsiReady=true;
+  const cfg=getCfg();
+  if(cfg.oauthClientId)initTokenClient(cfg.oauthClientId);
 }
-
-function confirmSignOut(){
-  if(confirm('ログアウトしますか？')){
-    if(unsubTasks)unsubTasks();
-    if(unsubFixes)unsubFixes();
-    gCalToken=null;
-    auth.signOut();
-  }
-}
-
-async function onSignedIn(user){
-  showApp();
-  // Update avatar
-  const photo=document.getElementById('user-photo');
-  const init=document.getElementById('user-init');
-  if(user.photoURL){
-    photo.src=user.photoURL; photo.style.display='block'; init.style.display='none';
-  } else {
-    photo.style.display='none';
-    init.textContent=(user.displayName||'?')[0];
-    init.style.display='flex';
-  }
-
-  // Setup Firestore listeners
-  setupListeners();
-
-  // Try to get gCal token from current credential
-  try{
-    const result=await auth.currentUser.getIdTokenResult();
-    // Token might already exist from sign-in
-  }catch(e){}
-}
-
-// ═══════════════════════════════════════════════════════════
-// FIRESTORE REAL-TIME LISTENERS
-// ═══════════════════════════════════════════════════════════
-function setupListeners(){
-  if(unsubTasks)unsubTasks();
-  if(unsubFixes)unsubFixes();
-
-  unsubTasks=db.collection('tasks').onSnapshot(snap=>{
-    TASKS=snap.docs.map(d=>({...d.data(), id:d.id}));
-    renderAll();
-  }, err=>console.error('tasks listener',err));
-
-  unsubFixes=db.collection('fixes').onSnapshot(snap=>{
-    FIXES=snap.docs.map(d=>({...d.data(), id:d.id}));
-    rFixList();
-    rStatus();
-  }, err=>console.error('fixes listener',err));
-
-  // Populate initial data if collection empty
-  db.collection('tasks').limit(1).get().then(snap=>{
-    if(snap.empty) populateInitialData();
+function initTokenClient(clientId){
+  if(!gsiReady||!window.google?.accounts?.oauth2)return;
+  tokenClient=google.accounts.oauth2.initTokenClient({
+    client_id:clientId,
+    scope:'https://www.googleapis.com/auth/calendar',
+    callback:onTokenResponse,
+    error_callback:e=>showSyncErr('Calendar認証エラー: '+e.message),
   });
 }
-
-// ═══════════════════════════════════════════════════════════
-// FIRESTORE CRUD
-// ═══════════════════════════════════════════════════════════
-const now=()=>new Date().toISOString();
-
-async function updateTask(id,patch){
-  await db.collection('tasks').doc(id).update({...patch, updated:now()});
+function onTokenResponse(resp){
+  if(resp.error){showSyncErr('Calendar認証エラー: '+resp.error);return;}
+  gCalToken=resp.access_token;
+  gCalExp=Date.now()+((resp.expires_in||3600)-60)*1000;
+  if(gapiReady)gapi.client.setToken({access_token:gCalToken});
+  document.getElementById('cal-notcon').style.display='none';
+  document.getElementById('cal-con').style.display='block';
+  loadCalList();
 }
-async function createTask(task){
-  const ref=await db.collection('tasks').add({...task, created:now(), updated:now(), google_event_id:null});
-  return ref.id;
-}
-async function deleteTask(id){
-  await db.collection('tasks').doc(id).delete();
-}
-async function createFix(fix){
-  await db.collection('fixes').add({...fix, created:now()});
-}
-async function updateFix(id,patch){
-  await db.collection('fixes').doc(id).update(patch);
+function requestCalendarAccess(){
+  if(!tokenClient){
+    const cfg=getCfg();
+    if(!cfg.oauthClientId){alert('OAuth Client IDが設定されていません。設定画面で入力してください。');closeSync();showSetup();return;}
+    initTokenClient(cfg.oauthClientId);
+    if(!tokenClient){alert('Google Identity Servicesの読み込みが完了していません。ページを再読み込みしてください。');return;}
+  }
+  tokenClient.requestAccessToken({prompt:''});
 }
 
-// ═══════════════════════════════════════════════════════════
-// INITIAL DATA (first run only)
-// ═══════════════════════════════════════════════════════════
-function populateInitialData(){
-  const def=(id,proj,owner,name,start,end,prog=0,cond='')=>({id,proj,owner,name,start,end,prog,cond});
-  const tasks=[
-    def('p1','poetry','senko','第1作 一連','2026-04-08','2026-04-13',100,'完了済み'),
-    def('p1m','poetry','senko','第1作 本文修正','2026-04-22','2026-04-22',50,'修正版が通っている'),
-    def('p2','poetry','senko','第2作 詩本文','2026-04-14','2026-04-22',60,'本文が最後まで1本通っている'),
-    def('p3','poetry','senko','第3作 詩本文','2026-04-18','2026-04-23',30,'本文が最後まで1本通っている'),
-    def('p4','poetry','senko','第4作 詩本文','2026-04-21','2026-04-24',10,'本文が最後まで1本通っている'),
-    def('p5a','poetry','senko','第5作 詩本文前半','2026-04-25','2026-04-26',0,'前半が書き切れている'),
-    def('p5b','poetry','senko','第5作 詩本文後半','2026-04-26','2026-04-27',0,'第5作本文通し完了'),
-    def('p6_8','poetry','senko','第6〜8作 詩本文群','2026-04-28','2026-05-05',0,'各作本文が通っている'),
-    def('p9_10','poetry','senko','第9〜10作 詩本文群','2026-05-06','2026-05-11',0,'第10作まで完了'),
-    def('p11_15','poetry','senko','第11〜15作 詩本文群','2026-05-11','2026-05-26',0,'第15作まで完了'),
-    def('p16_20','poetry','senko','第16〜20作 詩本文群','2026-05-26','2026-06-10',0,'第20作まで完了'),
-    def('pcover','poetry','senko','表紙確定','2026-06-11','2026-06-11',0,'表紙デザイン確定'),
-    def('pfinal','poetry','senko','本文確定','2026-06-24','2026-06-26',0,'全文確定稿が出た'),
-    def('a1','audio','senko','理論・関係・シーン構成','2026-04-21','2026-04-22',70,'4要素が揃っている'),
-    def('a2','audio','senko','声優確認用に整える','2026-04-21','2026-04-22',70,'声優確認用資料が渡せる'),
-    def('a3','audio','senko','トラック内容を決める','2026-04-21','2026-04-22',60,'トラック構成が確定'),
-    def('a4','audio','senko','導入〜前半 仮台本','2026-04-27','2026-05-01',0,'前半が仮台本として通っている'),
-    def('a5','audio','senko','転換点まで書く','2026-04-30','2026-05-04',0,'転換部まで書けている'),
-    def('a6','audio','senko','終盤まで書く','2026-05-03','2026-05-07',0,'終盤まで書けている'),
-    def('a7','audio','senko','演技確認用に調整','2026-05-07','2026-05-09',0,'演技確認版が渡せる'),
-    def('a8','audio','senko','修正版を書く','2026-05-09','2026-05-12',0,'修正版が完成'),
-    def('a9','audio','senko','初回読み合わせ','2026-05-13','2026-05-13',0,'読み合わせ実施'),
-    def('a10','audio','senko','第一修正版完成','2026-05-15','2026-05-18',0,'第一修正版が完成'),
-    def('a11','audio','senko','本台本 前半〜転換部確定','2026-05-23','2026-05-30',0,'前半〜転換部が確定'),
-    def('a12','audio','senko','本台本 終盤・全体確定','2026-05-29','2026-06-03',0,'本台本全体が確定'),
-    def('a13','audio','b','収録・演技（B）','2026-05-14','2026-06-11',0,'収録・編集完了'),
-    def('a14','audio','senko','商品ページ構築','2026-06-12','2026-06-23',0,'商品ページ公開準備完了'),
-    def('e1','exhibit','senko','朗読音源確認・受領','2026-04-18','2026-04-25',50,'音源が受領されている'),
-    def('e2','exhibit','sunayuki','砂雪_80%確認','2026-04-23','2026-04-23',0,'80%状態を確認・FB済み'),
-    def('e3','exhibit','senko','アセット仮納品確認②③','2026-04-23','2026-04-27',0,'仮納品が確認済み'),
-    def('e4','exhibit','sato','sato_朗読','2026-04-25','2026-04-26',0,'朗読が実施・受領済み'),
-    def('e5','exhibit','senko','キャプション初稿','2026-04-25','2026-04-27',0,'キャプション初稿が完成'),
-    def('e6','exhibit','senko','イントロダクション初稿','2026-04-25','2026-04-27',0,'イントロ初稿が完成'),
-    def('e7','exhibit','senko','キュレーターの問いかけ初稿','2026-04-25','2026-04-27',0,'問いかけ文の初稿が完成'),
-    def('e8','exhibit','sunayuki','砂雪_骨組み実装','2026-04-27','2026-05-06',0,'骨組みが仮置き可能'),
-    def('e9','exhibit','senko','最小ギミック監修','2026-05-03','2026-05-06',0,'ギミック方向性が確定'),
-    def('e10','exhibit','senko','文言確定稿作成','2026-05-07','2026-05-09',0,'文言が確定稿として揃っている'),
-    def('e11','exhibit','sunayuki','砂雪_ギミック本実装','2026-05-07','2026-05-16',0,'ギミックが空間に実装'),
-    def('e12','exhibit','senko','配置後確認・見え方監修','2026-05-11','2026-05-23',0,'配置と見え方が承認済み'),
-    def('e13','exhibit','senko','通し確認・最終文言修正','2026-05-24','2026-05-27',0,'通しで問題なし'),
-    def('e14','exhibit','sunayuki','砂雪_公開準備・撮影','2026-05-28','2026-06-01',0,'公開準備が整っている'),
-    def('e15','exhibit','shikamii','ポスター制作（しかみぃ）','2026-06-02','2026-06-14',0,'ポスターが完成'),
-  ];
-  const batch=db.batch();
-  tasks.forEach(t=>{
-    const ref=db.collection('tasks').doc(t.id);
-    batch.set(ref,{...t, created:now(), updated:now(), google_event_id:null});
-  });
-  [{task:'詩集',pri:'mid',content:'第1作 本文修正（本流へ戻さず修正期間に対応）',done:false},
-   {task:'音声作品',pri:'high',content:'理論・シーン構成の4要素整合確認',done:false}
-  ].forEach(f=>{
-    batch.set(db.collection('fixes').doc(),{...f,created:now()});
-  });
-  batch.commit();
-}
-
-// ═══════════════════════════════════════════════════════════
-// GOOGLE CALENDAR API
-// ═══════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════
+// GAPI
+// ══════════════════════════════════════════════════
 function onGapiLoad(){
   gapi.load('client',async()=>{
-    await gapi.client.load('https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest');
-    gapiReady=true;
+    try{
+      await gapi.client.load('https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest');
+      gapiReady=true;
+      if(hasTok())gapi.client.setToken({access_token:gCalToken});
+    }catch(e){console.error('gapi load',e);}
   });
 }
 
-function hasCalToken(){
-  return gCalToken && Date.now()<gCalTokenExpiry;
+// ══════════════════════════════════════════════════
+// FIREBASE
+// ══════════════════════════════════════════════════
+function initFB(cfg){
+  try{if(firebase.apps.length)firebase.apps.forEach(a=>a.delete());}catch{}
+  firebase.initializeApp(cfg.firebase);
+  db=firebase.firestore();
+  auth=firebase.auth();
+  db.enablePersistence({synchronizeTabs:true}).catch(()=>{});
+  auth.onAuthStateChanged(u=>u?onSignedIn(u):showLogin());
+  if(cfg.oauthClientId&&gsiReady)initTokenClient(cfg.oauthClientId);
+}
+async function signIn(){
+  // Firebaseログインのみ。Calendarスコープは要求しない。
+  const prov=new firebase.auth.GoogleAuthProvider();
+  try{await auth.signInWithPopup(prov);}
+  catch(e){if(e.code!=='auth/popup-closed-by-user')alert('ログインに失敗しました: '+e.message);}
+}
+function confirmSignOut(){
+  if(!confirm('ログアウトしますか？'))return;
+  gCalToken=null;gCalExp=0;calList=[];
+  if(unsubT){unsubT();unsubT=null;}
+  if(unsubF){unsubF();unsubF=null;}
+  auth.signOut();
+}
+function onSignedIn(user){
+  showApp();
+  const av=document.getElementById('user-av');
+  if(user.photoURL)av.innerHTML=`<img src="${user.photoURL}" alt="">`;
+  else av.textContent=(user.displayName||'?')[0].toUpperCase();
+  setupListeners();
 }
 
-function setGapiToken(){
-  if(hasCalToken()) gapi.client.setToken({access_token:gCalToken});
+// ══════════════════════════════════════════════════
+// FIRESTORE
+// ══════════════════════════════════════════════════
+function setupListeners(){
+  if(unsubT)unsubT();if(unsubF)unsubF();
+  unsubT=db.collection('tasks').onSnapshot(snap=>{
+    TASKS=snap.docs.map(d=>({...d.data(),id:d.id}));
+    updateFxSel();renderAll();
+  },e=>console.error('tasks',e));
+  unsubF=db.collection('fixes').onSnapshot(snap=>{
+    FIXES=snap.docs.map(d=>({...d.data(),id:d.id}));
+    rFixList();rStatus();
+  },e=>console.error('fixes',e));
+  db.collection('tasks').limit(1).get().then(s=>{if(s.empty)initData();});
+}
+const updT=(id,p)=>db.collection('tasks').doc(id).update({...p,updated:now$()});
+const addT=t=>db.collection('tasks').add({...t,created:now$(),updated:now$(),google_event_id:null});
+const delT=id=>db.collection('tasks').doc(id).delete();
+const addFx=f=>db.collection('fixes').add({...f,created:now$()});
+const updFx=(id,p)=>db.collection('fixes').doc(id).update(p);
+
+// ══════════════════════════════════════════════════
+// INITIAL DATA
+// ══════════════════════════════════════════════════
+function initData(){
+  const T=(id,proj,owner,name,start,end,prog=0,cond='')=>({id,proj,owner,name,start,end,prog,cond,google_event_id:null,created:now$(),updated:now$()});
+  const tasks=[
+    T('p1','poetry','senko','第1作 一連','2026-04-08','2026-04-13',100,'完了済み'),
+    T('p1m','poetry','senko','第1作 本文修正','2026-04-22','2026-04-22',50,'修正版が通っている'),
+    T('p2','poetry','senko','第2作 詩本文','2026-04-14','2026-04-22',60,'本文が最後まで1本通っている'),
+    T('p3','poetry','senko','第3作 詩本文','2026-04-18','2026-04-23',30,'本文が最後まで1本通っている'),
+    T('p4','poetry','senko','第4作 詩本文','2026-04-21','2026-04-24',10,'本文が最後まで1本通っている'),
+    T('p5a','poetry','senko','第5作 詩本文前半','2026-04-25','2026-04-26',0,'前半が書き切れている'),
+    T('p5b','poetry','senko','第5作 詩本文後半','2026-04-26','2026-04-27',0,'第5作本文通し完了'),
+    T('p6_8','poetry','senko','第6〜8作 詩本文群','2026-04-28','2026-05-05',0,'各作本文が通っている'),
+    T('p9_10','poetry','senko','第9〜10作 詩本文群','2026-05-06','2026-05-11',0,'第10作まで完了'),
+    T('p11_15','poetry','senko','第11〜15作 詩本文群','2026-05-11','2026-05-26',0,'第15作まで完了'),
+    T('p16_20','poetry','senko','第16〜20作 詩本文群','2026-05-26','2026-06-10',0,'第20作まで完了'),
+    T('pcover','poetry','senko','表紙確定','2026-06-11','2026-06-11',0,'表紙デザイン確定'),
+    T('pfinal','poetry','senko','本文確定','2026-06-24','2026-06-26',0,'全文確定稿が出た'),
+    T('a1','audio','senko','理論・関係・シーン構成','2026-04-21','2026-04-22',70,'4要素が揃っている'),
+    T('a2','audio','senko','声優確認用に整える','2026-04-21','2026-04-22',70,'声優確認用資料が渡せる'),
+    T('a3','audio','senko','トラック内容を決める','2026-04-21','2026-04-22',60,'トラック構成が確定'),
+    T('a4','audio','senko','導入〜前半 仮台本','2026-04-27','2026-05-01',0,'前半が仮台本として通っている'),
+    T('a5','audio','senko','転換点まで書く','2026-04-30','2026-05-04',0,'転換部まで書けている'),
+    T('a6','audio','senko','終盤まで書く','2026-05-03','2026-05-07',0,'終盤まで書けている'),
+    T('a7','audio','senko','演技確認用に調整','2026-05-07','2026-05-09',0,'演技確認版が渡せる'),
+    T('a8','audio','senko','修正版を書く','2026-05-09','2026-05-12',0,'修正版が完成'),
+    T('a9','audio','senko','初回読み合わせ','2026-05-13','2026-05-13',0,'読み合わせ実施'),
+    T('a10','audio','senko','第一修正版完成','2026-05-15','2026-05-18',0,'第一修正版が完成'),
+    T('a11','audio','senko','本台本 前半〜転換部確定','2026-05-23','2026-05-30',0,'前半〜転換部が確定'),
+    T('a12','audio','senko','本台本 終盤・全体確定','2026-05-29','2026-06-03',0,'本台本全体が確定'),
+    T('a13','audio','b','収録・演技（B）','2026-05-14','2026-06-11',0,'収録・編集完了'),
+    T('a14','audio','senko','商品ページ構築','2026-06-12','2026-06-23',0,'商品ページ公開準備完了'),
+    T('e1','exhibit','senko','朗読音源確認・受領','2026-04-18','2026-04-25',50,'音源が受領されている'),
+    T('e2','exhibit','sunayuki','砂雪_80%確認','2026-04-23','2026-04-23',0,'80%状態を確認・FB済み'),
+    T('e3','exhibit','senko','アセット仮納品確認②③','2026-04-23','2026-04-27',0,'仮納品が確認済み'),
+    T('e4','exhibit','sato','sato_朗読','2026-04-25','2026-04-26',0,'朗読が実施・受領済み'),
+    T('e5','exhibit','senko','キャプション初稿','2026-04-25','2026-04-27',0,'キャプション初稿が完成'),
+    T('e6','exhibit','senko','イントロダクション初稿','2026-04-25','2026-04-27',0,'イントロ初稿が完成'),
+    T('e7','exhibit','senko','キュレーターの問いかけ初稿','2026-04-25','2026-04-27',0,'問いかけ文の初稿が完成'),
+    T('e8','exhibit','sunayuki','砂雪_骨組み実装','2026-04-27','2026-05-06',0,'骨組みが仮置き可能'),
+    T('e9','exhibit','senko','最小ギミック監修','2026-05-03','2026-05-06',0,'ギミック方向性が確定'),
+    T('e10','exhibit','senko','文言確定稿作成','2026-05-07','2026-05-09',0,'文言が確定稿として揃っている'),
+    T('e11','exhibit','sunayuki','砂雪_ギミック本実装','2026-05-07','2026-05-16',0,'ギミックが空間に実装'),
+    T('e12','exhibit','senko','配置後確認・見え方監修','2026-05-11','2026-05-23',0,'配置と見え方が承認済み'),
+    T('e13','exhibit','senko','通し確認・最終文言修正','2026-05-24','2026-05-27',0,'通しで問題なし'),
+    T('e14','exhibit','sunayuki','砂雪_公開準備・撮影','2026-05-28','2026-06-01',0,'公開準備が整っている'),
+    T('e15','exhibit','shikamii','ポスター制作（しかみぃ）','2026-06-02','2026-06-14',0,'ポスターが完成'),
+  ];
+  const b=db.batch();
+  tasks.forEach(t=>b.set(db.collection('tasks').doc(t.id),t));
+  [{task:'詩集',pri:'mid',status:'pending',content:'第1作 本文修正（本流へ戻さず修正期間に対応）',when:'全体修正期間',done:false},
+   {task:'音声作品',pri:'high',status:'pending',content:'理論・シーン構成の4要素整合確認',when:'初回読み合わせ後',done:false}
+  ].forEach(f=>b.set(db.collection('fixes').doc(),{...f,created:now$()}));
+  b.commit();
 }
 
-function taskToEvent(t){
-  let end=t.end;
-  if(t.start===t.end){
-    const d=new Date(pd(end).getTime()+86400000);
-    end=d.toISOString().slice(0,10);
-  }
-  return {
-    summary: t.name,
-    start:{date:t.start}, end:{date:end},
-    description:`進捗: ${t.prog||0}%\n担当: ${t.owner}\nPJ: ${t.proj}\n通過条件: ${t.cond||''}`,
-    colorId: OWNER_COLOR_ID[t.owner]||'9',
-    extendedProperties:{private:{
-      pm_id:t.id, pm_owner:t.owner||'', pm_proj:t.proj||'',
-      pm_prog:String(t.prog||0), pm_cond:t.cond||'',
-      pm_source:'waterfall-pm', pm_updated:t.updated||now(),
-    }}
-  };
-}
-
-function eventToTask(ev,calId){
-  const p=ev.extendedProperties?.private||{};
-  const start=ev.start?.date||ev.start?.dateTime?.slice(0,10)||'';
-  let end=ev.end?.date||ev.end?.dateTime?.slice(0,10)||'';
-  const sd=pd(start), ed=pd(end);
-  if(dd(sd,ed)===1) end=start;
-  return {
-    id: p.pm_id||('gcal-'+ev.id.slice(0,8)),
-    name: ev.summary||'（タイトルなし）',
-    start, end,
-    owner: p.pm_owner||'senko',
-    proj:  p.pm_proj||'poetry',
-    prog:  parseInt(p.pm_prog||'0')||0,
-    cond:  p.pm_cond||'',
-    google_event_id:     ev.id,
-    google_calendar_id:  calId,
-    updated: ev.updated||'',
-    created: ev.created||'',
-  };
-}
-
-async function loadCalendars(){
-  if(!gapiReady||!hasCalToken())return;
-  setGapiToken();
-  try{
-    const res=await gapi.client.calendar.calendarList.list();
-    calendarList=(res.result.items||[]).map(c=>({id:c.id,name:c.summary,primary:!!c.primary}));
-    if(selectedCalIds.size===0) calendarList.forEach(c=>selectedCalIds.add(c.id));
-    renderSyncModal();
-  }catch(e){ console.error('load calendars',e); }
-}
-
-async function pullFromGoogle(calIds){
-  if(!gapiReady||!hasCalToken()) return {new:0,updated:0,error:'カレンダーアクセス権なし'};
-  setGapiToken();
-  const tmin=new Date(Date.now()-30*86400000).toISOString();
-  const tmax=new Date(Date.now()+200*86400000).toISOString();
-  let nc=0,uc=0;
-
-  for(const calId of calIds){
-    try{
-      const res=await gapi.client.calendar.events.list({
-        calendarId:calId, timeMin:tmin, timeMax:tmax,
-        maxResults:500, singleEvents:true, orderBy:'startTime'
-      });
-      const existing=TASKS.reduce((m,t)=>{
-        if(t.id)m.byId[t.id]=t;
-        if(t.google_event_id)m.byGcal[t.google_event_id]=t;
-        return m;
-      },{byId:{},byGcal:{}});
-
-      for(const ev of res.result.items||[]){
-        if(ev.status==='cancelled')continue;
-        const pp=ev.extendedProperties?.private||{};
-        const pmId=pp.pm_id, gcalId=ev.id;
-        const task=eventToTask(ev,calId);
-
-        if(pmId&&existing.byId[pmId]){
-          const local=existing.byId[pmId];
-          if((ev.updated||'')>(local.updated||'')){
-            await db.collection('tasks').doc(pmId).update({...task, id:pmId});
-            uc++;
-          }
-        } else if(existing.byGcal[gcalId]){
-          const local=existing.byGcal[gcalId];
-          if((ev.updated||'')>(local.updated||'')){
-            await db.collection('tasks').doc(local.id).update(task);
-            uc++;
-          }
-        } else {
-          const ref=db.collection('tasks').doc(task.id);
-          await ref.set({...task, created:now(), updated:now()});
-          nc++;
-        }
-      }
-    }catch(e){ console.error('pull error',calId,e); }
-  }
-  return {new:nc, updated:uc};
-}
-
-async function pushToGoogle(projCalMap, defaultCal){
-  if(!gapiReady||!hasCalToken()) return {created:0,updated:0,error:'カレンダーアクセス権なし'};
-  setGapiToken();
-  let cc=0,uc=0,ec=0;
-
-  for(const t of TASKS){
-    const calId=projCalMap[t.proj]||defaultCal||'primary';
-    const evBody=taskToEvent(t);
-    try{
-      if(t.google_event_id){
-        try{
-          await gapi.client.calendar.events.update({
-            calendarId:t.google_calendar_id||calId,
-            eventId:t.google_event_id, resource:evBody
-          });
-          uc++;
-        }catch{
-          const r=await gapi.client.calendar.events.insert({calendarId:calId, resource:evBody});
-          await db.collection('tasks').doc(t.id).update({google_event_id:r.result.id, google_calendar_id:calId});
-          cc++;
-        }
-      }else{
-        const r=await gapi.client.calendar.events.insert({calendarId:calId, resource:evBody});
-        await db.collection('tasks').doc(t.id).update({google_event_id:r.result.id, google_calendar_id:calId});
-        cc++;
-      }
-    }catch(e){ ec++; console.error('push error',t.id,e); }
-  }
-  return {created:cc, updated:uc, errors:ec};
-}
-
-// ═══════════════════════════════════════════════════════════
-// SYNC MODAL
-// ═══════════════════════════════════════════════════════════
-async function openSync(){
-  document.getElementById('sync-modal').classList.add('open');
-  const warn=document.getElementById('cal-warn');
-  warn.style.display=hasCalToken()?'none':'block';
-  if(hasCalToken()&&calendarList.length===0) await loadCalendars();
-  renderSyncModal();
-}
-function closeSync(){ document.getElementById('sync-modal').classList.remove('open'); }
-
-function renderSyncModal(){
-  const cl=document.getElementById('cal-checklist');
-  if(!calendarList.length){
-    cl.innerHTML='<div style="font-size:12px;color:#999">ログイン時にCalendar権限を許可するとここに一覧が出ます</div>';
-    return;
-  }
-  cl.innerHTML=calendarList.map(c=>`<div class="cal-check">
-    <input type="checkbox" id="chk-${c.id.replace(/[^a-z0-9]/gi,'_')}" ${selectedCalIds.has(c.id)?'checked':''} onchange="toggleCal('${c.id}')">
-    <label for="chk-${c.id.replace(/[^a-z0-9]/gi,'_')}">${c.name}${c.primary?' ✦':''}</label>
-  </div>`).join('');
-  const opts=calendarList.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
-  ['poetry','audio','exhibit'].forEach(proj=>{
-    const s=document.getElementById('pcal-'+proj);
-    if(s)s.innerHTML='<option value="primary">メインカレンダー</option>'+opts;
-  });
-}
-function toggleCal(id){ if(selectedCalIds.has(id))selectedCalIds.delete(id);else selectedCalIds.add(id); }
-
-async function doSync(dir){
-  const res=document.getElementById('sync-res');
-  res.style.display='none'; res.className='sync-res';
-  if(!hasCalToken()){
-    res.className='sync-res err';
-    res.textContent='ログアウトして再ログインし、Calendar権限を許可してください。';
-    res.style.display='block'; return;
-  }
-  const projCalMap={
-    poetry: document.getElementById('pcal-poetry')?.value||'primary',
-    audio:  document.getElementById('pcal-audio')?.value||'primary',
-    exhibit:document.getElementById('pcal-exhibit')?.value||'primary',
-  };
-  const calIds=[...selectedCalIds];
-  try{
-    let msg='';
-    if(dir==='pull'||dir==='both'){
-      const r=await pullFromGoogle(calIds);
-      if(r.error){throw new Error(r.error);}
-      msg+=`取込: 新規${r.new}件・更新${r.updated}件 `;
-    }
-    if(dir==='push'||dir==='both'){
-      const r=await pushToGoogle(projCalMap,'primary');
-      if(r.error){throw new Error(r.error);}
-      msg+=`書出: 作成${r.created}件・更新${r.updated}件`;
-    }
-    res.className='sync-res ok'; res.textContent='✓ '+msg.trim();
-  }catch(e){
-    res.className='sync-res err'; res.textContent='エラー: '+e.message;
-  }
-  res.style.display='block';
-}
-
-// ═══════════════════════════════════════════════════════════
-// TABS
-// ═══════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════
+// TAB / PERSON
+// ══════════════════════════════════════════════════
 function sw(t){
   const names=['cal','gantt','overview','progress','delay','fixlist'];
   document.querySelectorAll('.tab').forEach((el,i)=>el.classList.toggle('active',names[i]===t));
@@ -768,158 +533,133 @@ function sw(t){
   document.getElementById('panel-'+t).classList.add('active');
   renderAll();
 }
-
-// ═══════════════════════════════════════════════════════════
-// PERSON BAR
-// ═══════════════════════════════════════════════════════════
-function initPersonBar(){
-  document.getElementById('person-bar').innerHTML=PEOPLE.map(p=>
-    `<div class="ptog" id="ptog-${p.id}" style="background:${p.color}18;border-color:${p.color};color:${p.color}" onclick="togglePerson('${p.id}')">
-      <span class="pdot" style="background:${p.color}"></span>${p.name}
-    </div>`
+function initPBar(){
+  document.getElementById('pbar').innerHTML=PEOPLE.map(p=>
+    `<div class="ptog" id="ptog-${p.id}" style="background:${p.color}18;border-color:${p.color};color:${p.color}" onclick="toggleP('${p.id}')"><span class="pdot" style="background:${p.color}"></span>${p.name}</div>`
   ).join('');
 }
-function togglePerson(id){
-  if(visPersons.has(id))visPersons.delete(id);else visPersons.add(id);
-  document.getElementById('ptog-'+id).classList.toggle('off',!visPersons.has(id));
+function toggleP(id){
+  if(visPeople.has(id))visPeople.delete(id);else visPeople.add(id);
+  document.getElementById('ptog-'+id).classList.toggle('off',!visPeople.has(id));
   renderAll();
 }
+function renderAll(){rCal();rGantt();rOv();rProg();rDelay();rFixList();rStatus();}
 
-// ═══════════════════════════════════════════════════════════
-// RENDER ALL
-// ═══════════════════════════════════════════════════════════
-function renderAll(){ rCal();rGantt();rOverview();rProgress();rDelay();rFixList();rStatus(); }
-
-// ═══════════════════════════════════════════════════════════
-// CALENDAR VIEW
-// ═══════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════
+// CALENDAR
+// ══════════════════════════════════════════════════
 function rCal(){
-  const el=document.getElementById('panel-cal'); if(!el.classList.contains('active'))return;
-  const tasks=filteredTasks();
-  const first=new Date(calYear,calMonth,1), last=new Date(calYear,calMonth+1,0);
-  const startDOW=first.getDay(), total=Math.ceil((startDOW+last.getDate())/7)*7;
-  const mn=['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'][calMonth];
-  let html=`<div class="cal-nav"><button class="cal-btn" onclick="prevMonth()">◀ 前月</button><span>${calYear}年 ${mn}</span><button class="cal-btn" onclick="nextMonth()">次月 ▶</button></div>
-  <div class="cal-head">${['日','月','火','水','木','金','土'].map((d,i)=>`<div class="cal-wd" style="color:${i===0?'#ea4335':i===6?'#1a73e8':''}">${d}</div>`).join('')}</div>`;
-
-  for(let w=0;w<total/7;w++){
-    const wDays=Array.from({length:7},(_,d)=>{
-      const dn=w*7+d-startDOW+1;
-      return{dn,date:new Date(calYear,calMonth,dn)};
+  const el=document.getElementById('panel-cal');if(!el.classList.contains('active'))return;
+  const MN=['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+  const tasks=filt();
+  const first=new Date(calY,calM,1),last=new Date(calY,calM+1,0);
+  const sdow=first.getDay(),total=Math.ceil((sdow+last.getDate())/7)*7;
+  let html=`<div class="cal-nav"><button class="btn sm" onclick="prevM()">◀ 前月</button><span>${calY}年 ${MN[calM]}</span><button class="btn sm" onclick="nextM()">次月 ▶</button></div>
+  <div class="cal-head">${['日','月','火','水','木','金','土'].map((d,i)=>`<div class="cal-wd" style="color:${i===0?'#ea4335':i===6?'#1a73e8':''}">${d}</div>`).join('')}</div>
+  <div class="cal-grid">`;
+  for(let i=0;i<total;i++){
+    const dn=i-sdow+1, date=new Date(calY,calM,dn);
+    const thisMo=date.getMonth()===calM;
+    const isT=date.toDateString()===TODAY.toDateString();
+    const isSel=selDay&&date.toDateString()===selDay.toDateString();
+    const ds=date.toISOString().slice(0,10);
+    const dt=tasks.filter(t=>pd(t.start)<=date&&pd(t.end)>=date).sort((a,b)=>isMg(b)-isMg(a)||isDel(b)-isDel(a));
+    const dow=date.getDay();
+    html+=`<div class="cal-cell${isSel?' sel':''}" style="${!thisMo?'opacity:.22':''}" onclick="selDay$('${ds}')">
+      <div class="cal-dn${isT?' today':''}" style="${dow===0?'color:#ea4335':dow===6?'color:#1a73e8':''}">${date.getDate()}</div>`;
+    dt.slice(0,3).forEach(t=>{
+      const s=pd(t.start),e=pd(t.end),cl=date>s,cr=date<e,p=getP(t.owner);
+      const col=isDel(t)?'#ea4335':isMg(t)?'#4f46e5':p.color;
+      html+=`<div class="cev${cl?' cl':''}${cr?' cr':''}" style="background:${col}" title="${t.name}">${!cl?(isMg(t)?'★ ':'')+t.name:''}</div>`;
     });
-    const wStart=wDays[0].date, wEnd=wDays[6].date;
-    const wTasks=tasks.filter(t=>pd(t.start)<=wEnd&&pd(t.end)>=wStart)
-      .sort((a,b)=>(isMerged(b)-isMerged(a))||(isDelayed(b)-isDelayed(a))||(pd(a.start)-pd(b.start)));
-
-    const slots=[]; const tsm={};
-    wTasks.forEach(t=>{
-      const ts=new Date(Math.max(pd(t.start),wStart)), te=new Date(Math.min(pd(t.end),wEnd));
-      let s=0;
-      while(true){
-        if(!slots[s])slots[s]=[];
-        if(!slots[s].some(x=>{const xs=new Date(Math.max(pd(x.start),wStart)),xe=new Date(Math.min(pd(x.end),wEnd));return xs<=te&&xe>=ts;})){slots[s].push(t);tsm[t.id]=s;break;}
-        s++;
-      }
-    });
-    const MAX=3, evHt=Math.min(Object.keys(tsm).length?Math.max(0,...Object.values(tsm))+1:0,MAX)*18+2;
-    let ovf=0;
-
-    html+=`<div class="cal-week" style="min-height:${22+evHt}px">
-      <div class="cal-days">${wDays.map(({dn,date},di)=>{
-        const thisMo=date.getMonth()===calMonth, isT=date.toDateString()===TODAY.toDateString();
-        return `<div class="cal-cell" style="${!thisMo?'opacity:.22':''}"><div class="cal-dn${isT?' today':''}" style="${di===0?'color:#ea4335':di===6?'color:#1a73e8':''}">${date.getDate()}</div></div>`;
-      }).join('')}</div>
-      <div class="cal-evs" style="height:${evHt}px;position:relative;margin:0 2px">`;
-
-    wTasks.forEach(t=>{
-      const slot=tsm[t.id]; if(slot>=MAX){ovf++;return;}
-      const ts=new Date(Math.max(pd(t.start),wStart)), te=new Date(Math.min(pd(t.end),wEnd));
-      const si=ts.getDay(), span=dd(ts,te)+1;
-      const L=(si/7*100).toFixed(1), W=(span/7*100).toFixed(1);
-      const conL=pd(t.start)<wStart, conR=pd(t.end)>wEnd;
-      const p=getPerson(t.owner);
-      const col=isDelayed(t)?'#ea4335':isMerged(t)?'#4f46e5':p.color;
-      html+=`<div class="cev${conL?' cl':''}${conR?' cr':''}" style="left:${L}%;width:${W}%;top:${slot*18}px;background:${col}" title="${t.name} | ${p.name} | ${fs(t.start)}〜${fs(t.end)} | ${t.prog}%">${isMerged(t)?'★ ':''}${t.name}</div>`;
-    });
-    if(ovf) html+=`<div class="cal-more" style="top:${MAX*18}px">+${ovf}件</div>`;
-    html+='</div></div>';
+    if(dt.length>3)html+=`<div class="cal-more">+${dt.length-3}件</div>`;
+    html+='</div>';
+  }
+  html+='</div>';
+  if(selDay){
+    const sdt=tasks.filter(t=>pd(t.start)<=selDay&&pd(t.end)>=selDay);
+    const mth=selDay.getMonth()+1,dt2=selDay.getDate();
+    html+=`<div class="cal-detail"><div style="font-size:13px;font-weight:600;margin-bottom:8px">${mth}月${dt2}日のタスク（${sdt.length}件）</div>`;
+    if(sdt.length){
+      sdt.forEach(t=>{
+        const p=getP(t.owner),pj=PROJ[t.proj];
+        html+=`<div class="tr"><span class="badge" style="background:${p.color}18;color:${p.color}">${p.name}</span>${pj?`<span class="badge" style="background:${pj.color}18;color:${pj.color}">${pj.name}</span>`:''}<span class="tn" title="${t.name}">${t.name}</span>${isDel(t)?'<span class="badge" style="background:#fce8e6;color:#c5221f">遅延</span>':isTod(t)?'<span class="badge" style="background:#fff8e1;color:#7c5400">今日</span>':''}${isSyn(t)?'<span class="rtag">🔄</span>':''}<span class="td">${fs(t.start)}〜${fs(t.end)}</span><div class="mpw"><div class="mpbar"><div class="mpfil" style="width:${t.prog}%;background:${isDel(t)?'#ea4335':p.color}"></div></div><div class="mplbl">${t.prog}%</div></div><button class="btn sm" onclick="sw('progress')">↗進捗</button></div>`;
+      });
+    }else{
+      html+='<div style="font-size:12px;color:#888">この日のタスクはありません</div>';
+    }
+    html+='</div>';
   }
   el.innerHTML=html;
 }
-function prevMonth(){if(calMonth===0){calMonth=11;calYear--;}else calMonth--;rCal();}
-function nextMonth(){if(calMonth===11){calMonth=0;calYear++;}else calMonth++;rCal();}
+function selDay$(ds){const d=pd(ds);selDay=selDay&&selDay.toDateString()===d.toDateString()?null:d;rCal();}
+function prevM(){if(calM===0){calM=11;calY--;}else calM--;selDay=null;rCal();}
+function nextM(){if(calM===11){calM=0;calY++;}else calM++;selDay=null;rCal();}
 
-// ═══════════════════════════════════════════════════════════
-// GANTT
-// ═══════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════
+// GANTT（ラベル幅225px、title属性でフルテキスト）
+// ══════════════════════════════════════════════════
 function rGantt(){
-  const el=document.getElementById('panel-gantt'); if(!el.classList.contains('active'))return;
-  const tasks=filteredTasks();
+  const el=document.getElementById('panel-gantt');if(!el.classList.contains('active'))return;
+  const tasks=filt();
   if(!tasks.length){el.innerHTML='<div class="notice">表示するタスクがありません</div>';return;}
   const allD=[TODAY,...tasks.flatMap(t=>[pd(t.start),pd(t.end)]),...Object.values(PROJ).flatMap(p=>p.ms.map(m=>pd(m.date)))];
-  const minD=new Date(Math.min(...allD)), maxD=new Date(Math.max(...allD));
-  minD.setDate(minD.getDate()-2); maxD.setDate(maxD.getDate()+3);
+  const minD=new Date(Math.min(...allD)),maxD=new Date(Math.max(...allD));
+  minD.setDate(minD.getDate()-2);maxD.setDate(maxD.getDate()+3);
   const tot=Math.max(1,dd(minD,maxD));
   const lp=d=>{const s=typeof d==='string'?pd(d):d;return((dd(minD,s)/tot)*100).toFixed(2)+'%'};
-  const wp=(s,e)=>(Math.max(0.3,dd(pd(s),pd(e)))/tot*100).toFixed(2)+'%';
+  const wp=(s,e)=>(Math.max(0.5,dd(pd(s),pd(e)))/tot*100).toFixed(2)+'%';
   const step=Math.max(1,Math.floor(tot/7));
-  const labels=[];
-  for(let i=0;i<=tot;i+=step){const d=new Date(minD.getTime()+i*86400000);labels.push({x:lp(d),t:(d.getMonth()+1)+'/'+(d.getDate())});}
+  const lbls=[];
+  for(let i=0;i<=tot;i+=step){const d=new Date(minD.getTime()+i*86400000);lbls.push({x:lp(d),t:(d.getMonth()+1)+'/'+(d.getDate())});}
   const tp=lp(TODAY);
-
-  let html=`<div class="gantt-wrap"><div class="gantt"><div class="gh">${labels.map(l=>`<div class="glc" style="left:${l.x}">${l.t}</div>`).join('')}</div>`;
-
-  PEOPLE.filter(p=>visPersons.has(p.id)).forEach(person=>{
-    const pt=[...tasks.filter(t=>t.owner===person.id)].sort((a,b)=>taskPrio(a)-taskPrio(b));
+  let html=`<div class="notice" style="font-size:11px;margin-bottom:8px">タスク名にマウスを乗せると全文・期間・通過条件が表示されます</div><div class="gantt-wrap"><div class="gantt"><div class="gh">${lbls.map(l=>`<div class="glc" style="left:${l.x}">${l.t}</div>`).join('')}</div>`;
+  PEOPLE.filter(p=>visPeople.has(p.id)).forEach(person=>{
+    const pt=[...tasks.filter(t=>t.owner===person.id)].sort((a,b)=>prio(a)-prio(b));
     if(!pt.length)return;
-    html+=`<div class="gr"><div class="gl" style="font-weight:700;color:${person.color}">${person.name}</div><div class="gtrack" style="background:${person.color}0d"><div class="gtoday" style="left:${tp}"></div></div></div>`;
+    html+=`<div class="gr"><div class="gl" style="font-weight:700;font-size:11px;color:${person.color}">${person.name}</div><div class="gtrack" style="background:${person.color}0c"><div class="gtoday" style="left:${tp}"></div></div></div>`;
     pt.forEach(t=>{
-      const del=isDelayed(t),mg=isMerged(t),tod=isToday(t);
-      const bc=mg?'#4f46e5':del?'#ea4335':tod?person.color:person.color+'99';
-      const proj=PROJ[t.proj];
-      html+=`<div class="gr"><div class="gl" style="font-size:9px;padding-left:10px">${mg?'★ ':del?'⚠ ':''}<span style="color:#444">${t.name.substring(0,22)}</span>${isSynced(t)?'<span style="font-size:8px;color:#16a34a;margin-left:3px">🔄</span>':''}</div>
-        <div class="gtrack"><div class="gtoday" style="left:${tp}"></div><div class="gbar" style="left:${lp(t.start)};width:${wp(t.start,t.end)};background:${bc}" title="${t.name} | ${t.prog}%">${t.prog?t.prog+'%':''}</div></div></div>`;
+      const del=isDel(t),mg=isMg(t),tod=isTod(t);
+      const bc=mg?'#4f46e5':del?'#ea4335':tod?person.color:person.color+'88';
+      const pj=PROJ[t.proj];
+      const fullTip=`${t.name}（${fs(t.start)}〜${fs(t.end)}）${t.cond?' 通過条件: '+t.cond:''}`;
+      const lbl=(mg?'★ ':del?'⚠ ':'')+t.name;
+      html+=`<div class="gr">
+        <div class="gl" style="font-size:10px;padding-left:10px" title="${fullTip}">
+          ${lbl.substring(0,30)}${lbl.length>30?'…':''}${isSyn(t)?'<span style="font-size:8px;color:#16a34a;margin-left:2px">🔄</span>':''}${pj?`<span style="font-size:8px;color:${pj.color};margin-left:3px">[${pj.name}]</span>`:''}
+        </div>
+        <div class="gtrack"><div class="gtoday" style="left:${tp}"></div><div class="gbar" style="left:${lp(t.start)};width:${wp(t.start,t.end)};background:${bc}" title="${fullTip}">${t.prog?t.prog+'%':''}</div></div>
+      </div>`;
     });
   });
-
   html+=`<div class="gr" style="margin-top:8px"><div class="gl" style="font-weight:600;font-size:10px;color:#888">マイルストーン</div><div class="gtrack"><div class="gtoday" style="left:${tp}"></div></div></div>`;
-  Object.values(PROJ).forEach(p=>{
-    p.ms.forEach(m=>{
-      html+=`<div class="gr"><div class="gl" style="font-size:9px;padding-left:10px;color:#999">${m.name}</div><div class="gtrack"><div class="gtoday" style="left:${tp}"></div><div class="gdia" style="left:calc(${lp(m.date)} - 4px);background:${p.color}"></div></div></div>`;
-    });
-  });
+  Object.values(PROJ).forEach(p=>{p.ms.forEach(m=>{
+    html+=`<div class="gr"><div class="gl" style="font-size:10px;padding-left:10px;color:#999" title="${m.name} ${fs(m.date)}">${m.name.substring(0,26)}</div><div class="gtrack"><div class="gtoday" style="left:${tp}"></div><div class="gdia" style="left:calc(${lp(m.date)} - 4px);background:${p.color}"></div></div></div>`;
+  });});
   html+='</div></div>';
   el.innerHTML=html;
 }
 
-// ═══════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════
 // OVERVIEW
-// ═══════════════════════════════════════════════════════════
-function rOverview(){
-  const el=document.getElementById('panel-overview'); if(!el.classList.contains('active'))return;
-  const tasks=[...filteredTasks()].sort((a,b)=>taskPrio(a)-taskPrio(b));
+// ══════════════════════════════════════════════════
+function rOv(){
+  const el=document.getElementById('panel-overview');if(!el.classList.contains('active'))return;
+  const tasks=[...filt()].sort((a,b)=>prio(a)-prio(b));
   const secs=[
-    {label:'★ 統合タスク（要対応）',color:'#4f46e5',f:t=>isMerged(t)},
-    {label:'⚠ 遅延中',color:'#ea4335',f:t=>!isMerged(t)&&isDelayed(t)},
-    {label:'▶ 今日対応中',color:'#d97706',f:t=>!isMerged(t)&&!isDelayed(t)&&isToday(t)},
-    {label:'今週着手予定',color:'#059669',f:t=>{const d=dd(TODAY,pd(t.start));return d>0&&d<=7&&t.prog<100&&!isMerged(t)&&!isDelayed(t)}},
-    {label:'今後のタスク',color:'#888',f:t=>{const d=dd(TODAY,pd(t.start));return d>7&&t.prog<100&&!isMerged(t)&&!isDelayed(t)}},
+    {label:'★ 統合タスク（要対応）',color:'#4f46e5',f:t=>isMg(t)},
+    {label:'⚠ 遅延中',color:'#ea4335',f:t=>!isMg(t)&&isDel(t),action:{label:'遅延対応へ →',tab:'delay'}},
+    {label:'▶ 今日対応中',color:'#d97706',f:t=>!isMg(t)&&!isDel(t)&&isTod(t)},
+    {label:'今週着手予定',color:'#059669',f:t=>{const d=dd(TODAY,pd(t.start));return d>0&&d<=7&&t.prog<100&&!isMg(t)&&!isDel(t)}},
+    {label:'今後のタスク',color:'#888',f:t=>{const d=dd(TODAY,pd(t.start));return d>7&&t.prog<100&&!isMg(t)&&!isDel(t)}},
   ];
   let html='';
   secs.forEach(sec=>{
-    const st=tasks.filter(sec.f); if(!st.length)return;
-    html+=`<div class="sec" style="color:${sec.color}">${sec.label}（${st.length}件）</div><div class="card">`;
+    const st=tasks.filter(sec.f);if(!st.length)return;
+    html+=`<div class="sec" style="color:${sec.color}">${sec.label}（${st.length}件）${sec.action?`<button class="btn sm" style="margin-left:8px" onclick="sw('${sec.action.tab}')">${sec.action.label}</button>`:''}</div><div class="card">`;
     st.forEach(t=>{
-      const p=getPerson(t.owner), pj=PROJ[t.proj];
-      html+=`<div class="tr">
-        <span class="badge" style="background:${p.color}18;color:${p.color}">${p.name}</span>
-        ${pj?`<span class="badge" style="background:${pj.color}18;color:${pj.color}">${pj.name}</span>`:''}
-        <span class="tn">${isMerged(t)?'★ ':''}${t.name}</span>
-        ${isSynced(t)?'<span class="rtag">🔄 同期済み</span>':''}
-        <span class="td">${fs(t.start)}〜${fs(t.end)}</span>
-        <div class="mpw"><div class="mpbar"><div class="mpfil" style="width:${t.prog}%;background:${isDelayed(t)?'#ea4335':p.color}"></div></div><div class="mplbl">${t.prog}%</div></div>
-        ${t.cond?`<span title="通過条件: ${t.cond}" style="cursor:help;font-size:13px">📋</span>`:''}
-      </div>`;
+      const p=getP(t.owner),pj=PROJ[t.proj];
+      html+=`<div class="tr"><span class="badge" style="background:${p.color}18;color:${p.color}">${p.name}</span>${pj?`<span class="badge" style="background:${pj.color}18;color:${pj.color}">${pj.name}</span>`:''}<span class="tn" title="${t.name}">${isMg(t)?'★ ':''}${t.name}</span>${isSyn(t)?'<span class="rtag">🔄</span>':''}<span class="td">${fs(t.start)}〜${fs(t.end)}</span><div class="mpw"><div class="mpbar"><div class="mpfil" style="width:${t.prog}%;background:${isDel(t)?'#ea4335':p.color}"></div></div><div class="mplbl">${t.prog}%</div></div>${t.cond?`<span title="通過条件: ${t.cond}" style="cursor:help;font-size:13px">📋</span>`:''}<button class="btn sm" onclick="sw('progress')" title="進捗更新へ">↗</button></div>`;
     });
     html+='</div>';
   });
@@ -927,146 +667,163 @@ function rOverview(){
   el.innerHTML=html;
 }
 
-// ═══════════════════════════════════════════════════════════
-// PROGRESS
-// ═══════════════════════════════════════════════════════════
-function rProgress(){
-  const el=document.getElementById('panel-progress'); if(!el.classList.contains('active'))return;
-  const tasks=[...filteredTasks()].sort((a,b)=>taskPrio(a)-taskPrio(b));
-  let html='<div class="notice">スライダーで進捗を更新。変更は即時Firestoreへ保存され、全員の画面に反映されます。</div>';
-  PEOPLE.filter(p=>visPersons.has(p.id)).forEach(person=>{
-    const pt=tasks.filter(t=>t.owner===person.id); if(!pt.length)return;
-    html+=`<div class="card"><div class="card-title"><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${person.color}"></span>${person.name}</div>`;
-    pt.forEach(t=>{
-      const del=isDelayed(t),mg=isMerged(t),tod=isToday(t);
-      html+=`<div class="pir" style="opacity:${t.prog===100?.45:1}">
-        <label title="${t.name}">${mg?'★ ':del?'⚠ ':tod?'▶ ':''}<span style="color:${del?'#ea4335':'#333'}">${t.name}</span>${isSynced(t)?' 🔄':''}</label>
-        <input type="range" min="0" max="100" step="10" value="${t.prog||0}"
-          onchange="updateTask('${t.id}',{prog:+this.value})"
-          oninput="this.nextElementSibling.textContent=this.value+'%'" />
-        <span class="pival">${t.prog||0}%</span>
-        ${t.prog===100?'<span class="badge" style="background:#e6f4ea;color:#137333;font-size:10px">完了</span>':del?'<span class="badge" style="background:#fce8e6;color:#c5221f;font-size:10px">遅延</span>':''}
-      </div>`;
-    });
-    html+='</div>';
-  });
-  el.innerHTML=html;
-}
-
-// ═══════════════════════════════════════════════════════════
-// DELAY
-// ═══════════════════════════════════════════════════════════
-function rDelay(){
-  const el=document.getElementById('panel-delay'); if(!el.classList.contains('active'))return;
-  const delayed=filteredTasks().filter(isDelayed);
-  if(!delayed.length){el.innerHTML='<div class="notice">遅延タスクなし。順調です。</div>';return;}
-  const byOwner={};
-  delayed.forEach(t=>{if(!byOwner[t.owner])byOwner[t.owner]=[];byOwner[t.owner].push(t);});
-  let html='<div class="notice">「統合を適用」するとFirestoreが更新され、全員の画面に即時反映されます。</div>';
-
-  Object.entries(byOwner).forEach(([ownerId,tasks])=>{
-    const person=getPerson(ownerId), maxDel=Math.max(...tasks.map(t=>dd(pd(t.end),TODAY)));
-    const k=++mgk; mgroups[k]={ids:tasks.map(t=>t.id)};
-
-    html+=`<div class="card" style="border-left:4px solid ${person.color}">
-      <div class="card-title"><span class="badge" style="background:${person.color}18;color:${person.color}">${person.name}</span> 遅延 ${tasks.length}件・最大${maxDel}日超過</div>`;
-
-    tasks.forEach(t=>{
-      const pj=PROJ[t.proj];
-      html+=`<div class="tr">
-        <span class="badge" style="background:${pj?pj.color+'18':'#eee'};color:${pj?pj.color:'#666'}">${pj?pj.name:t.proj}</span>
-        <span class="tn">${t.name}</span>
-        <span class="td" style="color:#ea4335">期限 ${fs(t.end)}（${dd(pd(t.end),TODAY)}日超）</span>
-        <div class="mpw"><div class="mpbar"><div class="mpfil" style="width:${t.prog||0}%;background:#ea4335"></div></div><div class="mplbl">${t.prog||0}%</div></div>
-      </div>`;
-    });
-
-    const d0=TODAY.toISOString().slice(0,10);
-    const d1=new Date(TODAY.getTime()+86400000).toISOString().slice(0,10);
-    const d2=new Date(TODAY.getTime()+172800000).toISOString().slice(0,10);
-
-    if(tasks.length>1){
-      html+=`<div class="merge-box">
-        <div style="font-size:12px;font-weight:600;color:#444;margin-bottom:7px">3日圧縮ブロック統合案</div>
-        <div style="font-size:12px;color:#666;line-height:2">
-          <div>▶ 1日目（${d0}）: ${tasks[0].name.substring(0,16)} — 前半を閉じる</div>
-          <div>▶ 2日目（${d1}）: ${tasks.slice(1).map(x=>x.name.substring(0,10)).join('＋')} — 後半・接続確認</div>
-          <div>▶ 3日目（${d2}）: 最低限修正のみ → 次工程へ渡す</div>
-        </div>
-        <div class="btn-row">
-          <button class="btn primary" onclick="applyMerge(${k})">★ 統合を適用する</button>
-          <button class="btn" onclick="applyPost(${k},'${d2}')">3日後ろ倒し</button>
-        </div>
-      </div>`;
-    }else{
-      html+=`<div class="merge-box">
-        <div style="font-size:12px;color:#666;margin-bottom:7px">後ろ倒し案（${d2}まで延長）</div>
-        <div class="btn-row"><button class="btn primary" onclick="applyPost(${k},'${d2}')">終了日を延長する</button></div>
-      </div>`;
+// ══════════════════════════════════════════════════
+// PROGRESS（完了タスク折りたたみ）
+// ══════════════════════════════════════════════════
+function rProg(){
+  const el=document.getElementById('panel-progress');if(!el.classList.contains('active'))return;
+  const tasks=[...filt()].sort((a,b)=>prio(a)-prio(b));
+  let html=`<div class="prog-toolbar"><label><input type="checkbox" ${showDone?'checked':''} onchange="showDone=this.checked;rProg()"> 完了タスクを表示する</label><span style="font-size:11px;color:#888">変更は即時保存・全員の画面に反映されます</span></div>`;
+  PEOPLE.filter(p=>visPeople.has(p.id)).forEach(person=>{
+    const pt=tasks.filter(t=>t.owner===person.id);if(!pt.length)return;
+    const active=pt.filter(t=>t.prog<100),done=pt.filter(t=>t.prog===100);
+    html+=`<div class="card"><div class="card-t"><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${person.color};margin-right:6px"></span>${person.name}<span style="font-size:11px;font-weight:400;color:#888;margin-left:6px">未完了 ${active.length}件 / 完了 ${done.length}件</span></div>`;
+    if(!active.length&&!showDone){
+      html+=`<div style="font-size:12px;color:#059669;padding:4px 0">✓ このメンバーのタスクはすべて完了しています</div>`;
+    }
+    active.forEach(t=>html+=progRow(t,person));
+    if(showDone&&done.length){
+      html+=`<div style="border-top:1px solid #f0ede8;margin-top:6px;padding-top:6px">`;
+      done.forEach(t=>html+=progRow(t,person,true));
+      html+=`</div>`;
+    }else if(!showDone&&done.length){
+      html+=`<div class="done-toggle" onclick="showDone=true;rProg()">▶ 完了済み ${done.length}件（クリックで表示）</div>`;
     }
     html+='</div>';
   });
   el.innerHTML=html;
 }
+function progRow(t,person,isDone=false){
+  const del=isDel(t),mg=isMg(t),tod=isTod(t);
+  return `<div class="pir" style="opacity:${isDone?.4:1}">
+    <label title="${t.name}（${fs(t.start)}〜${fs(t.end)}）${t.cond?' 通過条件: '+t.cond:''}">${mg?'★ ':del?'⚠ ':tod?'▶ ':''}<span style="color:${del?'#ea4335':'#333'}">${t.name}</span>${isSyn(t)?' 🔄':''}</label>
+    <input type="range" min="0" max="100" step="10" value="${t.prog||0}" onchange="updT('${t.id}',{prog:+this.value})" oninput="this.nextElementSibling.textContent=this.value+'%'"/>
+    <span class="pival">${t.prog||0}%</span>
+    ${t.prog===100?'<span class="badge" style="background:#e6f4ea;color:#137333;font-size:10px">完了</span>':del?'<span class="badge" style="background:#fce8e6;color:#c5221f;font-size:10px">遅延</span>':''}
+  </div>`;
+}
 
-async function applyMerge(k){
-  const g=mgroups[k]; if(!g)return;
-  const tasks=TASKS.filter(t=>g.ids.includes(t.id));
-  const merged={
-    proj:tasks[0].proj, owner:tasks[0].owner,
-    name:'【統合★】'+tasks.map(t=>t.name.substring(0,8)).join('＋'),
-    start:TODAY.toISOString().slice(0,10),
-    end:new Date(TODAY.getTime()+172800000).toISOString().slice(0,10),
-    prog:Math.min(...tasks.map(t=>t.prog||0)),
-    cond:tasks.map(t=>t.cond||t.name).join(' / '),
-    google_event_id:null,
-  };
-  const batch=db.batch();
-  g.ids.forEach(id=>batch.delete(db.collection('tasks').doc(id)));
-  const mRef=db.collection('tasks').doc('mg-'+Date.now());
-  batch.set(mRef,{...merged,created:now(),updated:now()});
-  batch.set(db.collection('fixes').doc(),{
-    task:(PROJ[tasks[0].proj]?.name||''),pri:'mid',done:false,created:now(),
-    content:'統合タスク品質懸念（修正期間に対応）: '+tasks.map(t=>t.name).join('、'),
+// ══════════════════════════════════════════════════
+// DELAY（3択比較提案）
+// ══════════════════════════════════════════════════
+function rDelay(){
+  const el=document.getElementById('panel-delay');if(!el.classList.contains('active'))return;
+  const delayed=filt().filter(isDel);
+  if(!delayed.length){el.innerHTML='<div class="notice" style="color:#059669">✓ 現在の遅延タスクはありません</div>';return;}
+  const byO={};delayed.forEach(t=>{if(!byO[t.owner])byO[t.owner]=[];byO[t.owner].push(t);});
+  let html='<div class="notice">3つの対応案を比較しています。★は状況に基づく推奨案です。</div>';
+  Object.entries(byO).forEach(([ownId,tasks])=>{
+    const person=getP(ownId);
+    const maxDel=Math.max(...tasks.map(t=>dd(pd(t.end),TODAY)));
+    const k=++mgk;mgroups[k]={ids:tasks.map(t=>t.id)};
+    const d0=TODAY.toISOString().slice(0,10);
+    const d2=new Date(TODAY.getTime()+172800000).toISOString().slice(0,10);
+    const d5=new Date(TODAY.getTime()+5*86400000).toISOString().slice(0,10);
+    const rec=tasks.length>1?'merge':maxDel<=3?'post':'fix';
+    html+=`<div class="card" style="border-left:4px solid ${person.color}"><div class="card-t"><span class="badge" style="background:${person.color}18;color:${person.color}">${person.name}</span>遅延 ${tasks.length}件・最大${maxDel}日超過</div>`;
+    tasks.forEach(t=>{const pj=PROJ[t.proj];html+=`<div class="tr"><span class="badge" style="background:${pj?pj.color+'18':'#eee'};color:${pj?pj.color:'#666'}">${pj?pj.name:t.proj}</span><span class="tn" title="${t.name}">${t.name}</span><span class="td" style="color:#ea4335">+${dd(pd(t.end),TODAY)}日超</span><div class="mpw"><div class="mpbar"><div class="mpfil" style="width:${t.prog||0}%;background:#ea4335"></div></div><div class="mplbl">${t.prog||0}%</div></div></div>`;});
+    html+=`<div class="delay-opts">
+      <div class="dopt${rec==='merge'?' rec':''}">
+        <div class="dopt-badge" style="background:${rec==='merge'?'#1a73e8':'#e8e6e0'};color:${rec==='merge'?'#fff':'#555'}">${rec==='merge'?'★ 推奨':'案A'}</div>
+        <div class="dopt-title">3日圧縮統合</div>
+        <div class="dopt-desc">タスクをまとめて3日で次工程へ渡す。<br>1日目（${d0}）: 前半を閉じる<br>2日目: 後半・接続確認<br>3日目（${d2}）: 最低限修正→渡す</div>
+        <div class="dopt-risk"><span class="rdot" style="background:${tasks.length>1?'#d97706':'#ea4335'}"></span>品質リスク: ${tasks.length>1?'中':'高'}</div>
+        ${tasks.length>1?`<button class="btn pr sm" onclick="applyMerge(${k})">適用する</button>`:
+        '<div style="font-size:11px;color:#888">タスク1件のため統合不可</div>'}
+      </div>
+      <div class="dopt${rec==='post'?' rec':''}">
+        <div class="dopt-badge" style="background:${rec==='post'?'#1a73e8':'#e8e6e0'};color:${rec==='post'?'#fff':'#555'}">${rec==='post'?'★ 推奨':'案B'}</div>
+        <div class="dopt-title">終了日を延長</div>
+        <div class="dopt-desc">終了日を${d5}まで延長し作業継続。後続タスクへの影響を要確認。改善点は修正リストへ。</div>
+        <div class="dopt-risk"><span class="rdot" style="background:#059669"></span>品質リスク: 低</div>
+        <button class="btn sm" onclick="applyPost(${k},'${d5}')">${d5}まで延長</button>
+      </div>
+      <div class="dopt${rec==='fix'?' rec':''}">
+        <div class="dopt-badge" style="background:${rec==='fix'?'#1a73e8':'#e8e6e0'};color:${rec==='fix'?'#fff':'#555'}">${rec==='fix'?'★ 推奨':'案C'}</div>
+        <div class="dopt-title">修正リストへ回す</div>
+        <div class="dopt-desc">品質懸念を修正リストへ切り離し、本流は前進。次工程の最低条件を確認してから実施。</div>
+        <div class="dopt-risk"><span class="rdot" style="background:#1a73e8"></span>スケジュールリスク: 低</div>
+        <button class="btn sm" onclick="sendToFix(${k})">修正リストへ移す</button>
+      </div>
+    </div></div>`;
   });
-  await batch.commit();
-  delete mgroups[k];
+  el.innerHTML=html;
 }
-
+async function applyMerge(k){
+  const g=mgroups[k];if(!g)return;
+  const tasks=TASKS.filter(t=>g.ids.includes(t.id));
+  const mg={proj:tasks[0].proj,owner:tasks[0].owner,name:'【統合★】'+tasks.map(t=>t.name.substring(0,8)).join('＋'),
+    start:TODAY.toISOString().slice(0,10),end:new Date(TODAY.getTime()+172800000).toISOString().slice(0,10),
+    prog:Math.min(...tasks.map(t=>t.prog||0)),cond:tasks.map(t=>t.cond||t.name).join(' / '),google_event_id:null};
+  const b=db.batch();
+  g.ids.forEach(id=>b.delete(db.collection('tasks').doc(id)));
+  b.set(db.collection('tasks').doc('mg-'+Date.now()),{...mg,created:now$(),updated:now$()});
+  b.set(db.collection('fixes').doc(),{task:(PROJ[tasks[0].proj]?.name||''),pri:'mid',status:'pending',done:false,
+    content:'統合タスク品質懸念（修正期間に対応）: '+tasks.map(t=>t.name).join('、'),when:'全体修正期間',created:now$()});
+  await b.commit();delete mgroups[k];
+}
 async function applyPost(k,newEnd){
-  const g=mgroups[k]; if(!g)return;
-  const batch=db.batch();
-  g.ids.forEach(id=>batch.update(db.collection('tasks').doc(id),{end:newEnd,updated:now()}));
-  await batch.commit();
-  delete mgroups[k];
+  const g=mgroups[k];if(!g)return;
+  const b=db.batch();
+  g.ids.forEach(id=>b.update(db.collection('tasks').doc(id),{end:newEnd,updated:now$()}));
+  await b.commit();delete mgroups[k];
+}
+async function sendToFix(k){
+  const g=mgroups[k];if(!g)return;
+  const tasks=TASKS.filter(t=>g.ids.includes(t.id));
+  const b=db.batch();
+  tasks.forEach(t=>{
+    b.set(db.collection('fixes').doc(),{task:t.name,pri:'high',status:'pending',done:false,
+      content:`遅延により修正リストへ移動。次工程最低条件: ${t.cond||'未設定'}`,when:'全体修正期間',created:now$()});
+    b.update(db.collection('tasks').doc(t.id),{end:new Date(TODAY.getTime()+3*86400000).toISOString().slice(0,10),updated:now$()});
+  });
+  await b.commit();delete mgroups[k];sw('fixlist');
 }
 
-// ═══════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════
 // FIX LIST
-// ═══════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════
+function updateFxSel(){
+  const sel=document.getElementById('fx-sel');if(!sel)return;
+  const v=sel.value;
+  sel.innerHTML='<option value="">-- タスクを選択 --</option>'+TASKS.map(t=>`<option value="${t.name.replace(/"/g,'&quot;')}">${t.name}</option>`).join('');
+  sel.value=v;
+  sel.onchange=()=>{if(sel.value)document.getElementById('fx-task').value=sel.value;};
+}
 async function addFix(){
-  const c=document.getElementById('fx-content').value.trim(); if(!c)return;
-  await createFix({task:document.getElementById('fx-task').value.trim(),pri:document.getElementById('fx-pri').value,content:c,done:false});
-  document.getElementById('fx-task').value=''; document.getElementById('fx-content').value='';
+  const selv=document.getElementById('fx-sel').value;
+  const direct=document.getElementById('fx-task').value.trim();
+  const content=document.getElementById('fx-content').value.trim();if(!content)return;
+  await addFx({task:direct||selv,pri:document.getElementById('fx-pri').value,
+    status:document.getElementById('fx-status').value,content,
+    when:document.getElementById('fx-when').value.trim(),done:false});
+  ['fx-task','fx-content','fx-when'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('fx-sel').value='';
 }
-async function toggleFix(id){
-  const f=FIXES.find(x=>x.id===id); if(!f)return;
-  await updateFix(id,{done:!f.done});
-}
+const SM={pending:{l:'未着手',bg:'#f1f3f4',c:'#555',next:'wip'},wip:{l:'対応中',bg:'#fff8e1',c:'#7c5400',next:'done'},done:{l:'完了',bg:'#e6f4ea',c:'#137333',next:'pending'}};
+async function cycleFix(id,cur){await updFx(id,{status:(SM[cur]?.next||'pending'),done:(SM[cur]?.next||'pending')==='done'});}
 function rFixList(){
-  const el=document.getElementById('fix-body'); if(!el)return;
+  const el=document.getElementById('fix-body');if(!el)return;
   const bp={high:[],mid:[],low:[]};
   FIXES.forEach(f=>bp[f.pri||'mid'].push(f));
   const lbl={high:'高（修正期間前半）',mid:'中（修正期間中盤）',low:'低（時間があれば）'};
   let html='';
   ['high','mid','low'].forEach(p=>{
     if(!bp[p].length)return;
-    html+=`<div class="card"><div class="card-title">${lbl[p]}</div>`;
+    html+=`<div class="card"><div class="card-t">${lbl[p]}</div>`;
     bp[p].forEach(f=>{
-      html+=`<div class="fix-row"><input type="checkbox" ${f.done?'checked':''} onchange="toggleFix('${f.id}')" />
+      const sm=SM[f.status||'pending']||SM.pending;
+      html+=`<div class="fix-row">
+        <input type="checkbox" ${f.done?'checked':''} onchange="updFx('${f.id}',{done:this.checked,status:this.checked?'done':'pending'})" style="margin-top:4px"/>
         <div style="flex:1;opacity:${f.done?.4:1};text-decoration:${f.done?'line-through':'none'}">
           <div style="font-size:13px;font-weight:500">${f.content}</div>
-          ${f.task?`<div style="font-size:11px;color:#888;margin-top:2px">対象: ${f.task}</div>`:''}</div></div>`;
+          <div class="fix-meta">
+            ${f.task?`<span class="badge" style="background:#f1f3f4;color:#555">${f.task}</span>`:''}
+            <span class="fix-status" style="background:${sm.bg};color:${sm.c};border-color:${sm.c}" onclick="cycleFix('${f.id}','${f.status||'pending'}')" title="クリックで状態を変更">${sm.l}</span>
+            ${f.when?`<span style="font-size:10px;color:#888">🗓 ${f.when}</span>`:''}
+          </div>
+        </div>
+      </div>`;
     });
     html+='</div>';
   });
@@ -1074,45 +831,136 @@ function rFixList(){
   el.innerHTML=html;
 }
 
-// ═══════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════
 // STATUS BAR
-// ═══════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════
 function rStatus(){
-  const all=filteredTasks();
-  const del=all.filter(isDelayed).length, mg=all.filter(isMerged).length;
-  const synced=all.filter(isSynced).length, fl=FIXES.filter(f=>!f.done).length;
-  const sbar=document.getElementById('sbar'); if(!sbar)return;
-  sbar.innerHTML=PEOPLE.filter(p=>visPersons.has(p.id)).map(p=>{
+  const all=filt(),del=all.filter(isDel).length,mg=all.filter(isMg).length;
+  const syn=all.filter(isSyn).length,fl=FIXES.filter(f=>!f.done).length;
+  const el=document.getElementById('sbar');if(!el)return;
+  el.innerHTML=PEOPLE.filter(p=>visPeople.has(p.id)).map(p=>{
     const pt=all.filter(t=>t.owner===p.id);
     return `<span><span class="sdot" style="background:${p.color}"></span>${p.name}: ${pt.filter(t=>t.prog===100).length}/${pt.length}</span>`;
   }).join('')+
   `<span><span class="sdot" style="background:#ea4335"></span>遅延 ${del}件</span>`+
   (mg?`<span><span class="sdot" style="background:#4f46e5"></span>統合 ${mg}件</span>`:'')+
-  `<span><span class="sdot" style="background:#16a34a"></span>同期済み ${synced}件</span>`+
+  `<span><span class="sdot" style="background:#16a34a"></span>同期済み ${syn}件</span>`+
   `<span><span class="sdot" style="background:#d97706"></span>修正リスト残 ${fl}件</span>`;
 }
 
-// ═══════════════════════════════════════════════════════════
-// BOOT
-// ═══════════════════════════════════════════════════════════
-(function boot(){
-  document.getElementById('hdr-today').textContent=
-    '今日: '+(TODAY.getMonth()+1)+'月'+TODAY.getDate()+'日（'+['日','月','火','水','木','金','土'][TODAY.getDay()]+'）';
-  initPersonBar();
-
-  const stored=localStorage.getItem('pm_firebase_config');
-  if(stored){
-    try{
-      initFirebase(JSON.parse(stored));
-    }catch(e){ showSetup(); }
+// ══════════════════════════════════════════════════
+// SYNC MODAL
+// ══════════════════════════════════════════════════
+async function openSync(){
+  document.getElementById('sync-modal').classList.add('open');
+  if(hasTok()){
+    document.getElementById('cal-notcon').style.display='none';
+    document.getElementById('cal-con').style.display='block';
+    if(!calList.length)await loadCalList();
+    else renderCalList();
   }else{
-    showSetup();
+    document.getElementById('cal-notcon').style.display='block';
+    document.getElementById('cal-con').style.display='none';
   }
-
-  // Close sync modal on bg click
-  document.getElementById('sync-modal').addEventListener('click',e=>{
-    if(e.target===e.currentTarget)closeSync();
+}
+function closeSync(){document.getElementById('sync-modal').classList.remove('open');}
+async function loadCalList(){
+  if(!gapiReady||!hasTok())return;
+  gapi.client.setToken({access_token:gCalToken});
+  try{
+    const res=await gapi.client.calendar.calendarList.list();
+    calList=(res.result.items||[]).map(c=>({id:c.id,name:c.summary,primary:!!c.primary}));
+    if(!selCalIds.size)calList.forEach(c=>selCalIds.add(c.id));
+    renderCalList();
+  }catch(e){showSyncErr('カレンダー一覧取得エラー: '+e.message);}
+}
+function renderCalList(){
+  const el=document.getElementById('cal-klist');if(!el)return;
+  if(!calList.length){el.innerHTML='<div style="font-size:12px;color:#999">カレンダーが見つかりませんでした</div>';return;}
+  el.innerHTML=calList.map(c=>{
+    const sid=c.id.replace(/[^a-z0-9]/gi,'_');
+    return `<div class="cal-check"><input type="checkbox" id="chk-${sid}" ${selCalIds.has(c.id)?'checked':''} onchange="toggleCal('${c.id}')"><label for="chk-${sid}">${c.name}${c.primary?' ✦':''}</label></div>`;
+  }).join('');
+  const opts=calList.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+  ['poetry','audio','exhibit'].forEach(proj=>{
+    const s=document.getElementById('pcal-'+proj);
+    if(s)s.innerHTML='<option value="primary">メインカレンダー</option>'+opts;
   });
+}
+function toggleCal(id){if(selCalIds.has(id))selCalIds.delete(id);else selCalIds.add(id);}
+function showSyncErr(msg){const el=document.getElementById('sync-res');if(!el)return;el.className='sync-res err';el.textContent=msg;el.style.display='block';}
+function t2ev(t){
+  let end=t.end;
+  if(t.start===t.end)end=new Date(pd(end).getTime()+86400000).toISOString().slice(0,10);
+  return{summary:t.name,start:{date:t.start},end:{date:end},
+    description:`進捗: ${t.prog||0}%\n担当: ${t.owner}\nPJ: ${t.proj}\n通過条件: ${t.cond||''}`,
+    colorId:OC[t.owner]||'9',
+    extendedProperties:{private:{pm_id:t.id,pm_owner:t.owner||'',pm_proj:t.proj||'',pm_prog:String(t.prog||0),pm_cond:t.cond||'',pm_source:'waterfall-pm',pm_updated:t.updated||now$()}}};
+}
+function ev2t(ev,calId){
+  const p=ev.extendedProperties?.private||{};
+  const start=ev.start?.date||ev.start?.dateTime?.slice(0,10)||'';
+  let end=ev.end?.date||ev.end?.dateTime?.slice(0,10)||'';
+  if(dd(pd(start),pd(end))===1)end=start;
+  return{id:p.pm_id||('gcal-'+ev.id.slice(0,8)),name:ev.summary||'（タイトルなし）',start,end,
+    owner:p.pm_owner||'senko',proj:p.pm_proj||'poetry',prog:parseInt(p.pm_prog||'0')||0,
+    cond:p.pm_cond||'',google_event_id:ev.id,google_calendar_id:calId,updated:ev.updated||'',created:ev.created||''};
+}
+async function doSync(dir){
+  const res=document.getElementById('sync-res');res.style.display='none';res.className='sync-res';
+  if(!hasTok()){showSyncErr('Calendarへのアクセスがありません。「アクセスを許可する」ボタンを押してください。');return;}
+  if(!gapiReady){showSyncErr('Calendar APIの読み込みが完了していません。しばらく待って再試行してください。');return;}
+  gapi.client.setToken({access_token:gCalToken});
+  const pcm={poetry:document.getElementById('pcal-poetry')?.value||'primary',audio:document.getElementById('pcal-audio')?.value||'primary',exhibit:document.getElementById('pcal-exhibit')?.value||'primary'};
+  const calIds=[...selCalIds];
+  try{
+    let msg='';
+    if(dir==='pull'||dir==='both'){
+      const tmin=new Date(Date.now()-30*86400000).toISOString();
+      const tmax=new Date(Date.now()+200*86400000).toISOString();
+      let nc=0,uc=0;
+      const byId=Object.fromEntries(TASKS.map(t=>[t.id,t]));
+      const byG=Object.fromEntries(TASKS.filter(t=>t.google_event_id).map(t=>[t.google_event_id,t]));
+      for(const cid of calIds){
+        const r=await gapi.client.calendar.events.list({calendarId:cid,timeMin:tmin,timeMax:tmax,maxResults:500,singleEvents:true,orderBy:'startTime'});
+        for(const ev of r.result.items||[]){
+          if(ev.status==='cancelled')continue;
+          const task=ev2t(ev,cid),pmId=ev.extendedProperties?.private?.pm_id;
+          if(pmId&&byId[pmId]){if((ev.updated||'')>(byId[pmId].updated||'')){await db.collection('tasks').doc(pmId).update({...task,id:pmId});uc++;}}
+          else if(byG[ev.id]){if((ev.updated||'')>(byG[ev.id].updated||'')){await db.collection('tasks').doc(byG[ev.id].id).update(task);uc++;}}
+          else{await db.collection('tasks').doc(task.id).set({...task,created:now$(),updated:now$()});nc++;}
+        }
+      }
+      msg+=`取込: 新規${nc}件・更新${uc}件　`;
+    }
+    if(dir==='push'||dir==='both'){
+      let cc=0,uc=0,ec=0;
+      for(const t of TASKS){
+        const cid=pcm[t.proj]||'primary',ev=t2ev(t);
+        try{
+          if(t.google_event_id){
+            try{await gapi.client.calendar.events.update({calendarId:t.google_calendar_id||cid,eventId:t.google_event_id,resource:ev});uc++;}
+            catch{const r=await gapi.client.calendar.events.insert({calendarId:cid,resource:ev});await updT(t.id,{google_event_id:r.result.id,google_calendar_id:cid});cc++;}
+          }else{const r=await gapi.client.calendar.events.insert({calendarId:cid,resource:ev});await updT(t.id,{google_event_id:r.result.id,google_calendar_id:cid});cc++;}
+        }catch(e2){ec++;console.error('push',t.id,e2);}
+      }
+      msg+=`書出: 作成${cc}件・更新${uc}件${ec?`・失敗${ec}件`:''}`;
+    }
+    res.className='sync-res ok';res.textContent='✓ '+msg.trim();
+  }catch(e){res.className='sync-res err';res.textContent='エラー: '+e.message;console.error('doSync',e);}
+  res.style.display='block';
+}
+
+// ══════════════════════════════════════════════════
+// BOOT
+// ══════════════════════════════════════════════════
+(function boot(){
+  document.getElementById('hdr-today').textContent='今日: '+(TODAY.getMonth()+1)+'月'+TODAY.getDate()+'日（'+['日','月','火','水','木','金','土'][TODAY.getDay()]+'）';
+  initPBar();
+  document.getElementById('sync-modal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeSync();});
+  const stored=localStorage.getItem('pm_cfg');
+  if(stored){try{initFB(JSON.parse(stored));}catch{showSetup();}}
+  else showSetup();
 })();
 </script>
 </body>
