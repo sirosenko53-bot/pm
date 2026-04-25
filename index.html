@@ -1339,7 +1339,7 @@ async function doImport(){
         if(start&&end&&dd(pd(start),pd(end))===1)end=start;
         if(!start)continue;
 
-        const taskId='gcal-'+ev.id.slice(0,14);
+        const taskId='gcal-'+ev.id.replace(/[^a-zA-Z0-9]/g,'').slice(-20);
         const newTask={
           id:taskId,name:ev.summary||'（タイトルなし）',start,end,
           owner:defaultOwner,proj:defaultProj,prog:0,cond:'',
