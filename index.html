@@ -129,7 +129,29 @@ input.fi{width:100%;border:1px solid #dadce0;border-radius:8px;padding:9px 10px;
 .prog-bar-wrap input[type=range]{flex:1;min-width:60px;cursor:pointer}
 .prog-val{font-size:13px;font-weight:600;min-width:34px;text-align:right;color:#333}
 
-/* ── delay ── */
+/* ── delay v2 ── */
+.delay-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:8px;margin-bottom:14px}
+.delay-stat{background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:10px 12px;text-align:center}
+.delay-stat-n{font-size:22px;font-weight:500;color:var(--color-text-primary)}
+.delay-stat-l{font-size:11px;color:var(--color-text-secondary);margin-top:2px}
+.delay-toolbar{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+.delay-toolbar select{font-size:12px;padding:5px 8px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);background:var(--color-background-primary);color:var(--color-text-primary)}
+.delay-table{width:100%;border-collapse:collapse}
+.delay-table th{font-size:11px;font-weight:600;color:var(--color-text-secondary);text-align:left;padding:7px 8px;border-bottom:1px solid var(--color-border-tertiary);white-space:nowrap;cursor:pointer;user-select:none}
+.delay-table th:hover{color:var(--color-text-primary)}
+.delay-table td{font-size:13px;padding:8px;border-bottom:0.5px solid var(--color-border-tertiary);vertical-align:middle}
+.delay-table tr:last-child td{border-bottom:none}
+.delay-table tr.sel-row{background:var(--color-background-info)}
+.delay-table tr:hover td{background:var(--color-background-secondary)}
+.delay-action-bar{background:var(--color-background-primary);border:1.5px solid #1a73e8;border-radius:var(--border-radius-lg);padding:12px 14px;margin-top:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.delay-action-bar .sel-count{font-size:13px;font-weight:500;flex:1;color:#1557b0}
+.merge-preview{background:var(--color-background-primary);border:1px solid var(--color-border-secondary);border-radius:var(--border-radius-lg);padding:14px;margin-top:12px}
+.merge-preview h3{font-size:14px;font-weight:600;margin-bottom:10px;color:var(--color-text-primary)}
+.sort-arrow{font-size:10px;margin-left:2px}
+.delay-triage{background:var(--color-background-warning);border:0.5px solid var(--color-border-warning);border-radius:var(--border-radius-lg);padding:14px;margin-bottom:14px}
+.delay-triage h3{font-size:14px;font-weight:600;color:var(--color-text-warning);margin-bottom:10px}
+.triage-btn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);background:var(--color-background-primary);cursor:pointer;font-size:13px;color:var(--color-text-primary);margin:4px 4px 4px 0;font-family:inherit}
+.triage-btn:hover{background:var(--color-background-secondary)}
 .delay-opts{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px}
 @media(max-width:640px){.delay-opts{grid-template-columns:1fr}}
 .dopt{border:1px solid #e8e6df;border-radius:11px;padding:12px;background:#fff}
@@ -421,6 +443,13 @@ let calY=TODAY.getFullYear(), calM=TODAY.getMonth(), selDay=null;
 let showDone=false, showMergedOrig=false, showFixDeleted=false, showAddTask=false;
 let mgroups={}, mgk=0;
 let pushPlan=null;
+// 遅延対応画面の状態
+let delaySortKey='start';       // start|delayDays|proj|owner|prog
+let delayFilterProj='';         // ''=全件
+let delayFilterOwner='';
+let delaySelected=new Set();    // 選択中のタスクID
+let delayMergePreview=null;     // 統合プレビュー中のデータ
+let delaySortAsc=true;
 
 // ═══════════════════════════════════════════
 // HELPERS
@@ -724,7 +753,7 @@ function emptyGantt(){
 // ═══════════════════════════════════════════
 function rOv(){
   const el=document.getElementById('panel-overview');if(!el.classList.contains('active'))return;
-  const tasks=[...filt()].sort((a,b)=>prio(a)-prio(b));
+  const tasks=sortByDate(filt());
   if(!tasks.length){el.innerHTML=emptyState();return;}
   const secs=[
     {label:'★ 統合タスク',color:'#4f46e5',f:t=>isMg(t)},
@@ -770,7 +799,7 @@ function emptyState(){
 // ═══════════════════════════════════════════
 function rProg(){
   const el=document.getElementById('panel-progress');if(!el.classList.contains('active'))return;
-  const tasks=[...filt()].sort((a,b)=>prio(a)-prio(b));
+  const tasks=sortByDate(filt());
   if(!tasks.length){el.innerHTML=emptyState();return;}
   const todayStr=TODAY_STR;
   const addForm=showAddTask?`<div class="card" style="border:1.5px solid #1a73e8;margin-bottom:12px">
@@ -868,92 +897,316 @@ function setDays(k,days){
 function setCustomDays(k){if(!mgroups[k])return;const n=parseInt(document.getElementById(`dur-n-${k}`)?.value||'3');if(n>0&&n<=30)setDays(k,n);}
 function showCustom(k){document.getElementById(`dur-custom-${k}`)?.classList.add('show');document.querySelectorAll(`#dur-wrap-${k} .dur-btn`).forEach(b=>b.classList.remove('active'));}
 
+// ─── タスク日付ソート関数（全画面共通）───
+function sortByDate(tasks){
+  return [...tasks].sort((a,b)=>{
+    const sd=pd(a.start)-pd(b.start);if(sd!==0)return sd;
+    const ed=pd(a.end)-pd(b.end);if(ed!==0)return ed;
+    const pa=(PROJ[a.proj]?.name||'');const pb=(PROJ[b.proj]?.name||'');
+    if(pa!==pb)return pa.localeCompare(pb,'ja');
+    return getP(a.owner).name.localeCompare(getP(b.owner).name,'ja');
+  });
+}
+
+function sortDelayed(tasks){
+  const dir=delaySortAsc?1:-1;
+  return [...tasks].sort((a,b)=>{
+    let v=0;
+    if(delaySortKey==='start')     v=pd(a.start)-pd(b.start);
+    else if(delaySortKey==='delayDays') v=dd(pd(b.end),TODAY)-dd(pd(a.end),TODAY);
+    else if(delaySortKey==='proj')  v=(PROJ[a.proj]?.name||'').localeCompare(PROJ[b.proj]?.name||'','ja');
+    else if(delaySortKey==='owner') v=getP(a.owner).name.localeCompare(getP(b.owner).name,'ja');
+    else if(delaySortKey==='prog')  v=(a.prog||0)-(b.prog||0);
+    return v*dir;
+  });
+}
+
+function isMergeCandidate(allTasks, t){
+  const sameGroup=allTasks.filter(x=>x.id!==t.id&&x.proj===t.proj&&x.owner===t.owner);
+  if(!sameGroup.length)return false;
+  return sameGroup.some(x=>Math.abs(dd(pd(x.start),pd(t.start)))<=5);
+}
+
 function rDelay(){
   const el=document.getElementById('panel-delay');if(!el.classList.contains('active'))return;
-  const delayed=filt().filter(isDel);
-  if(!delayed.length){el.innerHTML='<div class="notice ok">遅延タスクはありません</div>';return;}
-  const byO={};delayed.forEach(t=>{if(!byO[t.owner])byO[t.owner]=[];byO[t.owner].push(t);});
-  let html='<div class="notice">3つの対応案を比較してください。★は状況からの推奨案です。</div>';
-  Object.entries(byO).forEach(([ownId,tasks])=>{
-    const person=getP(ownId),maxDel=Math.max(...tasks.map(t=>dd(pd(t.end),TODAY)));
-    const k=++mgk;const suggested=suggestDays(tasks);mgroups[k]={ids:tasks.map(t=>t.id),days:suggested};
-    const rec=tasks.length>1?'merge':maxDel<=3?'post':'fix';
-    const d5=addDays(TODAY_STR,4);
-    html+=`<div class="card" style="border-left:4px solid ${person.color}"><div class="card-t"><span class="badge" style="background:${person.color}18;color:${person.color}">${person.name}</span>遅延 ${tasks.length}件・最大${maxDel}日超過</div>`;
-    tasks.forEach(t=>{const pj=PROJ[t.proj];html+=`<div class="tr"><span class="badge" style="background:${pj?.color+'18'||'#eee'};color:${pj?.color||'#666'}">${pj?.name||t.proj}</span><span class="tn" title="${t.name}">${t.name}</span><span class="td" style="color:#ea4335">+${dd(pd(t.end),TODAY)}日超</span><div class="mpw"><div class="mpbar"><div class="mpfil" style="width:${t.prog||0}%;background:#ea4335"></div></div><div class="mplbl">${t.prog||0}%</div></div></div>`;});
-    html+=`<div class="delay-opts">
-      <div class="dopt${rec==='merge'?' rec':''}">
-        <div class="dopt-badge" style="background:${rec==='merge'?'#1a73e8':'#e8e6df'};color:${rec==='merge'?'#fff':'#555'}">${rec==='merge'?'★ 推奨':'案A'}</div>
-        <div class="dopt-title">圧縮統合</div>
-        <div class="dopt-desc">タスクをまとめて日数内に次工程へ渡す。</div>
-        <div class="dur-wrap" id="dur-wrap-${k}"><span>統合日数:</span>${DAY_OPTS.map(d=>`<button class="dur-btn${mgroups[k].days===d?' active':''}" onclick="setDays(${k},${d})">${d}日${d===suggested?' (推奨)':''}</button>`).join('')}<button class="dur-btn" onclick="showCustom(${k})">カスタム</button></div>
-        <div class="dur-custom" id="dur-custom-${k}"><span>日数:</span><input type="number" id="dur-n-${k}" min="1" max="30" value="${mgroups[k].days}" style="width:70px"><button class="btn sm" onclick="setCustomDays(${k})">適用</button></div>
-        <div class="merge-detail"><div style="font-weight:500;margin-bottom:4px">スケジュール案:</div><div id="merge-sched-${k}">${genSched(tasks,mgroups[k].days,TODAY_STR).map(s=>`<div style="padding:1px 0">${s}</div>`).join('')}</div></div>
-        <div class="dopt-risk"><span class="rdot" style="background:${tasks.length>1?'#d97706':'#ea4335'}"></span>品質リスク: ${tasks.length>1?'中':'高'}</div>
-        ${tasks.length>1?`<button class="btn pr sm" onclick="applyMerge(${k})">統合を適用する</button>`:'<div style="font-size:12px;color:#888">1件のみのため統合不可</div>'}
-      </div>
-      <div class="dopt${rec==='post'?' rec':''}">
-        <div class="dopt-badge" style="background:${rec==='post'?'#1a73e8':'#e8e6df'};color:${rec==='post'?'#fff':'#555'}">${rec==='post'?'★ 推奨':'案B'}</div>
-        <div class="dopt-title">終了日を延長</div>
-        <div class="dopt-desc">終了日を${d5}まで延長し作業継続。Googleカレンダーへの書き戻しで予定も更新されます。</div>
-        <div class="dopt-risk"><span class="rdot" style="background:#059669"></span>品質リスク: 低</div>
-        <button class="btn sm" onclick="applyPost(${k},'${d5}')">${d5}まで延長</button>
-      </div>
-      <div class="dopt${rec==='fix'?' rec':''}">
-        <div class="dopt-badge" style="background:${rec==='fix'?'#1a73e8':'#e8e6df'};color:${rec==='fix'?'#fff':'#555'}">${rec==='fix'?'★ 推奨':'案C'}</div>
-        <div class="dopt-title">修正リストへ回す</div>
-        <div class="dopt-desc">品質懸念を修正リストへ切り離し、本流は前進。次工程の最低条件を確認してから実施。</div>
-        <div class="dopt-risk"><span class="rdot" style="background:#1a73e8"></span>スケジュールリスク: 低</div>
-        <button class="btn sm" onclick="sendToFix(${k})">修正リストへ移す</button>
-      </div>
-    </div></div>`;
+  const allDelayed=filt().filter(isDel);
+  if(!allDelayed.length){
+    el.innerHTML='<div class="notice ok">遅延タスクはありません</div>';
+    delaySelected.clear();return;
+  }
+  const maxDelayDays=Math.max(...allDelayed.map(t=>dd(pd(t.end),TODAY)));
+  const byOwnerCount=Object.values(allDelayed.reduce((m,t)=>{m[t.owner]=(m[t.owner]||0)+1;return m;},{}));
+  const byProjCount=Object.values(allDelayed.reduce((m,t)=>{m[t.proj]=(m[t.proj]||0)+1;return m;},{}));
+  const triageMode=allDelayed.length>=5||byOwnerCount.some(n=>n>=3)||byProjCount.some(n=>n>=3)||maxDelayDays>=7;
+  const mergeCands=allDelayed.filter(t=>isMergeCandidate(allDelayed,t));
+  const fixCands=allDelayed.filter(t=>(t.prog||0)>=50&&!mergeCands.includes(t));
+  const postCands=allDelayed.filter(t=>!mergeCands.includes(t)&&!fixCands.includes(t));
+  const urgentCands=allDelayed.filter(t=>(t.prog||0)>=70||(t.cond&&(t.prog||0)>=50));
+
+  let displayed=allDelayed;
+  if(delayFilterProj)displayed=displayed.filter(t=>t.proj===delayFilterProj);
+  if(delayFilterOwner)displayed=displayed.filter(t=>t.owner===delayFilterOwner);
+  displayed=sortDelayed(displayed);
+
+  const projOpts=[...new Set(allDelayed.map(t=>t.proj))];
+  const ownerOpts=[...new Set(allDelayed.map(t=>t.owner))];
+  const selTasks=TASKS.filter(t=>delaySelected.has(t.id));
+  const selCount=delaySelected.size;
+
+  let html=`<div class="delay-summary">
+    <div class="delay-stat"><div class="delay-stat-n" style="color:#ea4335">${allDelayed.length}</div><div class="delay-stat-l">遅延中</div></div>
+    <div class="delay-stat"><div class="delay-stat-n">${maxDelayDays}</div><div class="delay-stat-l">最大遅延日数</div></div>
+    <div class="delay-stat"><div class="delay-stat-n" style="color:#4f46e5">${mergeCands.length}</div><div class="delay-stat-l">統合候補</div></div>
+    <div class="delay-stat"><div class="delay-stat-n" style="color:#059669">${postCands.length}</div><div class="delay-stat-l">延長候補</div></div>
+    <div class="delay-stat"><div class="delay-stat-n" style="color:#1a73e8">${fixCands.length}</div><div class="delay-stat-l">修正リスト候補</div></div>
+  </div>`;
+
+  if(triageMode){
+    html+=`<div class="delay-triage"><h3>遅延タスクが多くなっています（${allDelayed.length}件）</h3>
+      <div style="font-size:13px;color:var(--color-text-warning);margin-bottom:10px">まず処理したいグループを選んでください：</div>
+      ${urgentCands.length?`<button class="triage-btn" onclick="delayTriageFilter('urgent')">今すぐ処理（進捗70%以上） ${urgentCands.length}件</button>`:''}
+      ${mergeCands.length?`<button class="triage-btn" onclick="delayTriageFilter('merge')">統合候補 ${mergeCands.length}件</button>`:''}
+      ${postCands.length?`<button class="triage-btn" onclick="delayTriageFilter('post')">延長候補 ${postCands.length}件</button>`:''}
+      ${fixCands.length?`<button class="triage-btn" onclick="delayTriageFilter('fix')">修正リスト候補 ${fixCands.length}件</button>`:''}
+      <button class="triage-btn" onclick="delayTriageFilter('all')">全件を日付順で見る ${allDelayed.length}件</button>
+    </div>`;
+  }
+
+  const sortLabel={start:'開始日順',delayDays:'遅延日数順',proj:'PJ順',owner:'担当者順',prog:'進捗率順'};
+  const arrow=key=>delaySortKey===key?(delaySortAsc?'▲':'▼'):'↕';
+  html+=`<div class="delay-toolbar">
+    <label style="font-size:13px;display:flex;align-items:center;gap:6px;cursor:pointer">
+      <input type="checkbox" ${displayed.length&&displayed.every(t=>delaySelected.has(t.id))?'checked':''} onchange="selectAllDelay(this.checked,${JSON.stringify(displayed.map(t=>t.id))})"> 全選択
+    </label>
+    <select onchange="delaySortKey=this.value;delaySortAsc=true;rDelay()">
+      ${Object.entries(sortLabel).map(([k,v])=>`<option value="${k}" ${delaySortKey===k?'selected':''}>${v}</option>`).join('')}
+    </select>
+    <select onchange="delayFilterProj=this.value;rDelay()">
+      <option value="">全プロジェクト</option>
+      ${projOpts.map(p=>`<option value="${p}" ${delayFilterProj===p?'selected':''}>${PROJ[p]?.name||p}</option>`).join('')}
+    </select>
+    <select onchange="delayFilterOwner=this.value;rDelay()">
+      <option value="">全担当者</option>
+      ${ownerOpts.map(o=>`<option value="${o}" ${delayFilterOwner===o?'selected':''}>${getP(o).name}</option>`).join('')}
+    </select>
+    <span style="font-size:12px;color:var(--color-text-secondary);margin-left:auto">${displayed.length}件表示</span>
+  </div>`;
+
+  html+=`<div class="card" style="padding:0;overflow:hidden"><table class="delay-table"><thead><tr>
+    <th style="width:32px"></th>
+    <th onclick="toggleDelaySort('start')">開始日 <span class="sort-arrow">${arrow('start')}</span></th>
+    <th>タスク名</th>
+    <th onclick="toggleDelaySort('proj')">PJ <span class="sort-arrow">${arrow('proj')}</span></th>
+    <th onclick="toggleDelaySort('owner')">担当 <span class="sort-arrow">${arrow('owner')}</span></th>
+    <th onclick="toggleDelaySort('delayDays')">遅延 <span class="sort-arrow">${arrow('delayDays')}</span></th>
+    <th onclick="toggleDelaySort('prog')">進捗 <span class="sort-arrow">${arrow('prog')}</span></th>
+    <th>候補</th>
+  </tr></thead><tbody>`;
+
+  displayed.forEach(t=>{
+    const p=getP(t.owner),pj=PROJ[t.proj];
+    const delDays=dd(pd(t.end),TODAY);
+    const isSel=delaySelected.has(t.id);
+    const isMC=mergeCands.includes(t),isFC=fixCands.includes(t),isPC=postCands.includes(t);
+    html+=`<tr class="${isSel?'sel-row':''}" onclick="toggleDelaySelect('${t.id}',event)" style="cursor:pointer">
+      <td><input type="checkbox" ${isSel?'checked':''} onclick="event.stopPropagation();toggleDelaySelect('${t.id}',event)"></td>
+      <td style="font-size:12px;white-space:nowrap">${fs(t.start)}<br><span style="color:var(--color-text-tertiary)">${fs(t.end)}</span></td>
+      <td>
+        <div style="font-size:13px;font-weight:500;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${t.name}">${t.name}</div>
+        ${t.cond?`<div style="font-size:11px;color:var(--color-text-secondary);margin-top:2px">${t.cond.substring(0,35)}${t.cond.length>35?'…':''}</div>`:''}
+      </td>
+      <td><span class="badge" style="background:${pj?.color+'18'||'#eee'};color:${pj?.color||'#666'}">${pj?.name||t.proj}</span></td>
+      <td><span class="badge" style="background:${p.color}18;color:${p.color}">${p.name}</span></td>
+      <td style="color:#ea4335;font-weight:500;white-space:nowrap">+${delDays}日</td>
+      <td><div style="width:46px"><div class="mpbar"><div class="mpfil" style="width:${t.prog||0}%;background:#ea4335"></div></div></div><div style="font-size:11px;color:var(--color-text-secondary)">${t.prog||0}%</div></td>
+      <td style="font-size:11px;white-space:nowrap">${isMC?'<span style="color:#4f46e5">統合↗</span> ':''} ${isFC?'<span style="color:#1a73e8">修正↗</span> ':''} ${isPC?'<span style="color:#059669">延長↗</span>':''}</td>
+    </tr>`;
   });
+  html+=`</tbody></table></div>`;
+
+  if(selCount>0){
+    const allSamePrj=selTasks.every(t=>t.proj===selTasks[0].proj);
+    html+=`<div class="delay-action-bar">
+      <div class="sel-count">${selCount}件を選択中${!allSamePrj?' ⚠ 異なるPJが含まれています':''}</div>
+      ${selCount>=2?`<button class="btn pr sm" onclick="openMergePreview()">選択したタスクを統合する</button>`:'<span style="font-size:12px;color:var(--color-text-secondary)">統合は2件以上</span>'}
+      <button class="btn sm" onclick="bulkPostpone()">まとめて延長</button>
+      <button class="btn sm" onclick="bulkSendToFix()">まとめて修正リストへ</button>
+      <button class="btn sm" style="color:var(--color-text-tertiary)" onclick="delaySelected.clear();rDelay()">選択解除</button>
+    </div>`;
+  }
+
+  if(delayMergePreview){
+    const pt=delayMergePreview.tasks,days=delayMergePreview.days||3;
+    const allSamePrj=pt.every(t=>t.proj===pt[0].proj);
+    html+=`<div class="merge-preview">
+      <h3>統合プレビュー</h3>
+      ${!allSamePrj?'<div class="notice" style="background:#fce8e6;color:#c5221f;margin-bottom:10px">異なるプロジェクトのタスクが含まれています。</div>':''}
+      ${pt.map(t=>`<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-top:0.5px solid var(--color-border-tertiary)">
+        <span class="badge" style="background:${PROJ[t.proj]?.color+'18'};color:${PROJ[t.proj]?.color}">${PROJ[t.proj]?.name||t.proj}</span>
+        <span style="flex:1;font-size:13px">${t.name}</span>
+        <span style="font-size:12px;color:#ea4335">+${dd(pd(t.end),TODAY)}日</span>
+        <span style="font-size:12px;color:var(--color-text-secondary)">${t.prog||0}%</span>
+      </div>`).join('')}
+      <div style="margin:10px 0">
+        <label style="font-size:12px;font-weight:500;color:var(--color-text-secondary);display:block;margin-bottom:4px">統合後のタスク名</label>
+        <input type="text" id="merge-name-input" value="${delayMergePreview.name}">
+      </div>
+      <div class="dur-wrap" id="dur-wrap-preview"><span>統合日数:</span>
+        ${DAY_OPTS.map(d=>`<button class="dur-btn${days===d?' active':''}" onclick="setMergePreviewDays(${d})">${d}日${d===suggestDays(pt)?' (推奨)':''}</button>`).join('')}
+        <button class="dur-btn" onclick="showMergePreviewCustom()">カスタム</button>
+      </div>
+      <div class="dur-custom" id="dur-custom-preview"><span>日数:</span><input type="number" id="dur-n-preview" min="1" max="30" value="${days}" style="width:70px"><button class="btn sm" onclick="setMergePreviewCustom()">適用</button></div>
+      <div class="merge-detail" style="margin-top:8px">
+        <div style="font-weight:500;margin-bottom:5px">スケジュール案（${days}日）:</div>
+        <div id="merge-preview-sched">${genSched(pt,days,TODAY_STR).map(s=>`<div style="padding:2px 0">${s}</div>`).join('')}</div>
+      </div>
+      <div style="font-size:12px;color:var(--color-text-secondary);margin-top:8px">統合後も「元のタスクに戻す」で復元できます。</div>
+      <div class="btn-row">
+        <button class="btn pr" onclick="executeMergePreview()">この内容で統合する</button>
+        <button class="btn" onclick="delayMergePreview=null;rDelay()">キャンセル</button>
+      </div>
+    </div>`;
+  }
+
   el.innerHTML=html;
 }
 
-async function applyMerge(k){
-  const g=mgroups[k];if(!g)return;
-  const tasks=TASKS.filter(t=>g.ids.includes(t.id));
-  const days=g.days||3;
+function toggleDelaySort(key){
+  if(delaySortKey===key)delaySortAsc=!delaySortAsc;
+  else{delaySortKey=key;delaySortAsc=key!=='delayDays'&&key!=='prog';}
+  rDelay();
+}
+function toggleDelaySelect(id,ev){
+  if(ev&&ev.target&&(ev.target.tagName==='BUTTON'||ev.target.tagName==='SELECT'))return;
+  if(delaySelected.has(id))delaySelected.delete(id);else delaySelected.add(id);
+  rDelay();
+}
+function selectAllDelay(checked,ids){
+  if(checked)ids.forEach(id=>delaySelected.add(id));
+  else ids.forEach(id=>delaySelected.delete(id));
+  rDelay();
+}
+function delayTriageFilter(type){
+  const allDelayed=filt().filter(isDel);
+  const mergeCands=allDelayed.filter(t=>isMergeCandidate(allDelayed,t));
+  const fixCands=allDelayed.filter(t=>(t.prog||0)>=50&&!mergeCands.includes(t));
+  const postCands=allDelayed.filter(t=>!mergeCands.includes(t)&&!fixCands.includes(t));
+  const urgentCands=allDelayed.filter(t=>(t.prog||0)>=70);
+  delaySelected.clear();
+  if(type==='merge')mergeCands.forEach(t=>delaySelected.add(t.id));
+  else if(type==='fix')fixCands.forEach(t=>delaySelected.add(t.id));
+  else if(type==='post')postCands.forEach(t=>delaySelected.add(t.id));
+  else if(type==='urgent')urgentCands.forEach(t=>delaySelected.add(t.id));
+  delaySortKey='start';delaySortAsc=true;delayFilterProj='';delayFilterOwner='';
+  rDelay();
+}
+function openMergePreview(){
+  const tasks=TASKS.filter(t=>delaySelected.has(t.id));
+  if(tasks.length<2)return;
+  const days=suggestDays(tasks);
+  const pj=PROJ[tasks[0].proj];
+  delayMergePreview={tasks,days,name:pj?`${pj.name}：遅延タスク統合（${tasks.length}件）`:'遅延タスク統合（'+tasks.length+'件）'};
+  rDelay();
+  setTimeout(()=>document.querySelector('.merge-preview')?.scrollIntoView({behavior:'smooth',block:'start'}),100);
+}
+function setMergePreviewDays(d){
+  if(!delayMergePreview)return;
+  delayMergePreview.days=d;
+  const sc=document.getElementById('merge-preview-sched');
+  if(sc)sc.innerHTML=genSched(delayMergePreview.tasks,d,TODAY_STR).map(s=>`<div style="padding:2px 0">${s}</div>`).join('');
+  document.querySelectorAll('#dur-wrap-preview .dur-btn').forEach((b,i)=>b.classList.toggle('active',DAY_OPTS[i]===d));
+  document.getElementById('dur-custom-preview')?.classList.remove('show');
+}
+function showMergePreviewCustom(){document.getElementById('dur-custom-preview')?.classList.add('show');}
+function setMergePreviewCustom(){
+  const n=parseInt(document.getElementById('dur-n-preview')?.value||'3');
+  if(n>0&&n<=30)setMergePreviewDays(n);
+}
+async function executeMergePreview(){
+  if(!delayMergePreview)return;
+  const {tasks,days}=delayMergePreview;
+  const customName=document.getElementById('merge-name-input')?.value.trim()||'';
   const mergeId='mg-'+Date.now(),groupId='mgr-'+Date.now();
   const merged={type:'merged_task',proj:tasks[0].proj,owner:tasks[0].owner,
-    name:'【統合】'+tasks.map(t=>t.name.substring(0,8)).join('・'),
+    name:customName||'【統合】'+tasks.map(t=>t.name.substring(0,8)).join('・'),
     start:TODAY_STR,end:addDays(TODAY_STR,days-1),
-    prog:Math.min(...tasks.map(t=>t.prog||0)),
-    cond:tasks.map(t=>t.cond||t.name).join(' / '),
+    prog:Math.min(...tasks.map(t=>t.prog||0)),cond:tasks.map(t=>t.cond||t.name).join(' / '),
     merge_group_id:groupId,merged_from_task_ids:tasks.map(t=>t.id),
     merge_duration_days:days,can_unmerge:true,
-    visible:true,archived:false,merged:false,
-    google_event_id:null,sync_status:'unsynced',
-  };
+    visible:true,archived:false,merged:false,google_event_id:null,sync_status:'unsynced'};
   const batch=db.batch();
   tasks.forEach(t=>batch.update(db.collection('tasks').doc(t.id),{merged:true,merged_into:mergeId,merge_group_id:groupId,visible:false,updated:now$()}));
   batch.set(db.collection('tasks').doc(mergeId),{...merged,created:now$(),updated:now$()});
-  batch.set(db.collection('merge_groups').doc(groupId),{id:groupId,merged_task_id:mergeId,duration_days:days,original_tasks:tasks.map(t=>({id:t.id,name:t.name,start:t.start,end:t.end,prog:t.prog,owner:t.owner,proj:t.proj,cond:t.cond||''})),created_at:now$(),restored_at:null,status:'active'});
-  batch.set(db.collection('fixes').doc(),{task:PROJ[tasks[0].proj]?.name||'',pri:'mid',status:'pending',done:false,content:'統合タスク品質懸念（修正期間に対応）: '+tasks.map(t=>t.name).join('、'),when:'全体修正期間',created:now$()});
+  batch.set(db.collection('merge_groups').doc(groupId),{id:groupId,merged_task_id:mergeId,duration_days:days,
+    original_tasks:tasks.map(t=>({id:t.id,name:t.name,start:t.start,end:t.end,prog:t.prog,owner:t.owner,proj:t.proj,cond:t.cond||''})),
+    created_at:now$(),restored_at:null,status:'active'});
+  batch.set(db.collection('fixes').doc(),{task:PROJ[tasks[0].proj]?.name||'',pri:'mid',status:'pending',done:false,
+    content:'統合タスク品質懸念: '+tasks.map(t=>t.name).join('、'),when:'全体修正期間',created:now$()});
+  await batch.commit();
+  await logOp('merge',{merged_task:mergeId,tasks:tasks.map(t=>t.name),duration_days:days});
+  delaySelected.clear();delayMergePreview=null;
+}
+async function applyMerge(k){
+  const g=mgroups[k];if(!g)return;
+  const tasks=TASKS.filter(t=>g.ids.includes(t.id));
+  const days=g.days||3;const mergeId='mg-'+Date.now(),groupId='mgr-'+Date.now();
+  const merged={type:'merged_task',proj:tasks[0].proj,owner:tasks[0].owner,
+    name:'【統合】'+tasks.map(t=>t.name.substring(0,8)).join('・'),
+    start:TODAY_STR,end:addDays(TODAY_STR,days-1),
+    prog:Math.min(...tasks.map(t=>t.prog||0)),cond:tasks.map(t=>t.cond||t.name).join(' / '),
+    merge_group_id:groupId,merged_from_task_ids:tasks.map(t=>t.id),
+    merge_duration_days:days,can_unmerge:true,visible:true,archived:false,merged:false,google_event_id:null,sync_status:'unsynced'};
+  const batch=db.batch();
+  tasks.forEach(t=>batch.update(db.collection('tasks').doc(t.id),{merged:true,merged_into:mergeId,merge_group_id:groupId,visible:false,updated:now$()}));
+  batch.set(db.collection('tasks').doc(mergeId),{...merged,created:now$(),updated:now$()});
+  batch.set(db.collection('merge_groups').doc(groupId),{id:groupId,merged_task_id:mergeId,duration_days:days,
+    original_tasks:tasks.map(t=>({id:t.id,name:t.name,start:t.start,end:t.end,prog:t.prog,owner:t.owner,proj:t.proj,cond:t.cond||''})),
+    created_at:now$(),restored_at:null,status:'active'});
+  batch.set(db.collection('fixes').doc(),{task:PROJ[tasks[0].proj]?.name||'',pri:'mid',status:'pending',done:false,
+    content:'統合タスク品質懸念: '+tasks.map(t=>t.name).join('、'),when:'全体修正期間',created:now$()});
   await batch.commit();
   await logOp('merge',{merged_task:mergeId,tasks:tasks.map(t=>t.name),duration_days:days});
   delete mgroups[k];
+}
+async function bulkPostpone(){
+  const tasks=TASKS.filter(t=>delaySelected.has(t.id));if(!tasks.length)return;
+  const newEnd=addDays(TODAY_STR,4);
+  if(!confirm(`選択した${tasks.length}件の終了日を${newEnd}まで延長します。`))return;
+  const batch=db.batch();
+  tasks.forEach(t=>batch.update(db.collection('tasks').doc(t.id),{end:newEnd,sync_status:'dirty',updated:now$()}));
+  await batch.commit();
+  await logOp('bulk_postpone',{task_ids:[...delaySelected],new_end:newEnd});
+  delaySelected.clear();
+}
+async function bulkSendToFix(){
+  const tasks=TASKS.filter(t=>delaySelected.has(t.id));if(!tasks.length)return;
+  if(!confirm(`選択した${tasks.length}件を修正リストへ移します。`))return;
+  const batch=db.batch();
+  tasks.forEach(t=>{
+    batch.set(db.collection('fixes').doc(),{task:t.name,pri:'high',status:'pending',done:false,
+      content:`遅延により修正リストへ移動。次工程最低条件: ${t.cond||'未設定'}`,when:'全体修正期間',created:now$()});
+    batch.update(db.collection('tasks').doc(t.id),{end:addDays(TODAY_STR,2),sync_status:'dirty',updated:now$()});
+  });
+  await batch.commit();
+  await logOp('bulk_send_to_fix',{tasks:tasks.map(t=>t.name)});
+  delaySelected.clear();sw('fixlist');
 }
 async function applyPost(k,newEnd){
   const g=mgroups[k];if(!g)return;
   const batch=db.batch();
   g.ids.forEach(id=>batch.update(db.collection('tasks').doc(id),{end:newEnd,sync_status:'dirty',updated:now$()}));
-  await batch.commit();
-  await logOp('postpone',{task_ids:g.ids,new_end:newEnd});
-  delete mgroups[k];
+  await batch.commit();await logOp('postpone',{task_ids:g.ids,new_end:newEnd});delete mgroups[k];
 }
 async function sendToFix(k){
   const g=mgroups[k];if(!g)return;
   const tasks=TASKS.filter(t=>g.ids.includes(t.id));
   const batch=db.batch();
   tasks.forEach(t=>{
-    batch.set(db.collection('fixes').doc(),{task:t.name,pri:'high',status:'pending',done:false,content:`遅延により修正リストへ移動。次工程最低条件: ${t.cond||'未設定'}`,when:'全体修正期間',created:now$()});
+    batch.set(db.collection('fixes').doc(),{task:t.name,pri:'high',status:'pending',done:false,
+      content:`遅延により修正リストへ移動。次工程最低条件: ${t.cond||'未設定'}`,when:'全体修正期間',created:now$()});
     batch.update(db.collection('tasks').doc(t.id),{end:addDays(TODAY_STR,2),sync_status:'dirty',updated:now$()});
   });
-  await batch.commit();
-  await logOp('send_to_fix',{tasks:tasks.map(t=>t.name)});
-  delete mgroups[k];sw('fixlist');
+  await batch.commit();await logOp('send_to_fix',{tasks:tasks.map(t=>t.name)});delete mgroups[k];sw('fixlist');
 }
 async function restoreMerge(mergedTaskId,groupId){
   if(!confirm('この統合タスクを解除し、元のタスクを復元します。実行しますか？'))return;
@@ -964,8 +1217,7 @@ async function restoreMerge(mergedTaskId,groupId){
     batch.update(db.collection('tasks').doc(mergedTaskId),{archived:true,visible:false,updated:now$()});
     mg.original_tasks.forEach(ot=>batch.update(db.collection('tasks').doc(ot.id),{merged:false,merged_into:null,merge_group_id:null,visible:true,updated:now$()}));
     batch.update(db.collection('merge_groups').doc(groupId),{restored_at:now$(),status:'restored'});
-    await batch.commit();
-    await logOp('unmerge',{merged_task_id:mergedTaskId,group_id:groupId});
+    await batch.commit();await logOp('unmerge',{merged_task_id:mergedTaskId,group_id:groupId});
   }catch(e){alert('復元に失敗しました: '+e.message);}
 }
 
