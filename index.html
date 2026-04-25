@@ -131,27 +131,27 @@ input.fi{width:100%;border:1px solid #dadce0;border-radius:8px;padding:9px 10px;
 
 /* ── delay v2 ── */
 .delay-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:8px;margin-bottom:14px}
-.delay-stat{background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:10px 12px;text-align:center}
-.delay-stat-n{font-size:22px;font-weight:500;color:var(--color-text-primary)}
-.delay-stat-l{font-size:11px;color:var(--color-text-secondary);margin-top:2px}
+.delay-stat{background:#f8f9fa;border-radius:8px;padding:10px 12px;text-align:center}
+.delay-stat-n{font-size:22px;font-weight:500;color:#1a1a1a}
+.delay-stat-l{font-size:11px;color:#666;margin-top:2px}
 .delay-toolbar{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap}
-.delay-toolbar select{font-size:12px;padding:5px 8px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);background:var(--color-background-primary);color:var(--color-text-primary)}
+.delay-toolbar select{font-size:12px;padding:5px 8px;border:0.5px solid #dadce0;border-radius:8px;background:#fff;color:#1a1a1a}
 .delay-table{width:100%;border-collapse:collapse}
-.delay-table th{font-size:11px;font-weight:600;color:var(--color-text-secondary);text-align:left;padding:7px 8px;border-bottom:1px solid var(--color-border-tertiary);white-space:nowrap;cursor:pointer;user-select:none}
-.delay-table th:hover{color:var(--color-text-primary)}
-.delay-table td{font-size:13px;padding:8px;border-bottom:0.5px solid var(--color-border-tertiary);vertical-align:middle}
+.delay-table th{font-size:11px;font-weight:600;color:#666;text-align:left;padding:7px 8px;border-bottom:1px solid #e8e6df;white-space:nowrap;cursor:pointer;user-select:none}
+.delay-table th:hover{color:#1a1a1a}
+.delay-table td{font-size:13px;padding:8px;border-bottom:0.5px solid #e8e6df;vertical-align:middle}
 .delay-table tr:last-child td{border-bottom:none}
-.delay-table tr.sel-row{background:var(--color-background-info)}
-.delay-table tr:hover td{background:var(--color-background-secondary)}
-.delay-action-bar{background:var(--color-background-primary);border:1.5px solid #1a73e8;border-radius:var(--border-radius-lg);padding:12px 14px;margin-top:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.delay-table tr.sel-row{background:#e8f0fe}
+.delay-table tr:hover td{background:#f8f9fa}
+.delay-action-bar{background:#fff;border:1.5px solid #1a73e8;border-radius:12px;padding:12px 14px;margin-top:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .delay-action-bar .sel-count{font-size:13px;font-weight:500;flex:1;color:#1557b0}
-.merge-preview{background:var(--color-background-primary);border:1px solid var(--color-border-secondary);border-radius:var(--border-radius-lg);padding:14px;margin-top:12px}
-.merge-preview h3{font-size:14px;font-weight:600;margin-bottom:10px;color:var(--color-text-primary)}
+.merge-preview{background:#fff;border:1px solid #dadce0;border-radius:12px;padding:14px;margin-top:12px}
+.merge-preview h3{font-size:14px;font-weight:600;margin-bottom:10px;color:#1a1a1a}
 .sort-arrow{font-size:10px;margin-left:2px}
-.delay-triage{background:var(--color-background-warning);border:0.5px solid var(--color-border-warning);border-radius:var(--border-radius-lg);padding:14px;margin-bottom:14px}
-.delay-triage h3{font-size:14px;font-weight:600;color:var(--color-text-warning);margin-bottom:10px}
-.triage-btn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);background:var(--color-background-primary);cursor:pointer;font-size:13px;color:var(--color-text-primary);margin:4px 4px 4px 0;font-family:inherit}
-.triage-btn:hover{background:var(--color-background-secondary)}
+.delay-triage{background:#fffbeb;border:0.5px solid #fde68a;border-radius:12px;padding:14px;margin-bottom:14px}
+.delay-triage h3{font-size:14px;font-weight:600;color:#78350f;margin-bottom:10px}
+.triage-btn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border:0.5px solid #dadce0;border-radius:8px;background:#fff;cursor:pointer;font-size:13px;color:#1a1a1a;margin:4px 4px 4px 0;font-family:inherit}
+.triage-btn:hover{background:#f8f9fa}
 .delay-opts{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px}
 @media(max-width:640px){.delay-opts{grid-template-columns:1fr}}
 .dopt{border:1px solid #e8e6df;border-radius:11px;padding:12px;background:#fff}
@@ -614,6 +614,7 @@ function sw(t){
   document.querySelectorAll('.panel').forEach(el=>el.classList.remove('active'));
   const p=document.getElementById('panel-'+t);if(p)p.classList.add('active');
   if(t==='oplog'){document.getElementById('tab-oplog').style.display='';loadOpLogs();}
+  if(t==='delay'){delaySortKey='start';delaySortAsc=true;}
   if(t==='unset')document.getElementById('tab-unset').style.display='';
   renderAll();
 }
@@ -646,7 +647,7 @@ function rCal(){
     const thisMo=date.getMonth()===calM,isT=date.toDateString()===TODAY.toDateString();
     const isSel=selDay&&date.toDateString()===selDay.toDateString();
     const ds=date.toISOString().slice(0,10);
-    const dt=tasks.filter(t=>pd(t.start)<=date&&pd(t.end)>=date).sort((a,b)=>isMg(b)-isMg(a)||isDel(b)-isDel(a));
+    const dt=sortByDate(tasks.filter(t=>pd(t.start)<=date&&pd(t.end)>=date));
     const dow=date.getDay();
     html+=`<div class="cal-cell${isSel?' sel':''}" style="${!thisMo?'opacity:.22':''}" onclick="selDay$('${ds}')">
       <div class="cal-dn${isT?' today':''}" style="${dow===0?'color:#ea4335':dow===6?'color:#1a73e8':''}">${date.getDate()}</div>`;
@@ -708,7 +709,7 @@ function rGantt(){
   <div class="gantt-wrap"><div class="gantt"><div class="gh">${lbls.map(l=>`<div class="glc" style="left:${l.x}">${l.t}</div>`).join('')}</div>`;
 
   PEOPLE.filter(p=>visPeople.has(p.id)).forEach(person=>{
-    const pt=[...tasks.filter(t=>t.owner===person.id)].sort((a,b)=>prio(a)-prio(b));
+    const pt=sortByDate(tasks.filter(t=>t.owner===person.id));
     if(!pt.length)return;
     const pj_c=person.color;
     html+=`<div class="gr g-person-hdr"><div class="gl" style="font-weight:600;font-size:13px;color:${pj_c};padding:4px 8px">${person.name}</div><div class="gtrack" style="background:${pj_c}0c"><div class="gtoday" style="left:${tp}"></div></div></div>`;
@@ -963,7 +964,7 @@ function rDelay(){
 
   if(triageMode){
     html+=`<div class="delay-triage"><h3>遅延タスクが多くなっています（${allDelayed.length}件）</h3>
-      <div style="font-size:13px;color:var(--color-text-warning);margin-bottom:10px">まず処理したいグループを選んでください：</div>
+      <div style="font-size:13px;color:#78350f;margin-bottom:10px">まず処理したいグループを選んでください：</div>
       ${urgentCands.length?`<button class="triage-btn" onclick="delayTriageFilter('urgent')">今すぐ処理（進捗70%以上） ${urgentCands.length}件</button>`:''}
       ${mergeCands.length?`<button class="triage-btn" onclick="delayTriageFilter('merge')">統合候補 ${mergeCands.length}件</button>`:''}
       ${postCands.length?`<button class="triage-btn" onclick="delayTriageFilter('post')">延長候補 ${postCands.length}件</button>`:''}
@@ -989,7 +990,7 @@ function rDelay(){
       <option value="">全担当者</option>
       ${ownerOpts.map(o=>`<option value="${o}" ${delayFilterOwner===o?'selected':''}>${getP(o).name}</option>`).join('')}
     </select>
-    <span style="font-size:12px;color:var(--color-text-secondary);margin-left:auto">${displayed.length}件表示</span>
+    <span style="font-size:12px;color:#666;margin-left:auto">${displayed.length}件表示</span>
   </div>`;
 
   html+=`<div class="card" style="padding:0;overflow:hidden"><table class="delay-table"><thead><tr>
@@ -1010,15 +1011,15 @@ function rDelay(){
     const isMC=mergeCands.includes(t),isFC=fixCands.includes(t),isPC=postCands.includes(t);
     html+=`<tr class="${isSel?'sel-row':''}" onclick="toggleDelaySelect('${t.id}',event)" style="cursor:pointer">
       <td><input type="checkbox" ${isSel?'checked':''} onclick="event.stopPropagation();toggleDelaySelect('${t.id}',event)"></td>
-      <td style="font-size:12px;white-space:nowrap">${fs(t.start)}<br><span style="color:var(--color-text-tertiary)">${fs(t.end)}</span></td>
+      <td style="font-size:12px;white-space:nowrap">${fs(t.start)}<br><span style="color:#aaa">${fs(t.end)}</span></td>
       <td>
         <div style="font-size:13px;font-weight:500;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${t.name}">${t.name}</div>
-        ${t.cond?`<div style="font-size:11px;color:var(--color-text-secondary);margin-top:2px">${t.cond.substring(0,35)}${t.cond.length>35?'…':''}</div>`:''}
+        ${t.cond?`<div style="font-size:11px;color:#666;margin-top:2px">${t.cond.substring(0,35)}${t.cond.length>35?'…':''}</div>`:''}
       </td>
       <td><span class="badge" style="background:${pj?.color+'18'||'#eee'};color:${pj?.color||'#666'}">${pj?.name||t.proj}</span></td>
       <td><span class="badge" style="background:${p.color}18;color:${p.color}">${p.name}</span></td>
       <td style="color:#ea4335;font-weight:500;white-space:nowrap">+${delDays}日</td>
-      <td><div style="width:46px"><div class="mpbar"><div class="mpfil" style="width:${t.prog||0}%;background:#ea4335"></div></div></div><div style="font-size:11px;color:var(--color-text-secondary)">${t.prog||0}%</div></td>
+      <td><div style="width:46px"><div class="mpbar"><div class="mpfil" style="width:${t.prog||0}%;background:#ea4335"></div></div></div><div style="font-size:11px;color:#666">${t.prog||0}%</div></td>
       <td style="font-size:11px;white-space:nowrap">${isMC?'<span style="color:#4f46e5">統合↗</span> ':''} ${isFC?'<span style="color:#1a73e8">修正↗</span> ':''} ${isPC?'<span style="color:#059669">延長↗</span>':''}</td>
     </tr>`;
   });
@@ -1028,10 +1029,10 @@ function rDelay(){
     const allSamePrj=selTasks.every(t=>t.proj===selTasks[0].proj);
     html+=`<div class="delay-action-bar">
       <div class="sel-count">${selCount}件を選択中${!allSamePrj?' ⚠ 異なるPJが含まれています':''}</div>
-      ${selCount>=2?`<button class="btn pr sm" onclick="openMergePreview()">選択したタスクを統合する</button>`:'<span style="font-size:12px;color:var(--color-text-secondary)">統合は2件以上</span>'}
+      ${selCount>=2?`<button class="btn pr sm" onclick="openMergePreview()">選択したタスクを統合する</button>`:'<span style="font-size:12px;color:#666">統合は2件以上</span>'}
       <button class="btn sm" onclick="bulkPostpone()">まとめて延長</button>
       <button class="btn sm" onclick="bulkSendToFix()">まとめて修正リストへ</button>
-      <button class="btn sm" style="color:var(--color-text-tertiary)" onclick="delaySelected.clear();rDelay()">選択解除</button>
+      <button class="btn sm" style="color:#aaa" onclick="delaySelected.clear();rDelay()">選択解除</button>
     </div>`;
   }
 
@@ -1041,14 +1042,14 @@ function rDelay(){
     html+=`<div class="merge-preview">
       <h3>統合プレビュー</h3>
       ${!allSamePrj?'<div class="notice" style="background:#fce8e6;color:#c5221f;margin-bottom:10px">異なるプロジェクトのタスクが含まれています。</div>':''}
-      ${pt.map(t=>`<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-top:0.5px solid var(--color-border-tertiary)">
+      ${sortByDate(pt).map(t=>`<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-top:0.5px solid #e8e6df">
         <span class="badge" style="background:${PROJ[t.proj]?.color+'18'};color:${PROJ[t.proj]?.color}">${PROJ[t.proj]?.name||t.proj}</span>
         <span style="flex:1;font-size:13px">${t.name}</span>
         <span style="font-size:12px;color:#ea4335">+${dd(pd(t.end),TODAY)}日</span>
-        <span style="font-size:12px;color:var(--color-text-secondary)">${t.prog||0}%</span>
+        <span style="font-size:12px;color:#666">${t.prog||0}%</span>
       </div>`).join('')}
       <div style="margin:10px 0">
-        <label style="font-size:12px;font-weight:500;color:var(--color-text-secondary);display:block;margin-bottom:4px">統合後のタスク名</label>
+        <label style="font-size:12px;font-weight:500;color:#666;display:block;margin-bottom:4px">統合後のタスク名</label>
         <input type="text" id="merge-name-input" value="${delayMergePreview.name}">
       </div>
       <div class="dur-wrap" id="dur-wrap-preview"><span>統合日数:</span>
@@ -1060,7 +1061,7 @@ function rDelay(){
         <div style="font-weight:500;margin-bottom:5px">スケジュール案（${days}日）:</div>
         <div id="merge-preview-sched">${genSched(pt,days,TODAY_STR).map(s=>`<div style="padding:2px 0">${s}</div>`).join('')}</div>
       </div>
-      <div style="font-size:12px;color:var(--color-text-secondary);margin-top:8px">統合後も「元のタスクに戻す」で復元できます。</div>
+      <div style="font-size:12px;color:#666;margin-top:8px">統合後も「元のタスクに戻す」で復元できます。</div>
       <div class="btn-row">
         <button class="btn pr" onclick="executeMergePreview()">この内容で統合する</button>
         <button class="btn" onclick="delayMergePreview=null;rDelay()">キャンセル</button>
@@ -1679,13 +1680,15 @@ function renderPushPreview(){
     <div style="background:#f1f3f4;border-radius:10px;padding:12px"><div style="font-size:28px;font-weight:600;color:#5f6368">${toSkip.length}</div><div style="font-size:13px;color:#5f6368">変更なし</div></div>
   </div>`;
   if(toCreate.length){
+    const toCreateSorted=sortByDate(toCreate);
     html+=`<div class="card"><div class="card-t" style="color:#137333">新規作成（${toCreate.length}件）</div>`;
-    toCreate.forEach(({name,start,end,owner,proj})=>{const p=getP(owner),pj=PROJ[proj];html+=`<div class="prev-row"><span class="pt-new prev-type">新規</span>${pj?`<span class="badge" style="background:${pj.color}18;color:${pj.color}">${pj.name}</span>`:''}<span class="badge" style="background:${p.color}18;color:${p.color}">${p.name}</span><span style="flex:1;font-size:13px">${name}</span><span style="font-size:12px;color:#888">${fs(start)}〜${fs(end)}</span></div>`;});
+    toCreateSorted.forEach(({name,start,end,owner,proj})=>{const p=getP(owner),pj=PROJ[proj];html+=`<div class="prev-row"><span class="pt-new prev-type">新規</span>${pj?`<span class="badge" style="background:${pj.color}18;color:${pj.color}">${pj.name}</span>`:''}<span class="badge" style="background:${p.color}18;color:${p.color}">${p.name}</span><span style="flex:1;font-size:13px">${name}</span><span style="font-size:12px;color:#888">${fs(start)}〜${fs(end)}</span></div>`;});
     html+='</div>';
   }
   if(toUpdate.length){
+    const toUpdateSorted=sortByDate(toUpdate);
     html+=`<div class="card"><div class="card-t" style="color:#1557b0">更新（${toUpdate.length}件）</div>`;
-    toUpdate.forEach(({name,start,end,owner,proj,sync_status})=>{const p=getP(owner),pj=PROJ[proj];html+=`<div class="prev-row"><span class="pt-upd prev-type">更新</span>${pj?`<span class="badge" style="background:${pj.color}18;color:${pj.color}">${pj.name}</span>`:''}<span class="badge" style="background:${p.color}18;color:${p.color}">${p.name}</span><span style="flex:1;font-size:13px">${name}</span><span class="ss ss-dirty">変更あり</span><span style="font-size:12px;color:#888">${fs(start)}〜${fs(end)}</span></div>`;});
+    toUpdateSorted.forEach(({name,start,end,owner,proj,sync_status})=>{const p=getP(owner),pj=PROJ[proj];html+=`<div class="prev-row"><span class="pt-upd prev-type">更新</span>${pj?`<span class="badge" style="background:${pj.color}18;color:${pj.color}">${pj.name}</span>`:''}<span class="badge" style="background:${p.color}18;color:${p.color}">${p.name}</span><span style="flex:1;font-size:13px">${name}</span><span class="ss ss-dirty">変更あり</span><span style="font-size:12px;color:#888">${fs(start)}〜${fs(end)}</span></div>`;});
     html+='</div>';
   }
   if(toSkip.length)html+=`<details style="margin-top:6px"><summary style="font-size:13px;color:#888;cursor:pointer;padding:6px 0">変更なし ${toSkip.length}件（スキップ）</summary><div class="card" style="margin-top:6px">${toSkip.map(({name})=>`<div class="prev-row"><span class="pt-skip prev-type">スキップ</span><span style="flex:1;font-size:13px;color:#777">${name}</span></div>`).join('')}</div></details>`;
