@@ -1297,68 +1297,69 @@ async function doImport(){
       const defaultProj=srcData.default_proj&&srcData.default_proj!=='unset'?srcData.default_proj:'unset';
       const defaultOwner=srcData.default_owner&&srcData.default_owner!=='unset'?srcData.default_owner:'unset';
 
+      // 全ページ分のイベントをまず収集する
+      const allEvents=[];
       let pageToken=undefined;
       do{
         const params={calendarId:cid,timeMin:tmin,timeMax:tmax,maxResults:250,singleEvents:true,orderBy:'startTime'};
         if(pageToken)params.pageToken=pageToken;
         const r=await gapi.client.calendar.events.list(params);
-        const items=r.result.items||[];
+        allEvents.push(...(r.result.items||[]));
         pageToken=r.result.nextPageToken;
-
-        for(const ev of items){
-          const dedupKey=cid+'::'+ev.id;
-          const pmId=ev.extendedProperties?.private?.pm_id;
-
-          if(ev.status==='cancelled'){
-            const local=byGcalKey[dedupKey]||(pmId?byId[pmId]:null);
-            if(local&&local.sync_status!=='gcal_deleted')
-              await db.collection('tasks').doc(local.id).update({sync_status:'gcal_deleted',updated:now$()});
-            continue;
-          }
-
-          // Case A: このアプリが書き出した予定（pm_idで照合）
-          if(pmId&&byId[pmId]){
-            await db.collection('tasks').doc(pmId).update({
-              google_event_id:ev.id,google_calendar_id:cid,sync_status:'synced',updated:now$(),
-            });
-            uc++;countPerCal[cid]=(countPerCal[cid]||0)+1;continue;
-          }
-
-          // Case B: GCal event IDで既存タスクと照合
-          if(byGcalKey[dedupKey]){
-            await db.collection('tasks').doc(byGcalKey[dedupKey].id).update({
-              google_event_id:ev.id,google_calendar_id:cid,sync_status:'synced',updated:now$(),
-            });
-            uc++;countPerCal[cid]=(countPerCal[cid]||0)+1;continue;
-          }
-
-          // Case C: 新規取込み（Googleカレンダーの予定をそのままタスクに）
-          const start=ev.start?.date||ev.start?.dateTime?.slice(0,10)||'';
-          let end=ev.end?.date||ev.end?.dateTime?.slice(0,10)||'';
-          if(start&&end&&dd(pd(start),pd(end))===1)end=start;
-          if(!start){continue;} // 開始日が取れない予定はスキップ
-
-          const taskId='gcal-'+ev.id.slice(0,14);
-          const newTask={
-            id:taskId,
-            name:ev.summary||'（タイトルなし）',
-            start,end,
-            owner:defaultOwner,
-            proj:defaultProj,
-            prog:0,cond:'',
-            google_event_id:ev.id,
-            google_calendar_id:cid,
-            source_type:'google_calendar',
-            source_calendar_id:cid,
-            source_calendar_name:calName,
-            imported_at:now$(),
-            visible:true,archived:false,merged:false,
-            sync_status:'synced',
-          };
-          await db.collection('tasks').doc(taskId).set({...newTask,created:now$(),updated:now$()});
-          nc++;countPerCal[cid]=(countPerCal[cid]||0)+1;
-        }
       }while(pageToken);
+
+      // バッチ書き込み用の操作を積み上げる（Fistore batch は500件上限）
+      const ops=[];
+      for(const ev of allEvents){
+        const dedupKey=cid+'::'+ev.id;
+        const pmId=ev.extendedProperties?.private?.pm_id;
+
+        if(ev.status==='cancelled'){
+          const local=byGcalKey[dedupKey]||(pmId?byId[pmId]:null);
+          if(local&&local.sync_status!=='gcal_deleted')
+            ops.push({type:'update',ref:db.collection('tasks').doc(local.id),data:{sync_status:'gcal_deleted',updated:now$()}});
+          continue;
+        }
+
+        // Case A: このアプリが書き出した予定（pm_idで照合）
+        if(pmId&&byId[pmId]){
+          ops.push({type:'update',ref:db.collection('tasks').doc(pmId),data:{google_event_id:ev.id,google_calendar_id:cid,sync_status:'synced',updated:now$()}});
+          uc++;countPerCal[cid]=(countPerCal[cid]||0)+1;continue;
+        }
+
+        // Case B: GCal event IDで既存タスクと照合
+        if(byGcalKey[dedupKey]){
+          ops.push({type:'update',ref:db.collection('tasks').doc(byGcalKey[dedupKey].id),data:{google_event_id:ev.id,google_calendar_id:cid,sync_status:'synced',updated:now$()}});
+          uc++;countPerCal[cid]=(countPerCal[cid]||0)+1;continue;
+        }
+
+        // Case C: 新規取込み（GCalの予定をそのままタスクに）
+        const start=ev.start?.date||ev.start?.dateTime?.slice(0,10)||'';
+        let end=ev.end?.date||ev.end?.dateTime?.slice(0,10)||'';
+        if(start&&end&&dd(pd(start),pd(end))===1)end=start;
+        if(!start)continue;
+
+        const taskId='gcal-'+ev.id.slice(0,14);
+        const newTask={
+          id:taskId,name:ev.summary||'（タイトルなし）',start,end,
+          owner:defaultOwner,proj:defaultProj,prog:0,cond:'',
+          google_event_id:ev.id,google_calendar_id:cid,
+          source_type:'google_calendar',source_calendar_id:cid,source_calendar_name:calName,
+          imported_at:now$(),visible:true,archived:false,merged:false,sync_status:'synced',
+        };
+        ops.push({type:'set',ref:db.collection('tasks').doc(taskId),data:{...newTask,created:now$(),updated:now$()}});
+        nc++;countPerCal[cid]=(countPerCal[cid]||0)+1;
+      }
+
+      // 500件ずつバッチコミット
+      for(let i=0;i<ops.length;i+=499){
+        const batch=db.batch();
+        ops.slice(i,i+499).forEach(op=>{
+          if(op.type==='set')batch.set(op.ref,op.data);
+          else batch.update(op.ref,op.data);
+        });
+        await batch.commit();
+      }
 
       // calendar_sourcesを作成または更新
       const existing=CAL_SRCS.find(s=>s.calendar_id===cid);
