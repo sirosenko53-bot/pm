@@ -362,12 +362,6 @@ input[type=checkbox]{width:15px;height:15px;cursor:pointer}
         <div id="cal-src-list"><div style="font-size:13px;color:#999">取込済みのカレンダーがありません</div></div>
       </div>
 
-      <!-- 書き戻し設定 -->
-      <div class="modal-sec">
-        <h3>書き戻し先（プロジェクト別）</h3>
-        <div id="writeback-settings"></div>
-      </div>
-
       <div class="sync-actions">
         <button class="sync-act pr" onclick="doImport()">Googleカレンダーから取り込む</button>
         <button class="sync-act" onclick="doWriteback()">調整結果をGoogleへ書き戻す</button>
@@ -1119,7 +1113,7 @@ async function openSync(){
     document.getElementById('cal-notcon').style.display='none';
     document.getElementById('cal-con').style.display='block';
     if(!calList.length)await loadCalList();
-    else{renderCalMappingList();renderCalSrcList();renderWritebackSettings();}
+    else{renderCalMappingList();renderCalSrcList();}
   }else{
     document.getElementById('cal-notcon').style.display='block';
     document.getElementById('cal-con').style.display='none';
@@ -1135,7 +1129,7 @@ async function loadCalList(){
   try{
     const res=await gapi.client.calendar.calendarList.list();
     calList=(res.result.items||[]).map(c=>({id:c.id,name:c.summary,primary:!!c.primary,bgColor:c.backgroundColor}));
-    renderCalMappingList();renderCalSrcList();renderWritebackSettings();
+    renderCalMappingList();renderCalSrcList();
   }catch(e){showSyncErr('カレンダー一覧取得エラー: '+e.message);}
 }
 
@@ -1156,18 +1150,15 @@ function renderCalMappingList(){
         ${srcData.enabled?'<span class="badge" style="background:#e6f4ea;color:#137333">取込中</span>':''}
       </div>
       <div class="map-row">
-        <label>このカレンダーの予定を取り込む際の</label>
-      </div>
-      <div class="map-row">
         <label>プロジェクト</label>
-        <select onchange="saveCalMapping('${c.id}','proj',this.value)">
+        <select onchange="saveCalMapping('${c.id}','default_proj',this.value)">
           <option value="unset" ${!srcData.default_proj||srcData.default_proj==='unset'?'selected':''}>取込後に個別設定</option>
           ${Object.entries(PROJ).filter(([k])=>k!=='unset').map(([k,v])=>`<option value="${k}" ${srcData.default_proj===k?'selected':''}>${v.name}</option>`).join('')}
         </select>
       </div>
       <div class="map-row">
         <label>デフォルト担当者</label>
-        <select onchange="saveCalMapping('${c.id}','owner',this.value)">
+        <select onchange="saveCalMapping('${c.id}','default_owner',this.value)">
           <option value="unset" ${!srcData.default_owner||srcData.default_owner==='unset'?'selected':''}>取込後に個別設定</option>
           ${PEOPLE.filter(p=>p.id!=='unset').map(p=>`<option value="${p.id}" ${srcData.default_owner===p.id?'selected':''}>${p.name}</option>`).join('')}
         </select>
@@ -1422,12 +1413,8 @@ async function doWriteback(){
 }
 
 function getWritebackPCM(){
-  const pcm={};
-  Object.keys(PROJ).filter(k=>k!=='unset').forEach(k=>{
-    const el=document.getElementById('wb-'+k);
-    pcm[k]=el?.value||'primary';
-  });
-  return pcm;
+  // 書き戻し先: タスクのgoogle_calendar_idをそのまま使う（UIのselectは廃止）
+  return {};
 }
 
 function renderPushPreview(){
