@@ -11,173 +11,193 @@
 <script src="https://apis.google.com/js/api.js" async onload="onGapiLoad()"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:-apple-system,'Hiragino Sans','Yu Gothic UI',sans-serif;background:#f4f3ef;color:#1a1a1a;font-size:14px}
+body{font-family:-apple-system,'Hiragino Sans','Yu Gothic UI',sans-serif;background:#f4f3ef;color:#1a1a1a;font-size:15px}
 .screen{min-height:100vh;display:none;align-items:center;justify-content:center;padding:20px;flex-direction:column}
 .screen.active{display:flex}
-.setup-card,.login-card{background:#fff;border-radius:20px;padding:36px;width:520px;max-width:100%;box-shadow:0 8px 32px rgba(0,0,0,.09)}
-.setup-h{font-size:20px;font-weight:700;margin-bottom:6px}
-.setup-p{font-size:13px;color:#666;line-height:1.7;margin-bottom:16px}
+.setup-card,.login-card{background:#fff;border-radius:20px;padding:36px;width:540px;max-width:100%;box-shadow:0 8px 32px rgba(0,0,0,.09)}
+.setup-h{font-size:22px;font-weight:700;margin-bottom:6px}
+.setup-p{font-size:14px;color:#666;line-height:1.7;margin-bottom:16px}
 .step{display:flex;gap:12px;margin-bottom:14px;align-items:start}
-.step-n{width:22px;height:22px;border-radius:50%;background:#1a73e8;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
-.step p{font-size:12px;color:#444;line-height:1.7;margin:0}
-.step code{background:#f1f3f4;padding:1px 5px;border-radius:4px;font-size:11px;font-family:monospace}
-.flbl{font-size:11px;color:#666;display:block;margin-bottom:4px;margin-top:10px}
-textarea.fld{width:100%;height:108px;border:1px solid #dadce0;border-radius:8px;padding:9px;font-size:12px;font-family:monospace;resize:vertical}
-input.fld{width:100%;border:1px solid #dadce0;border-radius:8px;padding:9px 10px;font-size:12px}
-.cfg-err{color:#c5221f;font-size:12px;margin-top:6px;display:none}
-.google-btn{display:flex;align-items:center;gap:10px;padding:12px 20px;border:1px solid #dadce0;border-radius:10px;background:#fff;cursor:pointer;font-size:14px;font-weight:500;width:100%;justify-content:center;margin-top:16px}
+.step-n{width:24px;height:24px;border-radius:50%;background:#1a73e8;color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.step p{font-size:13px;color:#444;line-height:1.7;margin:0}
+.step code{background:#f1f3f4;padding:1px 6px;border-radius:4px;font-size:12px;font-family:monospace}
+.flbl{font-size:12px;color:#555;display:block;margin-bottom:4px;margin-top:10px;font-weight:500}
+textarea.fld{width:100%;height:108px;border:1px solid #dadce0;border-radius:8px;padding:9px;font-size:13px;font-family:monospace;resize:vertical}
+input.fld{width:100%;border:1px solid #dadce0;border-radius:8px;padding:9px 10px;font-size:13px}
+.cfg-err{color:#c5221f;font-size:13px;margin-top:6px;display:none}
+.google-btn{display:flex;align-items:center;gap:10px;padding:13px 20px;border:1px solid #dadce0;border-radius:10px;background:#fff;cursor:pointer;font-size:15px;font-weight:500;width:100%;justify-content:center;margin-top:16px}
 .google-btn:hover{background:#f8f9fa}
 #screen-app{flex-direction:column;align-items:stretch;padding:0}
-.hdr{background:#fff;border-bottom:1px solid #e8e6e0;padding:0 14px;display:flex;align-items:center;gap:9px;height:50px;position:sticky;top:0;z-index:100}
-.hdr-title{font-size:13px;font-weight:700;flex:1}
-.hdr-today{font-size:11px;color:#888;flex-shrink:0}
-.live{display:flex;align-items:center;gap:4px;font-size:11px;color:#16a34a;flex-shrink:0}
-.live-dot{width:6px;height:6px;border-radius:50%;background:#16a34a;animation:pulse 2s infinite}
+.hdr{background:#fff;border-bottom:1px solid #e8e6e0;padding:0 18px;display:flex;align-items:center;gap:10px;height:54px;position:sticky;top:0;z-index:100}
+.hdr-title{font-size:15px;font-weight:700;flex:1}
+.hdr-today{font-size:13px;color:#555;flex-shrink:0}
+.live{display:flex;align-items:center;gap:4px;font-size:12px;color:#16a34a;flex-shrink:0}
+.live-dot{width:7px;height:7px;border-radius:50%;background:#16a34a;animation:pulse 2s infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
-.hbtn{padding:5px 10px;border-radius:7px;font-size:12px;font-weight:500;cursor:pointer;border:1px solid #dadce0;background:#fff;color:#3c4043;white-space:nowrap;flex-shrink:0}
+.hbtn{padding:6px 13px;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;border:1px solid #dadce0;background:#fff;color:#3c4043;white-space:nowrap;flex-shrink:0}
 .hbtn:hover{background:#f1f3f4}
-.avatar{width:27px;height:27px;border-radius:50%;background:#1a73e8;color:#fff;font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;overflow:hidden}
+.avatar{width:32px;height:32px;border-radius:50%;background:#1a73e8;color:#fff;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;overflow:hidden}
 .avatar img{width:100%;height:100%;object-fit:cover}
-.pbar-wrap{background:#fff;border-bottom:1px solid #e8e6e0;padding:6px 14px;display:flex;gap:6px;flex-wrap:wrap}
-.ptog{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:20px;font-size:12px;font-weight:500;cursor:pointer;border:1.5px solid;user-select:none;transition:opacity .15s}
+.pbar-wrap{background:#fff;border-bottom:1px solid #e8e6e0;padding:8px 18px;display:flex;gap:8px;flex-wrap:wrap}
+.ptog{display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:20px;font-size:13px;font-weight:500;cursor:pointer;border:1.5px solid;user-select:none;transition:opacity .15s}
 .ptog.off{opacity:.28}
-.pdot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.pdot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
 .tabs{background:#fff;border-bottom:1px solid #e8e6e0;display:flex;overflow-x:auto}
-.tab{padding:9px 14px;font-size:12px;cursor:pointer;border-bottom:2.5px solid transparent;color:#666;white-space:nowrap;flex-shrink:0}
+.tab{padding:11px 18px;font-size:13px;cursor:pointer;border-bottom:3px solid transparent;color:#666;white-space:nowrap;flex-shrink:0}
 .tab.active{color:#1a73e8;border-bottom-color:#1a73e8;font-weight:600}
 .tab:hover:not(.active){background:#f8f9fa}
-.content{padding:13px;max-width:1100px;margin:0 auto;padding-bottom:58px}
+.content{padding:16px;max-width:1200px;margin:0 auto;padding-bottom:64px}
 .panel{display:none}.panel.active{display:block}
-.card{background:#fff;border:1px solid #e8e6e0;border-radius:12px;padding:12px;margin-bottom:10px}
-.card-t{font-size:13px;font-weight:600;margin-bottom:8px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-.sec{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin:12px 0 5px}
-.notice{background:#f8f9fa;border-radius:8px;padding:9px 12px;font-size:12px;color:#555;margin-bottom:10px;line-height:1.6}
-.tr{display:flex;align-items:center;gap:6px;padding:5px 0;border-top:1px solid #f0ede8;flex-wrap:wrap}
+.card{background:#fff;border:1px solid #e8e6e0;border-radius:14px;padding:16px;margin-bottom:13px}
+.card-t{font-size:15px;font-weight:600;margin-bottom:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.sec{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin:16px 0 7px}
+.notice{background:#f8f9fa;border-radius:9px;padding:10px 14px;font-size:13px;color:#555;margin-bottom:12px;line-height:1.65}
+.tr{display:flex;align-items:center;gap:8px;padding:8px 0;border-top:1px solid #f0ede8;flex-wrap:wrap}
 .tr:first-of-type{border-top:none}
-.tn{font-size:12px;font-weight:500;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.td{font-size:10px;color:#888;white-space:nowrap}
-.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:12px;font-size:10px;font-weight:600;white-space:nowrap}
-.mpw{width:54px;flex-shrink:0}
-.mpbar{height:3px;background:#f0ede8;border-radius:2px;overflow:hidden}
-.mpfil{height:100%;border-radius:2px}
-.mplbl{font-size:9px;color:#aaa;text-align:right;margin-top:1px}
-.rtag{font-size:9px;background:#e6f4ea;color:#137333;padding:1px 5px;border-radius:8px;font-weight:600}
+.tn{font-size:13px;font-weight:500;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.td{font-size:12px;color:#777;white-space:nowrap}
+.badge{display:inline-flex;align-items:center;padding:3px 9px;border-radius:12px;font-size:11px;font-weight:600;white-space:nowrap}
+/* Progress bar in task rows */
+.mpw{width:72px;flex-shrink:0}
+.mpbar{height:6px;background:#f0ede8;border-radius:3px;overflow:hidden}
+.mpfil{height:100%;border-radius:3px}
+.mplbl{font-size:10px;color:#888;text-align:right;margin-top:2px;font-weight:500}
+.rtag{font-size:10px;background:#e6f4ea;color:#137333;padding:2px 6px;border-radius:8px;font-weight:600}
+/* Sync status badges */
+.ss-badge{display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:600;padding:2px 6px;border-radius:8px;white-space:nowrap;flex-shrink:0}
+.ss-synced{background:#e6f4ea;color:#137333}
+.ss-dirty{background:#fff8e1;color:#7c5400}
+.ss-unsynced{background:#f1f3f4;color:#5f6368}
+.ss-failed{background:#fce8e6;color:#c5221f}
+.ss-gcal-del{background:#f3e8ff;color:#6d28d9}
 /* Calendar */
-.cal-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
-.cal-nav span{font-size:14px;font-weight:700}
-.cal-head{display:grid;grid-template-columns:repeat(7,1fr);margin-bottom:2px}
-.cal-wd{font-size:10px;color:#888;text-align:center;padding:2px 0;font-weight:600}
+.cal-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.cal-nav span{font-size:16px;font-weight:700}
+.cal-head{display:grid;grid-template-columns:repeat(7,1fr);margin-bottom:4px}
+.cal-wd{font-size:12px;color:#666;text-align:center;padding:4px 0;font-weight:600}
 .cal-grid{display:grid;grid-template-columns:repeat(7,1fr)}
-.cal-cell{border-top:1px solid #e8e6e0;padding:3px 2px 4px;cursor:pointer;min-height:66px}
+.cal-cell{border-top:1px solid #e8e6e0;padding:4px 4px 5px;cursor:pointer;min-height:90px}
 .cal-cell:hover{background:#f8f9fa}
 .cal-cell.sel{background:#e8f0fe}
-.cal-dn{font-size:10px;color:#555;text-align:right;margin-bottom:2px}
-.cal-dn.today{background:#1a73e8;color:#fff;border-radius:50%;width:16px;height:16px;display:flex;align-items:center;justify-content:center;margin-left:auto;font-weight:700;margin-bottom:2px}
+.cal-dn{font-size:12px;color:#444;text-align:right;margin-bottom:3px;font-weight:500}
+.cal-dn.today{background:#1a73e8;color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;margin-left:auto;font-weight:700;margin-bottom:3px}
 .cal-dn.other{opacity:.3}
-.cev{height:14px;border-radius:3px;font-size:9px;color:#fff;display:flex;align-items:center;padding:0 3px;overflow:hidden;white-space:nowrap;margin-bottom:1px}
+.cev{height:18px;border-radius:3px;font-size:11px;color:#fff;display:flex;align-items:center;padding:0 5px;overflow:hidden;white-space:nowrap;margin-bottom:2px;font-weight:500}
 .cev.cl{border-top-left-radius:0;border-bottom-left-radius:0}
 .cev.cr{border-top-right-radius:0;border-bottom-right-radius:0}
-.cal-more{font-size:9px;color:#999;text-align:right}
-.cal-detail{background:#fff;border:1px solid #e8e6e0;border-radius:12px;padding:12px;margin-top:9px}
-/* Gantt */
+.cal-more{font-size:10px;color:#888;text-align:right}
+.cal-detail{background:#fff;border:1px solid #e8e6e0;border-radius:14px;padding:14px;margin-top:12px}
+/* Gantt — bigger rows, progress outside bar */
 .gantt-wrap{overflow-x:auto}
-.gantt{min-width:600px}
-.gh{display:flex;margin-left:225px;margin-bottom:3px;position:relative;height:12px}
-.glc{font-size:9px;color:#aaa;position:absolute;transform:translateX(-50%)}
-.gr{display:flex;align-items:center;min-height:21px;margin-bottom:2px}
-.gl{width:225px;min-width:225px;font-size:10px;padding-right:7px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#555}
-.gtrack{flex:1;position:relative;height:21px}
-.gbar{position:absolute;height:12px;top:4.5px;border-radius:3px;font-size:9px;color:#fff;display:flex;align-items:center;padding:0 3px;overflow:hidden;white-space:nowrap;min-width:4px}
-.gtoday{position:absolute;width:2px;top:0;bottom:0;background:#ea4335;opacity:.5;pointer-events:none}
-.gdia{position:absolute;width:9px;height:9px;top:6px;transform:rotate(45deg);border-radius:1px}
+.gantt{min-width:700px}
+.gh{display:flex;margin-left:260px;margin-bottom:4px;position:relative;height:14px}
+.glc{font-size:10px;color:#999;position:absolute;transform:translateX(-50%)}
+.gr{display:flex;align-items:center;min-height:30px;margin-bottom:3px}
+.gl{width:260px;min-width:260px;font-size:12px;padding-right:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#444;line-height:1.3}
+.gtrack{flex:1;position:relative;height:30px}
+.gbar{position:absolute;height:16px;top:7px;border-radius:4px;font-size:10px;color:#fff;display:flex;align-items:center;padding:0 5px;overflow:hidden;white-space:nowrap;min-width:5px;font-weight:600}
+.gpct{position:absolute;top:7px;font-size:10px;font-weight:700;color:#333;white-space:nowrap;pointer-events:none}
+.gtoday{position:absolute;width:2px;top:0;bottom:0;background:#ea4335;opacity:.6;pointer-events:none}
+.gdia{position:absolute;width:12px;height:12px;top:9px;transform:rotate(45deg);border-radius:2px}
+.g-owner-hdr{min-height:32px;background:#f8f9fa;border-radius:8px;margin-bottom:3px}
 /* Progress */
-.prog-toolbar{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap}
-.prog-toolbar label{font-size:12px;color:#444;display:flex;align-items:center;gap:5px;cursor:pointer}
-.pir{display:flex;align-items:center;gap:7px;margin:3px 0}
-.pir label{font-size:11px;color:#444;min-width:165px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:0}
-.pir input[type=range]{flex:1;min-width:50px;cursor:pointer}
-.pival{font-size:11px;min-width:28px;text-align:right;color:#666}
+.prog-toolbar{display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap}
+.prog-toolbar label{font-size:13px;color:#444;display:flex;align-items:center;gap:6px;cursor:pointer}
+.pir{display:flex;align-items:center;gap:9px;margin:5px 0;padding:3px 0}
+.pir label{font-size:13px;color:#333;min-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:0}
+.pir input[type=range]{flex:1;min-width:60px;cursor:pointer;height:6px}
+.pival{font-size:13px;font-weight:600;min-width:34px;text-align:right;color:#333}
 /* Delay */
-.delay-opts{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:9px}
+.delay-opts{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px}
 @media(max-width:640px){.delay-opts{grid-template-columns:1fr}}
-.dopt{border:1px solid #e8e6e0;border-radius:10px;padding:10px;background:#fff}
+.dopt{border:1px solid #e8e6e0;border-radius:12px;padding:13px;background:#fff}
 .dopt.rec{border-color:#1a73e8;box-shadow:0 0 0 2px #e8f0fe}
-.dopt-badge{font-size:10px;font-weight:600;padding:2px 7px;border-radius:10px;display:inline-block;margin-bottom:6px}
-.dopt-title{font-size:13px;font-weight:600;margin-bottom:4px}
-.dopt-desc{font-size:11px;color:#666;line-height:1.6;margin-bottom:7px}
-.dopt-risk{font-size:10px;display:flex;align-items:center;gap:5px;margin-bottom:7px}
-.rdot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.dopt-badge{font-size:11px;font-weight:600;padding:3px 9px;border-radius:10px;display:inline-block;margin-bottom:7px}
+.dopt-title{font-size:14px;font-weight:600;margin-bottom:5px}
+.dopt-desc{font-size:12px;color:#666;line-height:1.6;margin-bottom:8px}
+.dopt-risk{font-size:11px;display:flex;align-items:center;gap:5px;margin-bottom:8px}
+.rdot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
 /* Duration selector */
-.dur-wrap{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:9px;padding:9px;background:#f8f9fa;border-radius:8px}
-.dur-wrap span{font-size:12px;font-weight:600;color:#444}
-.dur-btn{padding:4px 10px;border-radius:16px;font-size:11px;font-weight:500;cursor:pointer;border:1px solid #dadce0;background:#fff;color:#555}
+.dur-wrap{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:10px;padding:10px;background:#f8f9fa;border-radius:9px}
+.dur-wrap span{font-size:13px;font-weight:600;color:#333}
+.dur-btn{padding:5px 12px;border-radius:16px;font-size:12px;font-weight:500;cursor:pointer;border:1px solid #dadce0;background:#fff;color:#555}
 .dur-btn.active{background:#1a73e8;color:#fff;border-color:#1a73e8}
-.dur-custom{display:none;align-items:center;gap:6px;font-size:11px;color:#555;margin-top:6px;width:100%}
+.dur-custom{display:none;align-items:center;gap:7px;font-size:12px;color:#555;margin-top:7px;width:100%}
 .dur-custom.show{display:flex}
 /* Merge detail */
-.merge-detail{background:#f1f3f4;border-radius:8px;padding:9px;margin-top:7px;font-size:11px;color:#555}
-.merge-detail ul{list-style:none;margin-top:4px}
+.merge-detail{background:#f1f3f4;border-radius:9px;padding:10px;margin-top:8px;font-size:12px;color:#555}
+.merge-detail ul{list-style:none;margin-top:5px}
 .merge-detail li{padding:2px 0;display:flex;align-items:center;gap:5px}
 .merge-detail li::before{content:'•';color:#888}
-.merge-sched{margin-top:7px;border-top:1px solid #e8e6e0;padding-top:7px}
+.merge-sched{margin-top:8px;border-top:1px solid #e8e6e0;padding-top:8px}
 /* Fix list */
-.fix-purpose{background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:10px;font-size:12px;color:#78350f;line-height:1.7;margin-bottom:11px}
-.fix-purpose strong{display:block;font-size:13px;margin-bottom:3px}
-.fix-row{display:flex;gap:7px;padding:6px 0;border-top:1px solid #f0ede8;align-items:start}
+.fix-purpose{background:#fffbeb;border:1px solid #fde68a;border-radius:9px;padding:12px;font-size:13px;color:#78350f;line-height:1.7;margin-bottom:13px}
+.fix-purpose strong{display:block;font-size:14px;margin-bottom:4px}
+.fix-toolbar{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+.fix-toolbar label{font-size:13px;color:#444;display:flex;align-items:center;gap:6px;cursor:pointer}
+.fix-row{display:flex;gap:8px;padding:8px 0;border-top:1px solid #f0ede8;align-items:start}
 .fix-row:first-child{border-top:none}
-.fix-meta{display:flex;gap:5px;margin-top:3px;flex-wrap:wrap;align-items:center}
-.fix-status{font-size:10px;padding:1px 7px;border-radius:10px;cursor:pointer;border:1px solid;font-weight:500}
+.fix-row.deleted{opacity:.35}
+.fix-meta{display:flex;gap:6px;margin-top:4px;flex-wrap:wrap;align-items:center}
+.fix-status{font-size:11px;padding:2px 8px;border-radius:10px;cursor:pointer;border:1px solid;font-weight:500}
 /* Sync modal */
 .modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;align-items:center;justify-content:center}
 .modal-bg.open{display:flex}
-.modal{background:#fff;border-radius:18px;padding:22px;width:580px;max-width:95vw;max-height:92vh;overflow-y:auto}
-.modal h2{font-size:16px;font-weight:700;margin-bottom:3px}
-.modal-sub{font-size:12px;color:#666;margin-bottom:14px}
-.modal-sec{margin-bottom:16px}
-.modal-sec h3{font-size:11px;font-weight:700;color:#666;text-transform:uppercase;letter-spacing:.05em;margin-bottom:7px}
-.cal-warn{background:#fff8e1;border:1px solid #fdd835;border-radius:8px;padding:11px;font-size:12px;color:#7c5400;margin-bottom:13px}
-.cal-access-btn{display:flex;align-items:center;gap:8px;padding:10px 16px;border:1px solid #1a73e8;border-radius:9px;background:#e8f0fe;cursor:pointer;font-size:13px;font-weight:500;color:#1a56db;width:100%;justify-content:center;margin-top:7px}
+.modal{background:#fff;border-radius:20px;padding:24px;width:640px;max-width:96vw;max-height:92vh;overflow-y:auto}
+.modal h2{font-size:18px;font-weight:700;margin-bottom:4px}
+.modal-sub{font-size:13px;color:#666;margin-bottom:16px}
+.modal-sec{margin-bottom:18px}
+.modal-sec h3{font-size:12px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px}
+.cal-warn{background:#fff8e1;border:1px solid #fdd835;border-radius:9px;padding:12px;font-size:13px;color:#7c5400;margin-bottom:14px}
+.cal-access-btn{display:flex;align-items:center;gap:9px;padding:12px 18px;border:1px solid #1a73e8;border-radius:10px;background:#e8f0fe;cursor:pointer;font-size:14px;font-weight:500;color:#1a56db;width:100%;justify-content:center;margin-top:8px}
 .cal-access-btn:hover{background:#d2e3fc}
-.cal-check{display:flex;align-items:center;gap:7px;padding:4px 0;font-size:12px}
-.cal-check input{width:14px;height:14px;cursor:pointer}
-.cal-pick{width:100%;border:1px solid #dadce0;border-radius:8px;padding:6px 9px;font-size:12px;font-family:inherit}
-.proj-row{display:flex;align-items:center;gap:7px;margin-bottom:6px;font-size:12px}
-.proj-row label{min-width:78px;font-weight:600}
-.sync-actions{display:flex;gap:7px;margin-top:14px;flex-wrap:wrap}
-.sync-act{flex:1;padding:9px 7px;border:1px solid #dadce0;border-radius:9px;font-size:12px;font-weight:500;cursor:pointer;background:#fff;text-align:center;font-family:inherit;min-width:90px}
+.cal-check{display:flex;align-items:center;gap:8px;padding:5px 0;font-size:13px}
+.cal-check input{width:15px;height:15px;cursor:pointer}
+.cal-pick{width:100%;border:1px solid #dadce0;border-radius:8px;padding:7px 10px;font-size:13px;font-family:inherit}
+.proj-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:13px}
+.proj-row label{min-width:80px;font-weight:600}
+.sync-actions{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap}
+.sync-act{flex:1;padding:11px 10px;border:1px solid #dadce0;border-radius:10px;font-size:13px;font-weight:500;cursor:pointer;background:#fff;text-align:center;font-family:inherit;min-width:110px}
 .sync-act:hover{background:#f8f9fa}
 .sync-act.pr{background:#1a73e8;color:#fff;border-color:#1a73e8}
-.sync-res{margin-top:10px;padding:9px;border-radius:8px;font-size:12px;display:none}
+.sync-res{margin-top:12px;padding:11px;border-radius:9px;font-size:13px;display:none}
 .sync-res.ok{background:#e6f4ea;color:#137333}
 .sync-res.err{background:#fce8e6;color:#c5221f}
 /* Calendar source management */
-.cal-src{border:1px solid #e8e6e0;border-radius:9px;padding:10px;margin-bottom:7px;font-size:12px}
-.cal-src-hd{display:flex;align-items:center;gap:7px;margin-bottom:5px}
-.cal-src-name{font-weight:600;flex:1;font-size:13px}
-.cal-src-meta{display:flex;gap:8px;font-size:10px;color:#888;margin-bottom:6px;flex-wrap:wrap}
-.cal-src-acts{display:flex;gap:5px;flex-wrap:wrap}
+.cal-src{border:1px solid #e8e6e0;border-radius:10px;padding:12px;margin-bottom:8px;font-size:13px}
+.cal-src-hd{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.cal-src-name{font-weight:600;flex:1;font-size:14px}
+.cal-src-meta{display:flex;gap:10px;font-size:11px;color:#777;margin-bottom:7px;flex-wrap:wrap}
+.cal-src-acts{display:flex;gap:6px;flex-wrap:wrap}
 .cal-src.stopped{opacity:.55;border-style:dashed}
+/* Push preview */
+.prev-row{display:flex;align-items:center;gap:8px;padding:6px 0;border-top:1px solid #f0ede8;font-size:13px}
+.prev-row:first-child{border-top:none}
+.prev-type{font-size:10px;font-weight:700;padding:2px 7px;border-radius:8px;white-space:nowrap;flex-shrink:0}
+.prev-new{background:#e6f4ea;color:#137333}
+.prev-upd{background:#e8f0fe;color:#1557b0}
+.prev-skip{background:#f1f3f4;color:#5f6368}
 /* Op log */
-.log-row{display:flex;gap:8px;padding:5px 0;border-top:1px solid #f0ede8;font-size:11px;align-items:start}
+.log-row{display:flex;gap:9px;padding:7px 0;border-top:1px solid #f0ede8;font-size:12px;align-items:start}
 .log-row:first-child{border-top:none}
-.log-type{font-weight:600;white-space:nowrap;min-width:60px;flex-shrink:0}
+.log-type{font-weight:600;white-space:nowrap;min-width:80px;flex-shrink:0}
 /* Buttons */
-.btn{display:inline-flex;align-items:center;gap:4px;padding:5px 10px;border:1px solid #dadce0;border-radius:8px;font-size:12px;cursor:pointer;background:#fff;color:#3c4043;font-family:inherit;transition:background .1s}
+.btn{display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border:1px solid #dadce0;border-radius:9px;font-size:13px;cursor:pointer;background:#fff;color:#3c4043;font-family:inherit;transition:background .1s}
 .btn:hover{background:#f1f3f4}
 .btn.pr{background:#1a73e8;color:#fff;border-color:#1a73e8}
 .btn.pr:hover{background:#1557b0}
-.btn.sm{padding:3px 7px;font-size:11px}
+.btn.sm{padding:4px 9px;font-size:12px}
 .btn.danger{border-color:#c5221f;color:#c5221f}
 .btn.danger:hover{background:#fce8e6}
-.btn-row{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
-input[type=text],input[type=number],select,textarea{border:1px solid #dadce0;border-radius:8px;padding:6px 9px;font-size:12px;font-family:inherit;width:100%;color:#1a1a1a}
-textarea{resize:vertical;min-height:46px}
-input[type=checkbox]{width:14px;height:14px;cursor:pointer}
-.sbar{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid #e8e6e0;padding:6px 14px;display:flex;gap:12px;font-size:11px;color:#666;z-index:50;flex-wrap:wrap}
-.sdot{width:6px;height:6px;border-radius:50%;display:inline-block;margin-right:3px;flex-shrink:0}
-.spinner{display:inline-block;width:13px;height:13px;border:2px solid #dadce0;border-top-color:#1a73e8;border-radius:50%;animation:spin .7s linear infinite}
+.btn-row{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+input[type=text],input[type=number],input[type=date],select,textarea{border:1px solid #dadce0;border-radius:8px;padding:7px 10px;font-size:13px;font-family:inherit;width:100%;color:#1a1a1a}
+textarea{resize:vertical;min-height:50px}
+input[type=checkbox]{width:15px;height:15px;cursor:pointer}
+.sbar{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid #e8e6e0;padding:7px 18px;display:flex;gap:16px;font-size:12px;color:#555;z-index:50;flex-wrap:wrap}
+.sdot{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:3px;flex-shrink:0}
+.spinner{display:inline-block;width:14px;height:14px;border:2px solid #dadce0;border-top-color:#1a73e8;border-radius:50%;animation:spin .7s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
-.calnotice{background:#e8f4fd;border:1px solid #90caf9;border-radius:8px;padding:9px 11px;font-size:11px;color:#1565c0;margin-bottom:11px}
+.calnotice{background:#e8f4fd;border:1px solid #90caf9;border-radius:9px;padding:10px 13px;font-size:12px;color:#1565c0;margin-bottom:13px}
 </style>
 </head>
 <body>
@@ -311,12 +331,26 @@ input[type=checkbox]{width:14px;height:14px;cursor:pointer}
 
       <div class="sync-actions">
         <button class="sync-act" onclick="doSync('pull')">⬇ Googleから取込</button>
-        <button class="sync-act" onclick="doSync('push')">⬆ Googleへ書出</button>
+        <button class="sync-act" onclick="doSync('push')">⬆ 書き出し（確認あり）</button>
         <button class="sync-act pr" onclick="doSync('both')">⇄ 双方向同期</button>
       </div>
       <div class="sync-res" id="sync-res"></div>
     </div>
     <div style="text-align:right;margin-top:14px"><button class="btn" onclick="closeSync()">閉じる</button></div>
+  </div>
+</div>
+
+<!-- PUSH PREVIEW MODAL -->
+<div class="modal-bg" id="push-preview-modal">
+  <div class="modal" style="width:700px">
+    <h2>⬆ Googleカレンダーへ書き出し — 確認</h2>
+    <div class="modal-sub">以下の変更がGoogleカレンダーに反映されます。確認してから実行してください。</div>
+    <div id="push-preview-body"></div>
+    <div class="btn-row" style="margin-top:16px">
+      <button class="btn pr" id="push-confirm-btn" onclick="executePush()">書き出しを実行する</button>
+      <button class="btn" onclick="closePushPreview()">キャンセル</button>
+    </div>
+    <div class="sync-res" id="push-preview-res"></div>
   </div>
 </div>
 
@@ -350,7 +384,8 @@ let gapiReady=false,gsiReady=false;
 let calList=[],selCalIds=new Set();
 let visPeople=new Set(PEOPLE.map(p=>p.id));
 let calY=TODAY.getFullYear(),calM=TODAY.getMonth(),selDay=null;
-let showDone=false,showMergedOrig=false,showAddTask=false;
+let showDone=false,showMergedOrig=false,showAddTask=false,showFixDeleted=false;
+let pushPlan=null; // {toCreate:[], toUpdate:[], toSkip:[], projCalMap:{}}
 let mgroups={},mgk=0; // {k: {ids, days, customStart, customEnd}}
 
 // ══════════════════════════════════════════
@@ -374,6 +409,26 @@ const filtAll=()=>TASKS.filter(t=>visPeople.has(t.owner)&&t.archived!==true);
 
 const prio=t=>isMg(t)?0:isDel(t)?1:isTod(t)?2:3+Math.max(0,dd(TODAY,pd(t.start)))/365;
 const hasTok=()=>!!(gCalToken&&Date.now()<gCalExp);
+
+// sync_status: 'unsynced'|'synced'|'dirty'|'failed'|'gcal_deleted'
+function syncStatusBadge(t){
+  const s=t.sync_status;
+  if(!s||s==='unsynced')return t.google_event_id?'同期済':'未同期';
+  if(s==='synced')return '同期済';
+  if(s==='dirty')return '変更あり';
+  if(s==='failed')return '失敗';
+  if(s==='gcal_deleted')return 'GCal削除';
+  return '';
+}
+function syncStatusCls(t){
+  const s=t.sync_status;
+  if(!s||s==='unsynced')return t.google_event_id?'ss-synced':'ss-unsynced';
+  if(s==='synced')return 'ss-synced';
+  if(s==='dirty')return 'ss-dirty';
+  if(s==='failed')return 'ss-failed';
+  if(s==='gcal_deleted')return 'ss-gcal-del';
+  return 'ss-unsynced';
+}
 
 // ══════════════════════════════════════════
 // CONFIG / SCREENS
@@ -486,7 +541,17 @@ function setupListeners(){
 // ══════════════════════════════════════════
 // FIRESTORE CRUD
 // ══════════════════════════════════════════
-const updT=(id,p)=>db.collection('tasks').doc(id).update({...p,updated:now$()});
+const updT=(id,p)=>{
+  const patch={...p,updated:now$()};
+  // タスクに実質的な変更があれば sync_status を dirty に
+  const skipDirtyKeys=['sync_status','updated','google_event_id','google_calendar_id'];
+  const hasRealChange=Object.keys(p).some(k=>!skipDirtyKeys.includes(k));
+  if(hasRealChange){
+    const t=TASKS.find(x=>x.id===id);
+    if(t&&t.google_event_id) patch.sync_status='dirty';
+  }
+  return db.collection('tasks').doc(id).update(patch);
+};
 const addFx=f=>db.collection('fixes').add({...f,created:now$()});
 async function deleteTask(id,name){
   if(!confirm(`「${name}」を削除しますか？\nこの操作は取り消せません。`))return;
@@ -503,7 +568,7 @@ async function createTaskFromForm(){
   const cond=document.getElementById('at-cond').value.trim();
   const prog=parseInt(document.getElementById('at-prog').value)||0;
   const id='t-'+Date.now();
-  await db.collection('tasks').doc(id).set({id,name,owner,proj,start,end,cond,prog,visible:true,archived:false,merged:false,google_event_id:null,created:now$(),updated:now$()});
+  await db.collection('tasks').doc(id).set({id,name,owner,proj,start,end,cond,prog,visible:true,archived:false,merged:false,google_event_id:null,sync_status:'unsynced',created:now$(),updated:now$()});
   // reset
   ['at-name','at-cond'].forEach(k=>document.getElementById(k).value='');
   document.getElementById('at-prog').value='0';
@@ -632,7 +697,7 @@ function rCal(){
     if(sdt.length){
       sdt.forEach(t=>{
         const p=getP(t.owner),pj=PROJ[t.proj];
-        html+=`<div class="tr"><span class="badge" style="background:${p.color}18;color:${p.color}">${p.name}</span>${pj?`<span class="badge" style="background:${pj.color}18;color:${pj.color}">${pj.name}</span>`:''}<span class="tn" title="${t.name}">${isMg(t)?'★ ':''}${t.name}</span>${isDel(t)?'<span class="badge" style="background:#fce8e6;color:#c5221f">遅延</span>':''}${isSyn(t)?'<span class="rtag">🔄</span>':''}<span class="td">${fs(t.start)}〜${fs(t.end)}</span><div class="mpw"><div class="mpbar"><div class="mpfil" style="width:${t.prog}%;background:${isDel(t)?'#ea4335':p.color}"></div></div><div class="mplbl">${t.prog}%</div></div><button class="btn sm" onclick="sw('progress')">↗進捗</button><button class="btn sm danger" onclick="deleteTask('${t.id}','${t.name.replace(/'/g,"\\'")}')">🗑</button></div>`;
+        html+=`<div class="tr"><span class="badge" style="background:${p.color}18;color:${p.color}">${p.name}</span>${pj?`<span class="badge" style="background:${pj.color}18;color:${pj.color}">${pj.name}</span>`:''}<span class="tn" title="${t.name}">${isMg(t)?'★ ':''}${t.name}</span>${isDel(t)?'<span class="badge" style="background:#fce8e6;color:#c5221f">遅延</span>':''}${"<span class=\"ss-badge "+syncStatusCls(t)+"\">"+syncStatusBadge(t)+"</span>"}<span class="td">${fs(t.start)}〜${fs(t.end)}</span><div class="mpw"><div class="mpbar"><div class="mpfil" style="width:${t.prog}%;background:${isDel(t)?'#ea4335':p.color}"></div></div><div class="mplbl">${t.prog}%</div></div><button class="btn sm" onclick="sw('progress')">↗進捗</button><button class="btn sm danger" onclick="deleteTask('${t.id}','${t.name.replace(/'/g,"\\'")}')">🗑</button></div>`;
       });
     }else html+='<div style="font-size:12px;color:#888">この日のタスクはありません</div>';
     html+='</div>';
@@ -660,24 +725,56 @@ function rGantt(){
   const lbls=[];
   for(let i=0;i<=tot;i+=step){const d=new Date(minD.getTime()+i*86400000);lbls.push({x:lp(d),t:(d.getMonth()+1)+'/'+(d.getDate())});}
   const tp=lp(TODAY);
-  let html=`<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px"><label style="font-size:12px;color:#444;display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" ${showMergedOrig?'checked':''} onchange="showMergedOrig=this.checked;rGantt()"> 統合済みの元タスクを表示</label><span style="font-size:11px;color:#888;flex:1;text-align:right">タスク名にマウスを乗せると全文表示</span></div>
+  let html=`<div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;flex-wrap:wrap">
+    <label style="font-size:13px;color:#444;display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" ${showMergedOrig?'checked':''} onchange="showMergedOrig=this.checked;rGantt()"> 統合済みの元タスクを表示</label>
+    <span style="font-size:12px;color:#888;flex:1;text-align:right">バー外の数字は進捗率。タスク名をホバーで全文表示。</span>
+  </div>
   <div class="gantt-wrap"><div class="gantt"><div class="gh">${lbls.map(l=>`<div class="glc" style="left:${l.x}">${l.t}</div>`).join('')}</div>`;
+
   PEOPLE.filter(p=>visPeople.has(p.id)).forEach(person=>{
     const pt=[...baseTasks.filter(t=>t.owner===person.id)].sort((a,b)=>prio(a)-prio(b));
     if(!pt.length)return;
-    html+=`<div class="gr"><div class="gl" style="font-weight:700;font-size:11px;color:${person.color}">${person.name}</div><div class="gtrack" style="background:${person.color}0c"><div class="gtoday" style="left:${tp}"></div></div></div>`;
+    // Person header row
+    html+=`<div class="gr g-owner-hdr"><div class="gl" style="font-weight:700;font-size:13px;color:${person.color};padding:4px 8px 4px 6px">${person.name}</div><div class="gtrack" style="background:${person.color}0c"><div class="gtoday" style="left:${tp}"></div></div></div>`;
     pt.forEach(t=>{
       const del=isDel(t),mg=isMg(t),tod=isTod(t),orig=t.merged===true;
-      const bc=mg?'#4f46e5':del?'#ea4335':orig?'#ccc':tod?person.color:person.color+'88';
+      const bc=mg?'#4f46e5':del?'#ea4335':orig?'#d1d5db':tod?person.color:person.color+'cc';
       const pj=PROJ[t.proj];
-      const tip=`${t.name}（${fs(t.start)}〜${fs(t.end)}）${t.cond?' 通過条件: '+t.cond:''}${orig?' ※統合済み元タスク':''}`;
+      const ss=syncStatusBadge(t);
+      const tip=`${t.name}（${fs(t.start)}〜${fs(t.end)}）${t.prog}% ${t.cond?' 通過条件: '+t.cond:''}${orig?' ※統合済み元タスク':''}`;
       const lbl=(mg?'★ ':del?'⚠ ':orig?'[元]':'')+t.name;
-      html+=`<div class="gr"><div class="gl" style="font-size:10px;padding-left:10px;opacity:${orig?.5:1}" title="${tip}">${lbl.substring(0,30)}${lbl.length>30?'…':''}${isSyn(t)?'<span style="font-size:8px;color:#16a34a;margin-left:2px">🔄</span>':''}${pj?`<span style="font-size:8px;color:${pj.color};margin-left:3px">[${pj.name}]</span>`:''}</div><div class="gtrack"><div class="gtoday" style="left:${tp}"></div><div class="gbar" style="left:${lp(t.start)};width:${wp(t.start,t.end)};background:${bc};opacity:${orig?.5:1}" title="${tip}">${t.prog?t.prog+'%':''}</div></div></div>`;
+      const barEnd=parseFloat(lp(t.end))+parseFloat(wp(t.start,t.end));
+      const pctLeft=`calc(${lp(t.start)} + ${wp(t.start,t.end)} + 4px)`;
+      html+=`<div class="gr">
+        <div class="gl" style="font-size:12px;padding-left:12px;opacity:${orig?.5:1}" title="${tip}">
+          ${lbl.substring(0,32)}${lbl.length>32?'…':''}
+          ${ss?`<span class="ss-badge ss-${t.sync_status||'unsynced'}" style="margin-left:3px">${ss}</span>`:''}
+          ${pj?`<span style="font-size:10px;color:${pj.color};margin-left:3px">[${pj.name}]</span>`:''}
+        </div>
+        <div class="gtrack">
+          <div class="gtoday" style="left:${tp}"></div>
+          <div class="gbar" style="left:${lp(t.start)};width:${wp(t.start,t.end)};background:${bc};opacity:${orig?.5:1};box-shadow:${del?'0 0 0 2px #ea4335':'none'}" title="${tip}">
+            ${t.prog>5?t.prog+'%':''}
+          </div>
+          ${t.prog<=5?`<div class="gpct" style="left:${pctLeft}">${t.prog}%</div>`:''}
+          ${del?`<div style="position:absolute;left:${lp(t.start)};font-size:10px;top:0;color:#ea4335;font-weight:700;white-space:nowrap">遅延</div>`:''}
+        </div>
+      </div>`;
     });
   });
-  html+=`<div class="gr" style="margin-top:8px"><div class="gl" style="font-weight:600;font-size:10px;color:#888">マイルストーン</div><div class="gtrack"><div class="gtoday" style="left:${tp}"></div></div></div>`;
-  Object.values(PROJ).forEach(p=>{p.ms.forEach(m=>{
-    html+=`<div class="gr"><div class="gl" style="font-size:10px;padding-left:10px;color:#999" title="${m.name} ${fs(m.date)}">${m.name.substring(0,26)}</div><div class="gtrack"><div class="gtoday" style="left:${tp}"></div><div class="gdia" style="left:calc(${lp(m.date)} - 4px);background:${p.color}"></div></div></div>`;
+
+  // Milestone rows
+  html+=`<div class="gr" style="margin-top:10px"><div class="gl" style="font-weight:700;font-size:12px;color:#555;padding-left:4px">📍 マイルストーン</div><div class="gtrack"><div class="gtoday" style="left:${tp}"></div></div></div>`;
+  Object.entries(PROJ).forEach(([k,p])=>{p.ms.forEach(m=>{
+    const isPast=pd(m.date)<TODAY;
+    html+=`<div class="gr">
+      <div class="gl" style="font-size:12px;padding-left:12px;color:${isPast?'#aaa':'#444'}" title="${m.name} ${fs(m.date)}">${isPast?'✓ ':''}${m.name}</div>
+      <div class="gtrack">
+        <div class="gtoday" style="left:${tp}"></div>
+        <div class="gdia" style="left:calc(${lp(m.date)} - 6px);background:${isPast?'#ccc':p.color};width:14px;height:14px;top:8px"></div>
+        <div style="position:absolute;left:calc(${lp(m.date)} + 12px);top:8px;font-size:10px;color:${isPast?'#aaa':p.color};font-weight:600;white-space:nowrap">${fs(m.date)}</div>
+      </div>
+    </div>`;
   });});
   html+='</div></div>';
   el.innerHTML=html;
@@ -702,7 +799,7 @@ function rOv(){
     html+=`<div class="sec" style="color:${sec.color}">${sec.label}（${st.length}件）${sec.action?`<button class="btn sm" style="margin-left:8px" onclick="sw('${sec.action.tab}')">${sec.action.label}</button>`:''}</div><div class="card">`;
     st.forEach(t=>{
       const p=getP(t.owner),pj=PROJ[t.proj];
-      html+=`<div class="tr"><span class="badge" style="background:${p.color}18;color:${p.color}">${p.name}</span>${pj?`<span class="badge" style="background:${pj.color}18;color:${pj.color}">${pj.name}</span>`:''}<span class="tn" title="${t.name}">${isMg(t)?'★ ':''}${t.name}</span>${isSyn(t)?'<span class="rtag">🔄</span>':''}<span class="td">${fs(t.start)}〜${fs(t.end)}</span><div class="mpw"><div class="mpbar"><div class="mpfil" style="width:${t.prog}%;background:${isDel(t)?'#ea4335':p.color}"></div></div><div class="mplbl">${t.prog}%</div></div>${t.cond?`<span title="通過条件: ${t.cond}" style="cursor:help">📋</span>`:''}<button class="btn sm" onclick="sw('progress')">↗</button>${isMg(t)&&t.merge_group_id?`<button class="btn sm danger" onclick="restoreMerge('${t.id}','${t.merge_group_id}')">元に戻す</button>`:''}<button class="btn sm danger" onclick="deleteTask('${t.id}','${t.name.replace(/'/g,"\\'")}')">🗑</button></div>`;
+      html+=`<div class="tr"><span class="badge" style="background:${p.color}18;color:${p.color}">${p.name}</span>${pj?`<span class="badge" style="background:${pj.color}18;color:${pj.color}">${pj.name}</span>`:''}<span class="tn" title="${t.name}">${isMg(t)?'★ ':''}${t.name}</span>${"<span class=\"ss-badge "+syncStatusCls(t)+"\">"+syncStatusBadge(t)+"</span>"}<span class="td">${fs(t.start)}〜${fs(t.end)}</span><div class="mpw"><div class="mpbar"><div class="mpfil" style="width:${t.prog}%;background:${isDel(t)?'#ea4335':p.color}"></div></div><div class="mplbl">${t.prog}%</div></div>${t.cond?`<span title="通過条件: ${t.cond}" style="cursor:help">📋</span>`:''}<button class="btn sm" onclick="sw('progress')">↗</button>${isMg(t)&&t.merge_group_id?`<button class="btn sm danger" onclick="restoreMerge('${t.id}','${t.merge_group_id}')">元に戻す</button>`:''}<button class="btn sm danger" onclick="deleteTask('${t.id}','${t.name.replace(/'/g,"\\'")}')">🗑</button></div>`;
       // Show merged task detail
       if(isMg(t)&&t.merged_from_task_ids?.length){
         html+=`<div class="merge-detail"><div style="font-size:11px;font-weight:600;margin-bottom:3px">この統合タスクに含まれる元タスク:</div><ul>${t.merged_from_task_ids.map(id=>{const orig=TASKS.find(x=>x.id===id);return`<li>${orig?orig.name:id}</li>`;}).join('')}</ul>`;
@@ -1039,26 +1136,46 @@ async function addFix(){
 }
 const SM={pending:{l:'未着手',bg:'#f1f3f4',c:'#555',next:'wip'},wip:{l:'対応中',bg:'#fff8e1',c:'#7c5400',next:'done'},done:{l:'完了',bg:'#e6f4ea',c:'#137333',next:'pending'}};
 async function cycleFix(id,cur){await updFx(id,{status:SM[cur]?.next||'pending',done:(SM[cur]?.next||'pending')==='done'});}
+async function deleteFix(id,content){
+  if(!confirm(`この修正リスト項目を削除しますか？\n「${content.substring(0,40)}」\n\n元タスクは消えません。`))return;
+  await updFx(id,{deleted:true});
+  await logOp('delete_fix',{fix_id:id});
+}
 function rFixList(){
   const el=document.getElementById('fix-body');if(!el)return;
+  const visible=FIXES.filter(f=>showFixDeleted?true:!f.deleted);
   const bp={high:[],mid:[],low:[]};
-  FIXES.forEach(f=>bp[f.pri||'mid'].push(f));
+  visible.forEach(f=>bp[f.pri||'mid'].push(f));
   const lbl={high:'高（修正期間前半）',mid:'中（修正期間中盤）',low:'低（時間があれば）'};
-  let html='';
+  // toolbar
+  const toolbar=`<div class="fix-toolbar">
+    <label><input type="checkbox" ${showFixDeleted?'checked':''} onchange="showFixDeleted=this.checked;rFixList()"> 削除済みも表示</label>
+    <span style="font-size:13px;color:#888">全${FIXES.filter(f=>!f.deleted).length}件（未完了 ${FIXES.filter(f=>!f.done&&!f.deleted).length}件）</span>
+  </div>`;
+  let html=toolbar;
   ['high','mid','low'].forEach(p=>{
     if(!bp[p].length)return;
     html+=`<div class="card"><div class="card-t">${lbl[p]}</div>`;
     bp[p].forEach(f=>{
       const sm=SM[f.status||'pending']||SM.pending;
-      html+=`<div class="fix-row"><input type="checkbox" ${f.done?'checked':''} onchange="updFx('${f.id}',{done:this.checked,status:this.checked?'done':'pending'})" style="margin-top:3px"/>
-        <div style="flex:1;opacity:${f.done?.4:1};text-decoration:${f.done?'line-through':'none'}">
-          <div style="font-size:13px;font-weight:500">${f.content}</div>
-          <div class="fix-meta">${f.task?`<span class="badge" style="background:#f1f3f4;color:#555">${f.task}</span>`:''}<span class="fix-status" style="background:${sm.bg};color:${sm.c};border-color:${sm.c}" onclick="cycleFix('${f.id}','${f.status||'pending'}')">${sm.l}</span>${f.when?`<span style="font-size:10px;color:#888">🗓 ${f.when}</span>`:''}</div>
-        </div></div>`;
+      const isDeleted=!!f.deleted;
+      const safeCnt=f.content.replace(/'/g,"\\'").substring(0,40);
+      html+=`<div class="fix-row${isDeleted?' deleted':''}">
+        <input type="checkbox" ${f.done||isDeleted?'checked':''} ${isDeleted?'disabled':''} onchange="updFx('${f.id}',{done:this.checked,status:this.checked?'done':'pending'})" style="margin-top:4px"/>
+        <div style="flex:1;opacity:${f.done?.4:1};text-decoration:${f.done||isDeleted?'line-through':'none'}">
+          <div style="font-size:14px;font-weight:500;color:${isDeleted?'#aaa':'#1a1a1a'}">${f.content}</div>
+          <div class="fix-meta">
+            ${f.task?`<span class="badge" style="background:#f1f3f4;color:#555">${f.task}</span>`:''}
+            ${!isDeleted?`<span class="fix-status" style="background:${sm.bg};color:${sm.c};border-color:${sm.c}" onclick="cycleFix('${f.id}','${f.status||'pending'}')" title="クリックで状態変更">${sm.l}</span>`:'<span style="font-size:11px;color:#aaa">削除済み</span>'}
+            ${f.when?`<span style="font-size:11px;color:#888">🗓 ${f.when}</span>`:''}
+          </div>
+        </div>
+        ${!isDeleted?`<button class="btn sm danger" onclick="deleteFix('${f.id}','${safeCnt}')" title="削除">🗑</button>`:''}
+      </div>`;
     });
     html+='</div>';
   });
-  if(!html)html='<div class="notice">修正リストは空です</div>';
+  if(visible.length===0)html+=toolbar+'<div class="notice">修正リストは空です</div>';
   el.innerHTML=html;
 }
 
@@ -1244,7 +1361,6 @@ async function doSync(dir){
     audio:document.getElementById('pcal-audio')?.value||'primary',
     exhibit:document.getElementById('pcal-exhibit')?.value||'primary',
   };
-  // Only pull from enabled sources + newly selected
   const enabledIds=new Set([...selCalIds,...CAL_SRCS.filter(s=>s.enabled).map(s=>s.calendar_id)]);
   const calIds=[...enabledIds];
   try{
@@ -1254,7 +1370,6 @@ async function doSync(dir){
       const tmax=new Date(Date.now()+200*86400000).toISOString();
       let nc=0,uc=0;
       const byId=Object.fromEntries(TASKS.map(t=>[t.id,t]));
-      // Dedup key: source_calendar_id + google_event_id
       const byGcalKey=Object.fromEntries(TASKS.filter(t=>t.google_event_id&&t.source_calendar_id).map(t=>[t.source_calendar_id+'::'+t.google_event_id,t]));
       const calNameMap=Object.fromEntries(calList.map(c=>[c.id,c.name]));
       const countPerCal={};
@@ -1262,46 +1377,109 @@ async function doSync(dir){
         const calName=calNameMap[cid]||cid;
         const r=await gapi.client.calendar.events.list({calendarId:cid,timeMin:tmin,timeMax:tmax,maxResults:500,singleEvents:true,orderBy:'startTime'});
         for(const ev of r.result.items||[]){
-          if(ev.status==='cancelled')continue;
+          const dedupKey=cid+'::'+ev.id;
+          if(ev.status==='cancelled'){
+            const local=byGcalKey[dedupKey];
+            if(local&&local.sync_status!=='gcal_deleted') await db.collection('tasks').doc(local.id).update({sync_status:'gcal_deleted',updated:now$()});
+            continue;
+          }
           const task=ev2t(ev,cid,calName);
           const pmId=ev.extendedProperties?.private?.pm_id;
-          const dedupKey=cid+'::'+ev.id;
           if(pmId&&byId[pmId]){
-            if((ev.updated||'')>(byId[pmId].updated||'')){await db.collection('tasks').doc(pmId).update({...task,id:pmId});uc++;}
+            if((ev.updated||'')>(byId[pmId].updated||'')){await db.collection('tasks').doc(pmId).update({...task,id:pmId,sync_status:'synced'});uc++;}
           }else if(byGcalKey[dedupKey]){
-            // 重複防止: すでに存在するものは更新のみ
             const local=byGcalKey[dedupKey];
-            if((ev.updated||'')>(local.updated||'')){await db.collection('tasks').doc(local.id).update(task);uc++;}
+            if((ev.updated||'')>(local.updated||'')){await db.collection('tasks').doc(local.id).update({...task,sync_status:'synced'});uc++;}
           }else{
-            await db.collection('tasks').doc(task.id).set({...task,created:now$(),updated:now$()});nc++;
+            await db.collection('tasks').doc(task.id).set({...task,sync_status:'synced',created:now$(),updated:now$()});nc++;
           }
           countPerCal[cid]=(countPerCal[cid]||0)+1;
         }
-        // calendar_sourcesを更新
         const existing=CAL_SRCS.find(s=>s.calendar_id===cid);
         const srcData={calendar_id:cid,calendar_name:calName,enabled:true,last_imported_at:now$(),imported_task_count:countPerCal[cid]||0};
         if(existing)await db.collection('calendar_sources').doc(existing.id).update(srcData);
         else await db.collection('calendar_sources').add(srcData);
       }
       msg+=`取込: 新規${nc}件・更新${uc}件　`;
+      await logOp('pull',{new:nc,updated:uc});
     }
     if(dir==='push'||dir==='both'){
-      let cc=0,uc=0,ec=0;
-      for(const t of TASKS.filter(t=>!t.archived&&t.visible!==false)){
-        const cid=pcm[t.proj]||'primary',ev=t2ev(t);
-        try{
-          if(t.google_event_id){
-            try{await gapi.client.calendar.events.update({calendarId:t.google_calendar_id||cid,eventId:t.google_event_id,resource:ev});uc++;}
-            catch{const r=await gapi.client.calendar.events.insert({calendarId:cid,resource:ev});await updT(t.id,{google_event_id:r.result.id,google_calendar_id:cid});cc++;}
-          }else{const r=await gapi.client.calendar.events.insert({calendarId:cid,resource:ev});await updT(t.id,{google_event_id:r.result.id,google_calendar_id:cid});cc++;}
-        }catch(e2){ec++;console.error('push',t.id,e2);}
-      }
-      msg+=`書出: 作成${cc}件・更新${uc}件${ec?`・失敗${ec}件`:''}`;
+      await buildPushPlan(pcm,msg);
+      return;
     }
     res.className='sync-res ok';res.textContent='✓ '+msg.trim();
     renderCalSrcList();
   }catch(e){res.className='sync-res err';res.textContent='エラー: '+e.message;console.error('doSync',e);}
   res.style.display='block';
+}
+
+async function buildPushPlan(pcm,prevMsg=''){
+  const toCreate=[],toUpdate=[],toSkip=[];
+  for(const t of TASKS.filter(x=>!x.archived&&x.visible!==false&&!x.merged)){
+    const cid=pcm[t.proj]||'primary';
+    if(!t.google_event_id) toCreate.push({t,cid});
+    else if(t.sync_status==='dirty'||t.sync_status==='failed') toUpdate.push({t,cid});
+    else toSkip.push({t,cid});
+  }
+  pushPlan={toCreate,toUpdate,toSkip,pcm,prevMsg};
+  renderPushPreview();
+  document.getElementById('push-preview-modal').classList.add('open');
+}
+
+function renderPushPreview(){
+  if(!pushPlan)return;
+  const {toCreate,toUpdate,toSkip}=pushPlan;
+  const el=document.getElementById('push-preview-body');if(!el)return;
+  let html=`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;text-align:center">
+    <div style="background:#e6f4ea;border-radius:10px;padding:12px"><div style="font-size:28px;font-weight:700;color:#137333">${toCreate.length}</div><div style="font-size:13px;color:#137333">新規作成</div></div>
+    <div style="background:#e8f0fe;border-radius:10px;padding:12px"><div style="font-size:28px;font-weight:700;color:#1557b0">${toUpdate.length}</div><div style="font-size:13px;color:#1557b0">更新</div></div>
+    <div style="background:#f1f3f4;border-radius:10px;padding:12px"><div style="font-size:28px;font-weight:700;color:#5f6368">${toSkip.length}</div><div style="font-size:13px;color:#5f6368">スキップ</div></div>
+  </div>`;
+  if(toCreate.length){
+    html+=`<div class="card"><div class="card-t" style="color:#137333">🆕 新規作成（${toCreate.length}件）</div>`;
+    toCreate.forEach(({t})=>{const p=getP(t.owner),pj=PROJ[t.proj];html+=`<div class="prev-row"><span class="prev-type prev-new">新規</span><span class="badge" style="background:${p.color}18;color:${p.color}">${p.name}</span>${pj?`<span class="badge" style="background:${pj.color}18;color:${pj.color}">${pj.name}</span>`:''}<span style="flex:1;font-size:13px">${t.name}</span><span style="font-size:12px;color:#888">${fs(t.start)}〜${fs(t.end)}</span></div>`;});
+    html+='</div>';
+  }
+  if(toUpdate.length){
+    html+=`<div class="card"><div class="card-t" style="color:#1557b0">✏️ 更新（${toUpdate.length}件）</div>`;
+    toUpdate.forEach(({t})=>{const p=getP(t.owner),pj=PROJ[t.proj];html+=`<div class="prev-row"><span class="prev-type prev-upd">更新</span><span class="badge" style="background:${p.color}18;color:${p.color}">${p.name}</span>${pj?`<span class="badge" style="background:${pj.color}18;color:${pj.color}">${pj.name}</span>`:''}<span style="flex:1;font-size:13px">${t.name}</span><span class="ss-badge ss-dirty">変更あり</span><span style="font-size:12px;color:#888">${fs(t.start)}〜${fs(t.end)}</span></div>`;});
+    html+='</div>';
+  }
+  if(toSkip.length) html+=`<details style="margin-top:4px"><summary style="font-size:13px;color:#888;cursor:pointer;padding:6px 0">スキップ ${toSkip.length}件（変更なし）</summary><div class="card" style="margin-top:6px">${toSkip.map(({t})=>`<div class="prev-row"><span class="prev-type prev-skip">スキップ</span><span style="flex:1;font-size:13px;color:#777">${t.name}</span></div>`).join('')}</div></details>`;
+  el.innerHTML=html;
+}
+
+function closePushPreview(){document.getElementById('push-preview-modal').classList.remove('open');pushPlan=null;}
+
+async function executePush(){
+  if(!pushPlan)return;
+  const btn=document.getElementById('push-confirm-btn');
+  btn.disabled=true;btn.textContent='書き出し中…';
+  const res=document.getElementById('push-preview-res');
+  res.style.display='none';res.className='sync-res';
+  let cc=0,uc=0,ec=0,ecList=[];
+  const {toCreate,toUpdate,pcm,prevMsg}=pushPlan;
+  const all=[...toCreate.map(x=>({...x,mode:'create'})),...toUpdate.map(x=>({...x,mode:'update'}))];
+  for(const {t,cid,mode} of all){
+    const ev=t2ev(t);
+    try{
+      if(mode==='update'&&t.google_event_id){
+        try{await gapi.client.calendar.events.update({calendarId:t.google_calendar_id||cid,eventId:t.google_event_id,resource:ev});await db.collection('tasks').doc(t.id).update({sync_status:'synced',updated:now$()});uc++;}
+        catch{const r=await gapi.client.calendar.events.insert({calendarId:cid,resource:ev});await db.collection('tasks').doc(t.id).update({google_event_id:r.result.id,google_calendar_id:cid,sync_status:'synced',updated:now$()});cc++;}
+      }else{
+        const r=await gapi.client.calendar.events.insert({calendarId:cid,resource:ev});
+        await db.collection('tasks').doc(t.id).update({google_event_id:r.result.id,google_calendar_id:cid,sync_status:'synced',updated:now$()});cc++;
+      }
+    }catch(e2){ec++;ecList.push(t.name);await db.collection('tasks').doc(t.id).update({sync_status:'failed',updated:now$()});console.error('push',t.id,e2);}
+  }
+  await logOp('push',{created:cc,updated:uc,failed:ec});
+  btn.disabled=false;btn.textContent='書き出しを実行する';
+  const msg=`${prevMsg}書出: 作成${cc}件・更新${uc}件${ec?`・失敗${ec}件（${ecList.join('、')}）`:''}`;
+  res.className='sync-res '+(ec>0?'err':'ok');res.textContent='✓ '+msg;res.style.display='block';
+  const orig=document.getElementById('sync-res');
+  if(orig){orig.className='sync-res '+(ec>0?'err':'ok');orig.textContent='✓ '+msg;orig.style.display='block';}
+  renderCalSrcList();
+  if(ec===0)setTimeout(()=>closePushPreview(),2000);
 }
 
 // ══════════════════════════════════════════
@@ -1311,6 +1489,7 @@ async function doSync(dir){
   document.getElementById('hdr-today').textContent='今日: '+(TODAY.getMonth()+1)+'月'+TODAY.getDate()+'日（'+['日','月','火','水','木','金','土'][TODAY.getDay()]+'）';
   initPBar();
   document.getElementById('sync-modal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeSync();});
+  document.getElementById('push-preview-modal').addEventListener('click',e=>{if(e.target===e.currentTarget)closePushPreview();});
   const stored=localStorage.getItem('pm_cfg');
   if(stored){try{initFB(JSON.parse(stored));}catch{showSetup();}}
   else showSetup();
