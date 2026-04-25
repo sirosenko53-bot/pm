@@ -275,7 +275,7 @@ input[type=checkbox]{width:15px;height:15px;cursor:pointer}
 .task-2line{display:flex;flex-direction:column}
 .task-2line-main{font-size:13px;font-weight:500}
 .task-2line-sub{font-size:11px;color:#888;margin-top:1px}
-</style>
+@media(max-width:900px){.cal-2col{grid-template-columns:1fr!important}}</style>
 </head>
 <body>
 
@@ -322,6 +322,7 @@ input[type=checkbox]{width:15px;height:15px;cursor:pointer}
     <div class="av" id="user-av" onclick="confirmSignOut()" title="クリックでログアウト">?</div>
   </div>
   <div class="pbar" id="pbar"></div>
+  <div id="summary-bar" style="background:#fff;border-bottom:1px solid #e8e6df;padding:5px 18px;display:flex;gap:12px;flex-wrap:wrap;font-size:12px"></div>
   <div class="tabs">
     <div class="tab active" onclick="sw('today')">今日の進行</div>
     <div class="tab" onclick="sw('cal')">カレンダー</div>
@@ -457,6 +458,30 @@ input[type=checkbox]{width:15px;height:15px;cursor:pointer}
   </div>
 </div>
 
+<!-- ── 削除確認モーダル ── -->
+<div class="modal-bg" id="del-confirm-modal">
+  <div class="modal" style="max-width:620px">
+    <h2 style="color:#c5221f">🗑 削除の確認</h2>
+    <div class="modal-sub">以下のタスクをアプリ内から削除します。この操作はアーカイブとして記録され、操作ログから確認できます。</div>
+    <div id="del-confirm-gcal-notice" style="display:none;background:#fff8e1;border:1px solid #fde68a;border-radius:9px;padding:10px 13px;font-size:13px;color:#78350f;margin-bottom:12px">
+      ⚠ Googleカレンダーから取り込んだタスクが含まれています。<br>
+      <strong>Googleカレンダー上の予定は削除されません。</strong>アプリ内のタスクのみ削除します。
+    </div>
+    <div id="del-confirm-list" style="max-height:320px;overflow-y:auto;margin-bottom:14px"></div>
+    <div class="btn-row">
+      <button class="btn" style="background:#ea4335;color:#fff;border-color:#ea4335" onclick="confirmDelete()">削除する</button>
+      <button class="btn" onclick="closeDelConfirm()">キャンセル</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Undo トースト ── -->
+<div id="undo-toast" style="display:none;position:fixed;bottom:58px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:10px 18px;border-radius:10px;font-size:13px;z-index:300;display:flex;align-items:center;gap:12px;box-shadow:0 4px 16px rgba(0,0,0,.25)">
+  <span id="undo-msg"></span>
+  <button id="undo-btn" style="background:#fff;color:#333;border:none;border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;font-weight:500">元に戻す</button>
+  <button onclick="hideUndo()" style="background:none;border:none;color:#aaa;cursor:pointer;font-size:16px;padding:0">×</button>
+</div>
+
 <script>
 // ═══════════════════════════════════════════
 // CONSTANTS
@@ -496,7 +521,7 @@ let delaySortKey='start',delayFilterProj='',delayFilterOwner='';
 let delaySelected=new Set(),delayMergePreview=null,delaySortAsc=true;
 // 削除モード
 let deleteMode=false;
-let deleteSelected=new Set(); // 削除対象タスクID
+let selectedForDelete=new Set(); // 削除対象タスクID（統一済み）
 
 // ═══════════════════════════════════════════
 // HELPERS
@@ -640,9 +665,15 @@ const addFx=f=>db.collection('fixes').add({...f,created:now$()});
 const updFx=(id,p)=>db.collection('fixes').doc(id).update(p);
 
 async function deleteTask(id,name){
-  if(!confirm(`「${name}」を削除しますか？`))return;
-  await db.collection('tasks').doc(id).delete();
-  await logOp('delete_task',{name});
+  // 個別削除は削除モードのチェックボックス経由に誘導
+  // 直接呼び出しの場合のみ（内部呼び出し等）論理削除を実行
+  if(!confirm(`「${name}」を削除しますか？\nアーカイブとして記録されます。操作ログから確認できます。`))return;
+  await db.collection('tasks').doc(id).update({archived:true,visible:false,archived_at:now$(),archived_reason:'user_delete',updated:now$()});
+  await logOp('delete_task',{name,gcal_note:'Googleカレンダー上の予定は削除されていません'});
+  showUndo(`「${name}」を削除しました`,async()=>{
+    await db.collection('tasks').doc(id).update({archived:false,visible:true,updated:now$()});
+    showUndo('削除を取り消しました',null);
+  });
 }
 async function setTaskField(id,field,value){
   await updT(id,{[field]:value});
@@ -710,7 +741,7 @@ function rCal(){
   html+='</div>';
   if(selDay){
     const sdt=sortByDate(tasks.filter(t=>pd(t.start)<=selDay&&pd(t.end)>=selDay));
-    html=`<div style="display:grid;grid-template-columns:1fr 340px;gap:14px;align-items:start"><div>${html}</div><div class="cal-detail" style="position:sticky;top:66px"><div style="font-size:14px;font-weight:600;margin-bottom:10px">${selDay.getMonth()+1}月${selDay.getDate()}日のタスク（${sdt.length}件）</div>`;
+    html=`<div style="display:grid;grid-template-columns:1fr 340px;gap:14px;align-items:start" class="cal-2col"><div>${html}</div><div class="cal-detail" style="position:sticky;top:66px"><div style="font-size:14px;font-weight:600;margin-bottom:10px">${selDay.getMonth()+1}月${selDay.getDate()}日のタスク（${sdt.length}件）</div>`;
     sdt.forEach(t=>{
       const p=getP(t.owner),pj=PROJ[t.proj],ss=ssBadge(t);
       html+=`<div class="tr">
@@ -756,7 +787,7 @@ function rGantt(){
   </div>
   <div class="gantt-wrap"><div class="gantt"><div class="gh">${lbls.map(l=>`<div class="glc" style="left:${l.x}">${l.t}</div>`).join('')}</div>`;
 
-  if(deleteMode){html=`<div class="delete-bar"><span class="del-count">${selectedForDelete.size}件を選択中</span><button class="btn sm" style="background:#ea4335;color:#fff;border-color:#ea4335" onclick="execDelete()" ${selectedForDelete.size===0?'disabled':''}>選択したタスクを削除</button><button class="btn sm" onclick="exitDeleteMode()">削除モード終了</button></div>`+html;}
+  if(deleteMode){html=`<div class="delete-bar"><span class="del-count">${selectedForDelete.size}件を選択中</span><button class="btn sm" style="background:#ea4335;color:#fff;border-color:#ea4335" class="btn sm del-exec-btn" onclick="execDelete()" ${selectedForDelete.size===0?'disabled':''}>選択したタスクを削除</button><button class="btn sm" onclick="exitDeleteMode()">削除モード終了</button></div>`+html;}
   else{html='<div style="text-align:right;margin-bottom:8px"><button class="del-mode-enter del-mode-btn" onclick="enterDeleteMode()">削除モード</button></div>'+html;}
   PEOPLE.filter(p=>visPeople.has(p.id)).forEach(person=>{
     const pt=sortByDate(tasks.filter(t=>t.owner===person.id));
@@ -839,11 +870,14 @@ function rOv(){
     });
     html+='</div>';
   });
-  const delBar=deleteMode?`<div class="delete-bar"><span class="del-count">${selectedForDelete.size}件を選択中</span><button class="btn sm" style="background:#ea4335;color:#fff;border-color:#ea4335" onclick="execDelete()" ${selectedForDelete.size===0?'disabled':''}>選択したタスクを削除</button><button class="btn sm" onclick="exitDeleteMode()">削除モード終了</button></div>`:'<div style="text-align:right;margin-bottom:8px"><button class="del-mode-enter del-mode-btn" onclick="enterDeleteMode()">削除モード</button></div>';
+  const delBar=deleteMode?`<div class="delete-bar"><span class="del-count">${selectedForDelete.size}件を選択中</span><button class="btn sm" style="background:#ea4335;color:#fff;border-color:#ea4335" class="btn sm del-exec-btn" onclick="execDelete()" ${selectedForDelete.size===0?'disabled':''}>選択したタスクを削除</button><button class="btn sm" onclick="exitDeleteMode()">削除モード終了</button></div>`:'<div style="text-align:right;margin-bottom:8px"><button class="del-mode-enter del-mode-btn" onclick="enterDeleteMode()">削除モード</button></div>';
   el.innerHTML=delBar+(html||'<div class="notice ok">遅延・要対応のタスクはありません</div>');
 }
 function emptyState(){
-  return `<div class="notice info">Googleカレンダーから制作予定を取り込むと、ここにタスクが表示されます。<div class="btn-row" style="margin-top:10px"><button class="btn pr" onclick="openSync()">カレンダー同期を開く</button></div></div>`;
+  const total=TASKS.filter(t=>!t.archived).length;
+  if(!total) return `<div class="notice info" style="font-size:14px"><strong>まだタスクが取り込まれていません</strong><br>Googleカレンダーから制作予定を取り込むと、ここに表示されます。<div class="btn-row" style="margin-top:12px"><button class="btn pr" onclick="openSync()">カレンダー同期を開く</button></div></div>`;
+  const vis=PEOPLE.filter(p=>visPeople.has(p.id)).map(p=>p.name).join('、');
+  return `<div class="notice" style="font-size:13px">表示対象のタスクがありません（表示中: ${vis}）<button class="btn sm" style="margin-left:10px" onclick="visPeople=new Set(PEOPLE.map(p=>p.id));document.querySelectorAll('.ptog').forEach(el=>el.classList.remove('off'));renderAll()">全員を表示</button></div>`;
 }
 
 // ═══════════════════════════════════════════
@@ -1368,6 +1402,21 @@ function rStatus(){
   const all=filt(),del=all.filter(isDel).length,mg=all.filter(isMg).length;
   const syn=all.filter(isSyn).length,fl=FIXES.filter(f=>!f.done&&!f.deleted).length;
   const unsets=TASKS.filter(t=>!t.archived&&isUnset(t)).length;
+  const wb=TASKS.filter(t=>!t.archived&&!t.merged&&t.visible!==false&&(t.sync_status==='dirty'||t.sync_status==='unsynced'||t.sync_status==='failed')).length;
+  const failed=TASKS.filter(t=>!t.archived&&t.sync_status==='failed').length;
+  // 状態サマリーバー（タブ上部）
+  const sb=document.getElementById('summary-bar');
+  if(sb){
+    const items=[
+      {n:all.filter(isTod).length,label:'今日対応中',color:'#d97706',tab:'today'},
+      {n:del,label:'遅延中',color:'#ea4335',tab:'delay'},
+      {n:unsets,label:'未設定',color:'#d97706',tab:'unset'},
+      {n:wb,label:'書き戻し待ち',color:'#1a73e8',tab:'today'},
+      {n:failed,label:'同期失敗',color:'#ea4335',tab:'today'},
+      {n:fl,label:'修正リスト残',color:'#555',tab:'fixlist'},
+    ].filter(x=>x.n>0);
+    sb.innerHTML=items.map(x=>`<span onclick="sw('${x.tab}')" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:12px;background:${x.color}14;color:${x.color};font-weight:500"><span style="font-weight:700">${x.n}</span>${x.label}</span>`).join('')||'<span style="color:#aaa">今日は対応が必要なタスクはありません</span>';
+  }
 
   // 未設定タブは常に更新（アクティブでなくても）
   const tabUnset=document.getElementById('tab-unset');
@@ -1550,13 +1599,43 @@ async function saveCalMapping(calId,field,value){
 async function stopCalSrc(srcId){await db.collection('calendar_sources').doc(srcId).update({enabled:false});await logOp('cal_stop',{src_id:srcId});}
 async function restartCalSrc(srcId,calId){selectedCalIds.add(calId);await db.collection('calendar_sources').doc(srcId).update({enabled:true});await logOp('cal_restart',{src_id:srcId});}
 async function deleteCalSrcTasks(srcId,calId,calName){
-  const affected=TASKS.filter(t=>t.source_calendar_id===calId);
-  if(!confirm(`「${calName}」から取り込んだタスク ${affected.length}件をアプリ内から削除します。\nGoogleカレンダーの予定は削除されません。実行しますか？`))return;
-  const batch=db.batch();
-  affected.forEach(t=>batch.delete(db.collection('tasks').doc(t.id)));
-  batch.update(db.collection('calendar_sources').doc(srcId),{imported_task_count:0});
-  await batch.commit();
-  await logOp('cal_del_tasks',{calendar_id:calId,count:affected.length});
+  const affected=sortByDate(TASKS.filter(t=>t.source_calendar_id===calId&&!t.archived));
+  if(!affected.length){alert(`「${calName}」から取り込んだタスクはありません。`);return;}
+  // 一覧確認モーダルを出す
+  const notice=document.getElementById('del-confirm-gcal-notice');
+  if(notice){notice.style.display='block';}
+  const list=document.getElementById('del-confirm-list');
+  if(list){
+    list.innerHTML=`<div style="font-size:13px;font-weight:500;margin-bottom:8px;color:#555">「${calName}」由来のタスク ${affected.length}件が削除対象です</div>`+
+      affected.map(t=>{
+        const p=getP(t.owner),pj=PROJ[t.proj];
+        return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-top:0.5px solid #e8e6df;flex-wrap:wrap">
+          ${pj?`<span class="badge" style="background:${pj.color}18;color:${pj.color}">${pj.name}</span>`:''}
+          <span class="badge" style="background:${p.color}18;color:${p.color}">${p.name}</span>
+          <span style="flex:1;font-size:13px">${t.name}</span>
+          <span style="font-size:12px;color:#777">${fs(t.start)}〜${fs(t.end)}</span>
+          <span class="badge" style="background:#fff8e1;color:#7c5400;font-size:10px">GCal由来</span>
+        </div>`;
+      }).join('');
+  }
+  // 確認後実行
+  document.getElementById('del-confirm-modal').classList.add('open');
+  // モーダルの確認ボタンを一時的に上書き
+  const btn=document.getElementById('del-confirm-modal').querySelector('.btn');
+  if(btn){
+    btn.textContent='カレンダー由来タスクを削除する';
+    btn.onclick=async()=>{
+      const batch=db.batch();
+      affected.forEach(t=>batch.update(db.collection('tasks').doc(t.id),{archived:true,visible:false,archived_at:now$(),archived_reason:'cal_src_delete',updated:now$()}));
+      batch.update(db.collection('calendar_sources').doc(srcId),{imported_task_count:0});
+      await batch.commit();
+      await logOp('cal_del_tasks',{calendar_name:calName,calendar_id:calId,count:affected.length,gcal_note:'Googleカレンダー上の予定は削除されていません'});
+      closeDelConfirm();
+      btn.textContent='削除する';btn.onclick=confirmDelete; // 元に戻す
+      renderAll();
+      showUndo(`${affected.length}件のタスクをアプリ内から削除しました`,null);
+    };
+  }
 }
 
 // ═══════════════════════════════════════════
@@ -1811,21 +1890,89 @@ async function executePush(){
 // ── 削除モード ──
 function toggleDelSel(id,checked){
   if(checked)selectedForDelete.add(id);else selectedForDelete.delete(id);
+  // アクションバーの件数とボタン状態を即時更新（再描画なしで高速）
+  document.querySelectorAll('.del-count').forEach(el=>{el.textContent=selectedForDelete.size+'件を選択中';});
+  document.querySelectorAll('.del-exec-btn').forEach(btn=>{btn.disabled=selectedForDelete.size===0;});
 }
 function enterDeleteMode(){deleteMode=true;selectedForDelete.clear();renderAll();}
 function exitDeleteMode(){deleteMode=false;selectedForDelete.clear();renderAll();}
-async function execDelete(){
+// 削除確認モーダルを開く（execDeleteはこれを呼ぶ）
+function execDelete(){openDelConfirm();}
+function openDelConfirm(){
   const ids=[...selectedForDelete];if(!ids.length)return;
   const tasks=TASKS.filter(t=>ids.includes(t.id));
   const gcalTasks=tasks.filter(t=>t.source_type==='google_calendar');
-  let msg=`選択した${ids.length}件のタスクをアプリ内から削除します。`;
-  if(gcalTasks.length)msg+=`\n\n⚠ うち${gcalTasks.length}件はGoogleカレンダーから取り込んだタスクです。\nGoogleカレンダー上の予定は削除されません。`;
-  if(!confirm(msg))return;
+  // GCal注意書き
+  const notice=document.getElementById('del-confirm-gcal-notice');
+  if(notice)notice.style.display=gcalTasks.length?'block':'none';
+  // タスク一覧
+  const list=document.getElementById('del-confirm-list');
+  if(list){
+    list.innerHTML=`<div style="font-size:13px;font-weight:500;margin-bottom:8px;color:#555">${tasks.length}件のタスクが削除対象です</div>`+
+      tasks.map(t=>{
+        const p=getP(t.owner),pj=PROJ[t.proj],ss=ssBadge(t);
+        return `<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-top:0.5px solid #e8e6df;flex-wrap:wrap">
+          ${pj?`<span class="badge" style="background:${pj.color}18;color:${pj.color}">${pj.name}</span>`:''}
+          <span class="badge" style="background:${p.color}18;color:${p.color}">${p.name}</span>
+          <span style="flex:1;font-size:13px;font-weight:500;min-width:120px">${t.name}</span>
+          <span style="font-size:12px;color:#777">${fs(t.start)}〜${fs(t.end)}</span>
+          <span class="ss ${ss.cls}">${ss.lbl}</span>
+          ${t.source_type==='google_calendar'?'<span class="badge" style="background:#fff8e1;color:#7c5400;font-size:10px">GCal由来</span>':''}
+        </div>`;
+      }).join('');
+  }
+  document.getElementById('del-confirm-modal').classList.add('open');
+}
+function closeDelConfirm(){document.getElementById('del-confirm-modal').classList.remove('open');}
+
+// 削除実行（論理削除 = archived:true、完全削除しない）
+async function confirmDelete(){
+  const ids=[...selectedForDelete];if(!ids.length)return;
+  const tasks=TASKS.filter(t=>ids.includes(t.id));
+  const gcalCount=tasks.filter(t=>t.source_type==='google_calendar').length;
   const batch=db.batch();
-  tasks.forEach(t=>batch.delete(db.collection('tasks').doc(t.id)));
+  tasks.forEach(t=>batch.update(db.collection('tasks').doc(t.id),{
+    archived:true,visible:false,
+    archived_at:now$(),archived_reason:'user_delete',updated:now$()
+  }));
   await batch.commit();
-  await logOp('delete_tasks',{count:ids.length,gcal_count:gcalTasks.length});
+  await logOp('delete_tasks',{
+    count:ids.length,gcal_count:gcalCount,
+    task_names:tasks.map(t=>t.name),
+    gcal_note:'Googleカレンダー上の予定は削除されていません'
+  });
+  closeDelConfirm();
+  const deletedTasks=[...tasks]; // undo用にコピー
   deleteMode=false;selectedForDelete.clear();renderAll();
+  showUndo(
+    `${ids.length}件のタスクを削除しました`,
+    async()=>{
+      const b=db.batch();
+      deletedTasks.forEach(t=>b.update(db.collection('tasks').doc(t.id),{archived:false,visible:true,updated:now$()}));
+      await b.commit();
+      showUndo(`${ids.length}件の削除を取り消しました`,null);
+    }
+  );
+}
+
+// ── Undo トースト ──
+let _undoTimer=null;
+function showUndo(msg,fn){
+  clearTimeout(_undoTimer);
+  const toast=document.getElementById('undo-toast');if(!toast)return;
+  const msgEl=document.getElementById('undo-msg');if(msgEl)msgEl.textContent=msg;
+  const btn=document.getElementById('undo-btn');
+  if(btn){
+    if(fn){btn.style.display='inline-block';btn.onclick=()=>{fn();hideUndo();};}
+    else btn.style.display='none';
+  }
+  toast.style.display='flex';
+  _undoTimer=setTimeout(hideUndo,6000);
+}
+function hideUndo(){
+  clearTimeout(_undoTimer);
+  const toast=document.getElementById('undo-toast');
+  if(toast)toast.style.display='none';
 }
 
 
@@ -1923,8 +2070,9 @@ function logToText(log){
     bulk_postpone: `${(d.task_ids||[]).length}件のタスクの終了日を${d.new_end||''}まで延長しました`,
     send_to_fix:`「${(d.tasks||[]).join('」「')}」を修正リストへ移しました`,
     bulk_send_to_fix:`${(d.tasks||[]).length}件のタスクを修正リストへ移しました`,
-    delete_tasks:`${d.count||0}件のタスクをアプリ内から削除しました${d.gcal_count?`（うち${d.gcal_count}件はGoogleカレンダー由来・GCal上の予定は残っています）`:''}`,
-    delete_task:`「${d.name||''}」をアプリ内から削除しました`,
+    delete_tasks:d.task_names?`「${(d.task_names||[]).slice(0,3).join('」「')}」${d.task_names.length>3?`など${d.task_names.length}件`:''}をアプリ内から削除しました。GCal上の予定は残っています。`:`${d.count||0}件のタスクをアプリ内から削除しました（GCal上の予定は残っています）`,
+    delete_task:d.name?`「${d.name}」をアプリ内から削除しました（GCal上の予定は残っています）`:'タスクを削除しました',
+    cal_del_tasks:d.calendar_name?`「${d.calendar_name}」カレンダー由来のタスク${d.count||0}件をアプリ内から削除しました（GCal上の予定は残っています）`:`カレンダー由来のタスク${d.count||0}件をアプリ内から削除しました`,
     delete_fix: `修正リストの項目を削除しました`,
     cal_stop:   `カレンダーの取込を停止しました`,
     cal_restart:`カレンダーの取込を再開しました`,
