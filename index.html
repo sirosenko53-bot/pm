@@ -249,6 +249,32 @@ input[type=checkbox]{width:15px;height:15px;cursor:pointer}
 .sdot{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:3px;flex-shrink:0}
 .spinner{display:inline-block;width:14px;height:14px;border:2px solid #dadce0;border-top-color:#1a73e8;border-radius:50%;animation:spin .7s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── delete mode ── */
+.del-chk{width:16px;height:16px;cursor:pointer;accent-color:#ea4335}
+.delete-bar{background:#fff;border:1.5px solid #ea4335;border-radius:12px;padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.delete-bar .del-count{font-size:13px;font-weight:500;flex:1;color:#c5221f}
+.del-mode-btn{padding:5px 12px;border-radius:8px;font-size:12px;font-weight:500;cursor:pointer;font-family:inherit}
+.del-mode-enter{background:#fff;border:1px solid #dadce0;color:#555}
+.del-mode-enter:hover{background:#fce8e6;border-color:#c5221f;color:#c5221f}
+.del-mode-exit{background:#fce8e6;border:1px solid #c5221f;color:#c5221f}
+
+/* ── today panel ── */
+.today-sec{margin-bottom:16px}
+.today-sec-hd{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#555;margin-bottom:8px;display:flex;align-items:center;gap:8px}
+.today-empty{font-size:13px;color:#888;padding:8px 0}
+.writeback-item{display:flex;align-items:center;gap:8px;padding:7px 0;border-top:0.5px solid #f0ede8;font-size:13px}
+.writeback-item:first-child{border-top:none}
+.sync-tab-bar{display:flex;border-bottom:1px solid #e8e6df;margin-bottom:14px}
+.sync-tab{padding:8px 16px;font-size:13px;cursor:pointer;border-bottom:2px solid transparent;color:#666;white-space:nowrap}
+.sync-tab.active{color:#1a73e8;border-bottom-color:#1a73e8;font-weight:600}
+.unset-alert{background:#fff8e1;border:1px solid #fde68a;border-radius:10px;padding:10px 14px;margin:8px 16px;display:flex;align-items:center;gap:10px;font-size:13px;color:#78350f;cursor:pointer}
+.unset-alert:hover{background:#fffbeb}
+.filter-status{background:#f1f3f4;border-radius:8px;padding:6px 12px;font-size:12px;color:#555;margin-bottom:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.filter-clear{font-size:12px;color:#1a73e8;cursor:pointer;margin-left:auto}
+.task-2line{display:flex;flex-direction:column}
+.task-2line-main{font-size:13px;font-weight:500}
+.task-2line-sub{font-size:11px;color:#888;margin-top:1px}
 </style>
 </head>
 <body>
@@ -297,7 +323,8 @@ input[type=checkbox]{width:15px;height:15px;cursor:pointer}
   </div>
   <div class="pbar" id="pbar"></div>
   <div class="tabs">
-    <div class="tab active" onclick="sw('cal')">カレンダー</div>
+    <div class="tab active" onclick="sw('today')">今日の進行</div>
+    <div class="tab" onclick="sw('cal')">カレンダー</div>
     <div class="tab" onclick="sw('gantt')">人別ガント</div>
     <div class="tab" onclick="sw('overview')">概要・優先度</div>
     <div class="tab" onclick="sw('progress')">進捗更新</div>
@@ -307,7 +334,8 @@ input[type=checkbox]{width:15px;height:15px;cursor:pointer}
     <div class="tab" id="tab-oplog" style="display:none" onclick="sw('oplog')">操作ログ</div>
   </div>
   <div class="content">
-    <div class="panel active" id="panel-cal"></div>
+    <div class="panel active" id="panel-today"></div>
+    <div class="panel" id="panel-cal"></div>
     <div class="panel" id="panel-gantt"></div>
     <div class="panel" id="panel-overview"></div>
     <div class="panel" id="panel-progress"></div>
@@ -369,6 +397,13 @@ input[type=checkbox]{width:15px;height:15px;cursor:pointer}
         <button class="btn sm" onclick="requestCalendarAccess()" style="margin-left:auto">再取得</button>
       </div>
 
+      <!-- タブ分け -->
+      <div class="sync-tab-bar">
+        <div class="sync-tab active" id="stab-import" onclick="syncTabSwitch('import')">予定を取り込む</div>
+        <div class="sync-tab" id="stab-manage" onclick="syncTabSwitch('manage')">取込済み管理</div>
+        <div class="sync-tab" id="stab-write" onclick="syncTabSwitch('write')">Googleへ書き戻す</div>
+      </div>
+      <div id="sync-pane-import">
       <!-- 取込元カレンダーとマッピング設定 -->
       <div class="modal-sec">
         <h3>取込元カレンダーとプロジェクト設定</h3>
@@ -386,9 +421,23 @@ input[type=checkbox]{width:15px;height:15px;cursor:pointer}
 
       <div class="sync-actions">
         <button class="sync-act pr" onclick="doImport()">Googleカレンダーから取り込む</button>
-        <button class="sync-act" onclick="doWriteback()">調整結果をGoogleへ書き戻す</button>
       </div>
       <div class="sync-res" id="sync-res"></div>
+      </div><!-- /sync-pane-import -->
+
+      <div id="sync-pane-manage" style="display:none">
+        <div class="modal-sec"><h3>取込済みカレンダーの管理</h3>
+          <div id="cal-src-list2"></div>
+        </div>
+      </div>
+
+      <div id="sync-pane-write" style="display:none">
+        <div class="notice" style="margin-bottom:12px;font-size:12px">アプリ内で変更されたタスク（変更あり・未同期・失敗）をGoogleカレンダーへ書き戻します。</div>
+        <div class="sync-res" id="sync-res-write"></div>
+        <div class="sync-actions">
+          <button class="sync-act pr" onclick="doWriteback()">書き戻し確認画面を開く</button>
+        </div>
+      </div>
     </div>
     <div style="text-align:right;margin-top:16px"><button class="btn" onclick="closeSync()">閉じる</button></div>
   </div>
@@ -443,13 +492,11 @@ let calY=TODAY.getFullYear(), calM=TODAY.getMonth(), selDay=null;
 let showDone=false, showMergedOrig=false, showFixDeleted=false, showAddTask=false;
 let mgroups={}, mgk=0;
 let pushPlan=null;
-// 遅延対応画面の状態
-let delaySortKey='start';       // start|delayDays|proj|owner|prog
-let delayFilterProj='';         // ''=全件
-let delayFilterOwner='';
-let delaySelected=new Set();    // 選択中のタスクID
-let delayMergePreview=null;     // 統合プレビュー中のデータ
-let delaySortAsc=true;
+let delaySortKey='start',delayFilterProj='',delayFilterOwner='';
+let delaySelected=new Set(),delayMergePreview=null,delaySortAsc=true;
+// 削除モード
+let deleteMode=false;
+let deleteSelected=new Set(); // 削除対象タスクID
 
 // ═══════════════════════════════════════════
 // HELPERS
@@ -609,13 +656,14 @@ async function logOp(type,detail){
 // TAB / PERSON
 // ═══════════════════════════════════════════
 function sw(t){
-  const names=['cal','gantt','overview','progress','delay','fixlist','unset','oplog'];
+  const names=['today','cal','gantt','overview','progress','delay','fixlist','unset','oplog'];
   document.querySelectorAll('.tab').forEach((el,i)=>el.classList.toggle('active',names[i]===t));
   document.querySelectorAll('.panel').forEach(el=>el.classList.remove('active'));
   const p=document.getElementById('panel-'+t);if(p)p.classList.add('active');
-  if(t==='oplog'){document.getElementById('tab-oplog').style.display='';loadOpLogs();}
   if(t==='delay'){delaySortKey='start';delaySortAsc=true;}
   if(t==='unset')document.getElementById('tab-unset').style.display='';
+  if(t==='oplog'){document.getElementById('tab-oplog').style.display='';loadOpLogs();}
+  if(deleteMode)exitDeleteMode();
   renderAll();
 }
 function initPBar(){
@@ -628,7 +676,7 @@ function toggleP(id){
   document.getElementById('ptog-'+id)?.classList.toggle('off',!visPeople.has(id));
   renderAll();
 }
-function renderAll(){rCal();rGantt();rOv();rProg();rDelay();rUnset();rStatus();}
+function renderAll(){rToday();rCal();rGantt();rOv();rProg();rDelay();rUnset();rStatus();}
 
 // ═══════════════════════════════════════════
 // CALENDAR
@@ -661,8 +709,8 @@ function rCal(){
   }
   html+='</div>';
   if(selDay){
-    const sdt=tasks.filter(t=>pd(t.start)<=selDay&&pd(t.end)>=selDay);
-    html+=`<div class="cal-detail"><div style="font-size:14px;font-weight:600;margin-bottom:10px">${selDay.getMonth()+1}月${selDay.getDate()}日のタスク（${sdt.length}件）</div>`;
+    const sdt=sortByDate(tasks.filter(t=>pd(t.start)<=selDay&&pd(t.end)>=selDay));
+    html=`<div style="display:grid;grid-template-columns:1fr 340px;gap:14px;align-items:start"><div>${html}</div><div class="cal-detail" style="position:sticky;top:66px"><div style="font-size:14px;font-weight:600;margin-bottom:10px">${selDay.getMonth()+1}月${selDay.getDate()}日のタスク（${sdt.length}件）</div>`;
     sdt.forEach(t=>{
       const p=getP(t.owner),pj=PROJ[t.proj],ss=ssBadge(t);
       html+=`<div class="tr">
@@ -673,11 +721,11 @@ function rCal(){
         <span class="td">${fs(t.start)}〜${fs(t.end)}</span>
         <div class="mpw"><div class="mpbar"><div class="mpfil" style="width:${t.prog||0}%;background:${isDel(t)?'#ea4335':pj?.color||p.color}"></div></div><div class="mplbl">${t.prog||0}%</div></div>
         <button class="btn sm" onclick="sw('progress')">進捗</button>
-        <button class="btn sm danger" onclick="deleteTask('${t.id}','${t.name.replace(/'/g,"\\'")}')">削</button>
+        ${deleteMode?`<input type="checkbox" class="del-chk" onchange="toggleDelSel('${t.id}',this.checked)" ${selectedForDelete.has(t.id)?'checked':''}>`:''}
       </div>`;
     });
     if(!sdt.length)html+=`<div style="font-size:13px;color:#888">この日のタスクはありません</div>`;
-    html+='</div>';
+    html+='</div></div>';
   }
   el.innerHTML=html;
 }
@@ -708,6 +756,8 @@ function rGantt(){
   </div>
   <div class="gantt-wrap"><div class="gantt"><div class="gh">${lbls.map(l=>`<div class="glc" style="left:${l.x}">${l.t}</div>`).join('')}</div>`;
 
+  if(deleteMode){html=`<div class="delete-bar"><span class="del-count">${selectedForDelete.size}件を選択中</span><button class="btn sm" style="background:#ea4335;color:#fff;border-color:#ea4335" onclick="execDelete()" ${selectedForDelete.size===0?'disabled':''}>選択したタスクを削除</button><button class="btn sm" onclick="exitDeleteMode()">削除モード終了</button></div>`+html;}
+  else{html='<div style="text-align:right;margin-bottom:8px"><button class="del-mode-enter del-mode-btn" onclick="enterDeleteMode()">削除モード</button></div>'+html;}
   PEOPLE.filter(p=>visPeople.has(p.id)).forEach(person=>{
     const pt=sortByDate(tasks.filter(t=>t.owner===person.id));
     if(!pt.length)return;
@@ -772,14 +822,14 @@ function rOv(){
       html+=`<div class="tr">
         ${pj&&pj.name!=='未設定'?`<span class="badge" style="background:${pj.color}18;color:${pj.color}">${pj.name}</span>`:''}
         <span class="badge" style="background:${p.color}18;color:${p.color}">${p.name}</span>
-        <span class="tn" title="${t.name}">${isMg(t)?'★ ':''}${t.name}${isUnset(t)?' <span class="unset-badge">未設定</span>':''}</span>
+        <span class="tn"><div class="task-2line-main">${isMg(t)?'★ ':''}${t.name}${isUnset(t)?' <span class="unset-badge">未設定</span>':''}</div><div class="task-2line-sub">${PROJ[t.proj]?.name||''} / ${getP(t.owner).name} / ${fs(t.start)}〜${fs(t.end)}</div></span>
         <span class="ss ${ss.cls}">${ss.lbl}</span>
         <span class="td">${fs(t.start)}〜${fs(t.end)}</span>
         <div class="mpw"><div class="mpbar"><div class="mpfil" style="width:${t.prog||0}%;background:${isDel(t)?'#ea4335':pj?.color||p.color}"></div></div><div class="mplbl">${t.prog||0}%</div></div>
         ${t.cond?`<span title="通過条件: ${t.cond}" style="cursor:help;font-size:14px">📋</span>`:''}
         <button class="btn sm" onclick="sw('progress')">↗</button>
         ${isMg(t)&&t.merge_group_id?`<button class="btn sm danger" onclick="restoreMerge('${t.id}','${t.merge_group_id}')">元に戻す</button>`:''}
-        <button class="btn sm danger" onclick="deleteTask('${t.id}','${t.name.replace(/'/g,"\\'")}')">削</button>
+        ${deleteMode?`<input type="checkbox" class="del-chk" onchange="toggleDelSel('${t.id}',this.checked)" ${selectedForDelete.has(t.id)?'checked':''}>`:''}
       </div>`;
       if(isMg(t)&&t.merged_from_task_ids?.length){
         html+=`<div class="merge-detail"><div style="font-weight:500;margin-bottom:4px">統合元タスク:</div><ul>${t.merged_from_task_ids.map(id=>{const o=TASKS.find(x=>x.id===id);return`<li>${o?o.name:id}</li>`;}).join('')}</ul>
@@ -789,7 +839,8 @@ function rOv(){
     });
     html+='</div>';
   });
-  el.innerHTML=html||'<div class="notice ok">遅延・要対応のタスクはありません</div>';
+  const delBar=deleteMode?`<div class="delete-bar"><span class="del-count">${selectedForDelete.size}件を選択中</span><button class="btn sm" style="background:#ea4335;color:#fff;border-color:#ea4335" onclick="execDelete()" ${selectedForDelete.size===0?'disabled':''}>選択したタスクを削除</button><button class="btn sm" onclick="exitDeleteMode()">削除モード終了</button></div>`:'<div style="text-align:right;margin-bottom:8px"><button class="del-mode-enter del-mode-btn" onclick="enterDeleteMode()">削除モード</button></div>';
+  el.innerHTML=delBar+(html||'<div class="notice ok">遅延・要対応のタスクはありません</div>');
 }
 function emptyState(){
   return `<div class="notice info">Googleカレンダーから制作予定を取り込むと、ここにタスクが表示されます。<div class="btn-row" style="margin-top:10px"><button class="btn pr" onclick="openSync()">カレンダー同期を開く</button></div></div>`;
@@ -818,11 +869,13 @@ function rProg(){
     <div class="btn-row"><button class="btn pr" onclick="createTaskFromForm()">追加する</button><button class="btn" onclick="showAddTask=false;rProg()">キャンセル</button></div>
   </div>`:'';
 
+  const activePersonFilter=PEOPLE.filter(p=>p.id!=='unset'&&!visPeople.has(p.id)).map(p=>p.name);
+  const filterBar=activePersonFilter.length?`<div class="filter-status">表示中: ${PEOPLE.filter(p=>p.id!=='unset'&&visPeople.has(p.id)).map(p=>p.name).join(' / ')} <span class="filter-clear" onclick="visPeople=new Set(PEOPLE.map(p=>p.id));document.querySelectorAll('.ptog').forEach(el=>el.classList.remove('off'));renderAll()">フィルター解除</span></div>`:'';
   let html=`<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap">
     <button class="btn sm" onclick="showAddTask=!showAddTask;rProg()">手動追加（補助）</button>
     <label style="font-size:13px;color:#444;display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" ${showDone?'checked':''} onchange="showDone=this.checked;rProg()"> 完了タスクを表示</label>
     <span style="font-size:12px;color:#888;flex:1;text-align:right">変更は即時保存・全員の画面に反映されます</span>
-  </div>${addForm}`;
+  </div>${filterBar}${addForm}`;
 
   PEOPLE.filter(p=>visPeople.has(p.id)).forEach(person=>{
     const pt=tasks.filter(t=>t.owner===person.id);if(!pt.length)return;
@@ -847,7 +900,7 @@ function progRow(t,person,isDone=false){
     <input type="range" min="0" max="100" step="10" value="${t.prog||0}" onchange="updT('${t.id}',{prog:+this.value})" oninput="this.nextElementSibling.textContent=this.value+'%'"/>
     <span class="prog-val">${t.prog||0}%</span>
     ${t.prog===100?'<span class="badge" style="background:#e6f4ea;color:#137333;font-size:11px">完了</span>':del?'<span class="badge" style="background:#fce8e6;color:#c5221f;font-size:11px">遅延</span>':''}
-    <button class="btn sm danger" onclick="deleteTask('${t.id}','${t.name.replace(/'/g,"\\'")}')">削</button>
+    ${deleteMode?`<input type="checkbox" class="del-chk" onchange="toggleDelSel('${t.id}',this.checked)" ${selectedForDelete.has(t.id)?'checked':''}>`:''}
   </div>`;
 }
 async function createTaskFromForm(){
@@ -1020,7 +1073,11 @@ function rDelay(){
       <td><span class="badge" style="background:${p.color}18;color:${p.color}">${p.name}</span></td>
       <td style="color:#ea4335;font-weight:500;white-space:nowrap">+${delDays}日</td>
       <td><div style="width:46px"><div class="mpbar"><div class="mpfil" style="width:${t.prog||0}%;background:#ea4335"></div></div></div><div style="font-size:11px;color:#666">${t.prog||0}%</div></td>
-      <td style="font-size:11px;white-space:nowrap">${isMC?'<span style="color:#4f46e5">統合↗</span> ':''} ${isFC?'<span style="color:#1a73e8">修正↗</span> ':''} ${isPC?'<span style="color:#059669">延長↗</span>':''}</td>
+      <td style="font-size:11px;white-space:nowrap">
+        ${isMC?`<span style="color:#4f46e5" title="同PJ・同担当者・日付が近い">統合↗</span> `:''}
+        ${isFC?`<span style="color:#1a73e8" title="進捗50%以上・単独タスク">修正リスト↗</span> `:''}
+        ${isPC?`<span style="color:#059669" title="単独タスク・進捗率が低い">延長↗</span>`:''}
+      </td>
     </tr>`;
   });
   html+=`</tbody></table></div>`;
@@ -1246,8 +1303,7 @@ function rUnset(){
         <option value="unset" ${!t.owner||t.owner==='unset'?'selected':''}>担当者未設定</option>
         ${PEOPLE.filter(p=>p.id!=='unset').map(p=>`<option value="${p.id}" ${t.owner===p.id?'selected':''}>${p.name}</option>`).join('')}
       </select>
-      <button class="btn sm danger" onclick="deleteTask('${t.id}','${t.name.replace(/'/g,"\\'")}')">削除</button>
-    </div>`;
+      ${deleteMode?`<input type="checkbox" class="del-chk" onchange="toggleDelSel('${t.id}',this.checked)" ${selectedForDelete.has(t.id)?'checked':''}>`:''}\n    </div>`;
   });
   html+='</div>';
   el.innerHTML=html;
@@ -1324,6 +1380,12 @@ function rStatus(){
     }
   }
 
+  // 未設定アラートバー
+  const alertBar=document.getElementById('unset-alert-bar');
+  if(alertBar){
+    alertBar.style.display=unsets>0?'flex':'none';
+    alertBar.innerHTML=`⚠ 未設定タスクが${unsets}件あります。プロジェクト・担当者を設定してください <span style="margin-left:auto;font-size:12px;text-decoration:underline">確認する →</span>`;
+  }
   const el=document.getElementById('sbar');if(!el)return;
   el.innerHTML=PEOPLE.filter(p=>p.id!=='unset'&&visPeople.has(p.id)).map(p=>{
     const pt=all.filter(t=>t.owner===p.id);if(!pt.length)return'';
@@ -1349,10 +1411,9 @@ async function loadOpLogs(){
     const LM={import:{l:'カレンダー取込',c:'#059669'},writeback:{l:'書き戻し',c:'#1a73e8'},merge:{l:'タスク統合',c:'#4f46e5'},unmerge:{l:'統合解除',c:'#059669'},postpone:{l:'終了日延長',c:'#d97706'},send_to_fix:{l:'修正リスト送り',c:'#1a73e8'},delete_task:{l:'タスク削除',c:'#ea4335'},delete_fix:{l:'修正リスト削除',c:'#ea4335'},cal_stop:{l:'カレンダー停止',c:'#ea4335'},cal_del_tasks:{l:'取込タスク削除',c:'#ea4335'},cal_restart:{l:'カレンダー再開',c:'#059669'}};
     el.innerHTML='<div class="card"><div class="card-t">操作ログ（最新100件）</div>'+
       logs.map(log=>{
+        const {dt,text}=logToText(log);
         const m=LM[log.type]||{l:log.type,c:'#888'};
-        const dt=new Date(log.created).toLocaleString('ja-JP',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
-        const detail=log.detail?JSON.stringify(log.detail).substring(0,100):'';
-        return `<div class="log-row"><span class="log-type" style="color:${m.c}">${m.l}</span><span style="color:#888;font-size:11px;flex-shrink:0">${dt}</span><span style="flex:1;color:#555;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px">${detail}</span></div>`;
+        return `<div class="log-row"><span class="log-type" style="color:${m.c}">${m.l}</span><span style="color:#888;font-size:11px;flex-shrink:0;white-space:nowrap">${dt}</span><span style="flex:1;color:#444;font-size:13px">${text}</span></div>`;
       }).join('')+'</div>';
   }catch(e){el.innerHTML='<div class="notice">ログの取得に失敗しました: '+e.message+'</div>';}
 }
@@ -1421,9 +1482,10 @@ function renderCalMappingList(){
 }
 
 function renderCalSrcList(){
-  const el=document.getElementById('cal-src-list');if(!el)return;
+  const el=document.getElementById('cal-src-list');
+  const el2=document.getElementById('cal-src-list2');
   if(!CAL_SRCS.length){el.innerHTML='<div style="font-size:13px;color:#999">まだ取り込んだカレンダーがありません</div>';return;}
-  el.innerHTML=CAL_SRCS.map(src=>{
+  const html_src=CAL_SRCS.map(src=>{
     const stopped=!src.enabled;
     const dt=src.last_imported_at?new Date(src.last_imported_at).toLocaleString('ja-JP',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}):'未取込';
     return `<div class="cal-src${stopped?' stopped':''}">
@@ -1439,6 +1501,8 @@ function renderCalSrcList(){
       <div style="font-size:11px;color:#888;margin-top:6px">※「アプリ内のタスクを削除」を実行してもGoogleカレンダーの予定は削除されません</div>
     </div>`;
   }).join('');
+  if(el)el.innerHTML=html_src||'<div style="font-size:13px;color:#999">まだ取り込んだカレンダーがありません</div>';
+  if(el2)el2.innerHTML=html_src||'<div style="font-size:13px;color:#999">まだ取り込んだカレンダーがありません</div>';
 }
 
 function renderWritebackSettings(){
@@ -1743,6 +1807,132 @@ async function executePush(){
 // ═══════════════════════════════════════════
 // BOOT
 // ═══════════════════════════════════════════
+
+// ── 削除モード ──
+function toggleDelSel(id,checked){
+  if(checked)selectedForDelete.add(id);else selectedForDelete.delete(id);
+}
+function enterDeleteMode(){deleteMode=true;selectedForDelete.clear();renderAll();}
+function exitDeleteMode(){deleteMode=false;selectedForDelete.clear();renderAll();}
+async function execDelete(){
+  const ids=[...selectedForDelete];if(!ids.length)return;
+  const tasks=TASKS.filter(t=>ids.includes(t.id));
+  const gcalTasks=tasks.filter(t=>t.source_type==='google_calendar');
+  let msg=`選択した${ids.length}件のタスクをアプリ内から削除します。`;
+  if(gcalTasks.length)msg+=`\n\n⚠ うち${gcalTasks.length}件はGoogleカレンダーから取り込んだタスクです。\nGoogleカレンダー上の予定は削除されません。`;
+  if(!confirm(msg))return;
+  const batch=db.batch();
+  tasks.forEach(t=>batch.delete(db.collection('tasks').doc(t.id)));
+  await batch.commit();
+  await logOp('delete_tasks',{count:ids.length,gcal_count:gcalTasks.length});
+  deleteMode=false;selectedForDelete.clear();renderAll();
+}
+
+
+// ── 今日の進行画面 ──
+function rToday(){
+  const el=document.getElementById('panel-today');if(!el||!el.classList.contains('active'))return;
+  const all=filt();
+  const todayTasks=sortByDate(all.filter(isTod));
+  const delayedTasks=sortByDate(all.filter(isDel));
+  const writebackTasks=sortByDate(TASKS.filter(t=>!t.archived&&!t.merged&&t.visible!==false&&(t.sync_status==='dirty'||t.sync_status==='unsynced'||t.sync_status==='failed')));
+  const unsets=TASKS.filter(t=>!t.archived&&isUnset(t));
+  const fixPending=FIXES.filter(f=>!f.done&&!f.deleted);
+  
+  const sec=(title,color,items,render)=>{
+    if(!items.length)return '';
+    return `<div class="today-sec"><div class="today-sec-hd" style="color:${color}">${title} <span style="background:${color};color:#fff;border-radius:10px;padding:1px 8px;font-size:11px">${items.length}</span></div><div class="card">${items.map(render).join('')}</div></div>`;
+  };
+  const taskRow=(t)=>{
+    const p=getP(t.owner),pj=PROJ[t.proj],ss=ssBadge(t);
+    return `<div class="tr">
+      ${pj?`<span class="badge" style="background:${pj.color}18;color:${pj.color}">${pj.name}</span>`:''}
+      <span class="badge" style="background:${p.color}18;color:${p.color}">${p.name}</span>
+      <span class="tn" title="${t.name}">${t.name}</span>
+      <span class="ss ${ss.cls}">${ss.lbl}</span>
+      <span class="td">${fs(t.start)}〜${fs(t.end)}</span>
+      <div class="mpw"><div class="mpbar"><div class="mpfil" style="width:${t.prog||0}%;background:${isDel(t)?'#ea4335':pj?.color||p.color}"></div></div><div class="mplbl">${t.prog||0}%</div></div>
+      <button class="btn sm" onclick="sw('progress')">進捗</button>
+    </div>`;
+  };
+  
+  let html='<div style="font-size:15px;font-weight:600;margin-bottom:16px">今日の進行状況 — '+(TODAY.getMonth()+1)+'月'+TODAY.getDate()+'日</div>';
+  html+=sec('▶ 今日対応中','#d97706',todayTasks,taskRow);
+  html+=sec('⚠ 遅延中','#ea4335',delayedTasks,taskRow);
+  
+  // 書き戻し待ち
+  if(writebackTasks.length){
+    html+=`<div class="today-sec"><div class="today-sec-hd" style="color:#1a73e8">🔄 書き戻し待ち <span style="background:#1a73e8;color:#fff;border-radius:10px;padding:1px 8px;font-size:11px">${writebackTasks.length}</span></div><div class="card">`;
+    writebackTasks.forEach(t=>{
+      const p=getP(t.owner),pj=PROJ[t.proj],ss=ssBadge(t);
+      html+=`<div class="writeback-item">
+        ${pj?`<span class="badge" style="background:${pj.color}18;color:${pj.color}">${pj.name}</span>`:''}
+        <span style="flex:1;font-size:13px">${t.name}</span>
+        <span class="ss ${ss.cls}">${ss.lbl}</span>
+      </div>`;
+    });
+    html+=`</div><div style="text-align:right;margin-top:6px"><button class="btn sm pr" onclick="openSync()">書き戻し確認を開く</button></div></div>`;
+  }
+  
+  // 未設定タスク
+  if(unsets.length){
+    html+=`<div class="today-sec"><div class="today-sec-hd" style="color:#d97706">⚙ 未設定タスク <span style="background:#d97706;color:#fff;border-radius:10px;padding:1px 8px;font-size:11px">${unsets.length}</span></div><div class="card" style="cursor:pointer" onclick="sw('unset')">プロジェクト・担当者が未設定のタスクがあります。クリックして設定してください。</div></div>`;
+  }
+  
+  // 修正リスト残件
+  if(fixPending.length){
+    html+=`<div class="today-sec"><div class="today-sec-hd" style="color:#555">📝 修正リスト残 <span style="background:#555;color:#fff;border-radius:10px;padding:1px 8px;font-size:11px">${fixPending.length}</span></div></div>`;
+  }
+  
+  if(!todayTasks.length&&!delayedTasks.length&&!writebackTasks.length&&!unsets.length){
+    html+='<div class="notice ok" style="font-size:14px">今日は対応が必要なタスクはありません</div>';
+  }
+  el.innerHTML=html;
+}
+
+// ── 同期モーダルタブ切り替え ──
+function syncTabSwitch(tab){
+  ['import','manage','write'].forEach(t=>{
+    document.getElementById('stab-'+t)?.classList.toggle('active',t===tab);
+    const pane=document.getElementById('sync-pane-'+t);
+    if(pane)pane.style.display=t===tab?'block':'none';
+  });
+  if(tab==='manage'){
+    const el=document.getElementById('cal-src-list2');
+    if(el)el.innerHTML=document.getElementById('cal-src-list')?.innerHTML||'';
+  }
+}
+
+// ── フィルター状態バー ──
+function filterStatusHTML(filters){
+  const active=filters.filter(f=>f.value);
+  if(!active.length)return '';
+  return `<div class="filter-status">${active.map(f=>`<span>${f.label}: <strong>${f.value}</strong></span>`).join('')}<span class="filter-clear" onclick="${filters.map(f=>f.clear).join(';')}">フィルター解除</span></div>`;
+}
+
+// ── 操作ログ文章化 ──
+function logToText(log){
+  const dt=new Date(log.created).toLocaleString('ja-JP',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
+  const d=log.detail||{};
+  const texts={
+    import:     `Googleカレンダーから予定を取り込みました（新規${d.new||0}件・更新${d.updated||0}件）`,
+    writeback:  `Googleカレンダーへ書き戻しました（作成${d.created||0}件・更新${d.updated||0}件${d.failed?`・失敗${d.failed}件`:''}）`,
+    merge:      `「${(d.tasks||[]).slice(0,2).join('」「')}」を統合し、${d.duration_days||''}日間の統合タスクを作成しました`,
+    unmerge:    `統合タスクを解除し、元のタスクを復元しました`,
+    postpone:   `${(d.task_ids||[]).length}件のタスクの終了日を${d.new_end||''}まで延長しました`,
+    bulk_postpone: `${(d.task_ids||[]).length}件のタスクの終了日を${d.new_end||''}まで延長しました`,
+    send_to_fix:`「${(d.tasks||[]).join('」「')}」を修正リストへ移しました`,
+    bulk_send_to_fix:`${(d.tasks||[]).length}件のタスクを修正リストへ移しました`,
+    delete_tasks:`${d.count||0}件のタスクをアプリ内から削除しました${d.gcal_count?`（うち${d.gcal_count}件はGoogleカレンダー由来・GCal上の予定は残っています）`:''}`,
+    delete_task:`「${d.name||''}」をアプリ内から削除しました`,
+    delete_fix: `修正リストの項目を削除しました`,
+    cal_stop:   `カレンダーの取込を停止しました`,
+    cal_restart:`カレンダーの取込を再開しました`,
+    cal_del_tasks:`カレンダー由来のタスク${d.count||0}件をアプリ内から削除しました（GCal上の予定は残っています）`,
+  };
+  return {dt, text:texts[log.type]||log.type};
+}
+
 (function boot(){
   document.getElementById('hdr-today').textContent='今日: '+(TODAY.getMonth()+1)+'月'+TODAY.getDate()+'日（'+['日','月','火','水','木','金','土'][TODAY.getDay()]+'）';
   initPBar();
