@@ -1196,12 +1196,36 @@ function renderWritebackSettings(){
 }
 
 function toggleImportCal(calId,checked){
-  if(checked)selectedCalIds.add(calId);else selectedCalIds.delete(calId);
+  if(checked)selectedCalIds.add(calId);
+  else selectedCalIds.delete(calId);
+  // calendar_sourcesに即時反映（upsert）
+  const existing=CAL_SRCS.find(s=>s.calendar_id===calId);
+  const calName=calList.find(c=>c.id===calId)?.name||calId;
+  if(existing){
+    db.collection('calendar_sources').doc(existing.id).update({enabled:checked});
+  } else if(checked){
+    db.collection('calendar_sources').add({
+      calendar_id:calId,calendar_name:calName,enabled:true,
+      default_proj:'unset',default_owner:'unset',
+      imported_task_count:0,last_imported_at:null,
+    });
+  }
 }
 async function saveCalMapping(calId,field,value){
   if(!calId)return;
   const existing=CAL_SRCS.find(s=>s.calendar_id===calId);
-  if(existing)await db.collection('calendar_sources').doc(existing.id).update({[field]:value});
+  const calName=calList.find(c=>c.id===calId)?.name||calId;
+  if(existing){
+    await db.collection('calendar_sources').doc(existing.id).update({[field]:value});
+  } else {
+    // ドキュメントがまだない場合は作成してからフィールドをセット
+    await db.collection('calendar_sources').add({
+      calendar_id:calId,calendar_name:calName,enabled:selectedCalIds.has(calId),
+      default_proj:'unset',default_owner:'unset',
+      imported_task_count:0,last_imported_at:null,
+      [field]:value,
+    });
+  }
 }
 async function stopCalSrc(srcId){await db.collection('calendar_sources').doc(srcId).update({enabled:false});await logOp('cal_stop',{src_id:srcId});}
 async function restartCalSrc(srcId,calId){selectedCalIds.add(calId);await db.collection('calendar_sources').doc(srcId).update({enabled:true});await logOp('cal_restart',{src_id:srcId});}
@@ -1219,18 +1243,42 @@ async function deleteCalSrcTasks(srcId,calId,calName){
 // IMPORT — GCal → App
 // ═══════════════════════════════════════════
 async function doImport(){
-  const res=document.getElementById('sync-res');res.style.display='none';
-  if(!hasTok()){showSyncErr('Calendarへのアクセスがありません。アクセスを許可してください。');return;}
-  if(!gapiReady){showSyncErr('Calendar APIの読み込みが未完了です。しばらく待って再試行してください。');return;}
+  const res=document.getElementById('sync-res');
+  res.style.display='none';res.className='sync-res';
+
+  if(!hasTok()){
+    showSyncErr('Calendarへのアクセスがありません。「Googleカレンダーへのアクセスを許可する」ボタンを押してください。');
+    return;
+  }
+
+  // gapiReady でなければ最大3秒待つ
+  if(!gapiReady){
+    let waited=0;
+    while(!gapiReady&&waited<3000){await new Promise(r=>setTimeout(r,300));waited+=300;}
+    if(!gapiReady){showSyncErr('Calendar APIの読み込みが未完了です。ページを再読み込みして再試行してください。');return;}
+  }
+
   gapi.client.setToken({access_token:gCalToken});
 
-  const enabledIds=new Set([...selectedCalIds,...CAL_SRCS.filter(s=>s.enabled).map(s=>s.calendar_id)]);
+  // チェックされたカレンダー＋取込中フラグのカレンダーを統合
+  const enabledIds=new Set([
+    ...selectedCalIds,
+    ...CAL_SRCS.filter(s=>s.enabled).map(s=>s.calendar_id),
+  ]);
   const calIds=[...enabledIds];
-  if(!calIds.length){showSyncErr('取り込むカレンダーを選択してください。');return;}
+  if(!calIds.length){
+    showSyncErr('取り込むカレンダーが選択されていません。上のカレンダー一覧でチェックを入れてください。');
+    return;
+  }
+
+  // 取込中メッセージを表示
+  res.className='sync-res ok';
+  res.textContent='取込中... しばらくお待ちください';
+  res.style.display='block';
 
   const tmin=new Date(Date.now()-30*86400000).toISOString();
   const tmax=new Date(Date.now()+300*86400000).toISOString();
-  let nc=0,uc=0,sk=0;
+  let nc=0,uc=0;
 
   const byId=Object.fromEntries(TASKS.filter(t=>!t.archived&&!t.merged).map(t=>[t.id,t]));
   const byGcalKey={};
@@ -1244,76 +1292,101 @@ async function doImport(){
   try{
     for(const cid of calIds){
       const calName=calNameMap[cid]||cid;
+      // CAL_SRCSから設定を取得。なければデフォルト
       const srcData=CAL_SRCS.find(s=>s.calendar_id===cid)||{};
-      const defaultProj=srcData.default_proj||'unset';
-      const defaultOwner=srcData.default_owner||'unset';
+      const defaultProj=srcData.default_proj&&srcData.default_proj!=='unset'?srcData.default_proj:'unset';
+      const defaultOwner=srcData.default_owner&&srcData.default_owner!=='unset'?srcData.default_owner:'unset';
 
-      const r=await gapi.client.calendar.events.list({calendarId:cid,timeMin:tmin,timeMax:tmax,maxResults:500,singleEvents:true,orderBy:'startTime'});
-      for(const ev of r.result.items||[]){
-        const dedupKey=cid+'::'+ev.id;
-        const pmId=ev.extendedProperties?.private?.pm_id;
-        const isOurEvent=ev.extendedProperties?.private?.pm_source==='waterfall-pm';
+      let pageToken=undefined;
+      do{
+        const params={calendarId:cid,timeMin:tmin,timeMax:tmax,maxResults:250,singleEvents:true,orderBy:'startTime'};
+        if(pageToken)params.pageToken=pageToken;
+        const r=await gapi.client.calendar.events.list(params);
+        const items=r.result.items||[];
+        pageToken=r.result.nextPageToken;
 
-        if(ev.status==='cancelled'){
-          const local=byGcalKey[dedupKey]||(pmId?byId[pmId]:null);
-          if(local&&local.sync_status!=='gcal_deleted') await db.collection('tasks').doc(local.id).update({sync_status:'gcal_deleted',updated:now$()});
-          continue;
+        for(const ev of items){
+          const dedupKey=cid+'::'+ev.id;
+          const pmId=ev.extendedProperties?.private?.pm_id;
+
+          if(ev.status==='cancelled'){
+            const local=byGcalKey[dedupKey]||(pmId?byId[pmId]:null);
+            if(local&&local.sync_status!=='gcal_deleted')
+              await db.collection('tasks').doc(local.id).update({sync_status:'gcal_deleted',updated:now$()});
+            continue;
+          }
+
+          // Case A: このアプリが書き出した予定（pm_idで照合）
+          if(pmId&&byId[pmId]){
+            await db.collection('tasks').doc(pmId).update({
+              google_event_id:ev.id,google_calendar_id:cid,sync_status:'synced',updated:now$(),
+            });
+            uc++;countPerCal[cid]=(countPerCal[cid]||0)+1;continue;
+          }
+
+          // Case B: GCal event IDで既存タスクと照合
+          if(byGcalKey[dedupKey]){
+            await db.collection('tasks').doc(byGcalKey[dedupKey].id).update({
+              google_event_id:ev.id,google_calendar_id:cid,sync_status:'synced',updated:now$(),
+            });
+            uc++;countPerCal[cid]=(countPerCal[cid]||0)+1;continue;
+          }
+
+          // Case C: 新規取込み（Googleカレンダーの予定をそのままタスクに）
+          const start=ev.start?.date||ev.start?.dateTime?.slice(0,10)||'';
+          let end=ev.end?.date||ev.end?.dateTime?.slice(0,10)||'';
+          if(start&&end&&dd(pd(start),pd(end))===1)end=start;
+          if(!start){continue;} // 開始日が取れない予定はスキップ
+
+          const taskId='gcal-'+ev.id.slice(0,14);
+          const newTask={
+            id:taskId,
+            name:ev.summary||'（タイトルなし）',
+            start,end,
+            owner:defaultOwner,
+            proj:defaultProj,
+            prog:0,cond:'',
+            google_event_id:ev.id,
+            google_calendar_id:cid,
+            source_type:'google_calendar',
+            source_calendar_id:cid,
+            source_calendar_name:calName,
+            imported_at:now$(),
+            visible:true,archived:false,merged:false,
+            sync_status:'synced',
+          };
+          await db.collection('tasks').doc(taskId).set({...newTask,created:now$(),updated:now$()});
+          nc++;countPerCal[cid]=(countPerCal[cid]||0)+1;
         }
+      }while(pageToken);
 
-        // Case A: このアプリが書き出した予定
-        if(pmId&&byId[pmId]){
-          await db.collection('tasks').doc(pmId).update({google_event_id:ev.id,google_calendar_id:cid,sync_status:'synced',updated:now$()});
-          uc++;countPerCal[cid]=(countPerCal[cid]||0)+1;continue;
-        }
-
-        // Case B: GCal event IDで既存タスクと一致
-        if(byGcalKey[dedupKey]){
-          const local=byGcalKey[dedupKey];
-          await db.collection('tasks').doc(local.id).update({google_event_id:ev.id,google_calendar_id:cid,sync_status:'synced',updated:now$()});
-          uc++;countPerCal[cid]=(countPerCal[cid]||0)+1;continue;
-        }
-
-        // Case C: 新規取込み
-        // Googleカレンダーの予定を制作タスクとして取り込む（これが主フロー）
-        const start=ev.start?.date||ev.start?.dateTime?.slice(0,10)||'';
-        let end=ev.end?.date||ev.end?.dateTime?.slice(0,10)||'';
-        if(start&&end&&dd(pd(start),pd(end))===1)end=start;
-        const newTask={
-          id:'gcal-'+ev.id.slice(0,14),
-          name:ev.summary||'（タイトルなし）',   // GCalのタイトルをそのまま使う
-          start,end,
-          owner:defaultOwner,                     // カレンダーのデフォルト担当者
-          proj:defaultProj,                       // カレンダーのデフォルトPJ
-          prog:0,cond:'',
-          google_event_id:ev.id,
-          google_calendar_id:cid,
-          source_type:'google_calendar',
-          source_calendar_id:cid,
-          source_calendar_name:calName,
-          imported_at:now$(),updated:ev.updated||'',created:ev.created||'',
-          visible:true,archived:false,merged:false,
-          sync_status:'synced',
-        };
-        await db.collection('tasks').doc(newTask.id).set({...newTask,created:now$()});
-        nc++;countPerCal[cid]=(countPerCal[cid]||0)+1;
-      }
-
-      // calendar_sourcesを更新
+      // calendar_sourcesを作成または更新
       const existing=CAL_SRCS.find(s=>s.calendar_id===cid);
-      const srcUpdate={calendar_id:cid,calendar_name:calName,enabled:true,last_imported_at:now$(),imported_task_count:countPerCal[cid]||0,default_proj:defaultProj,default_owner:defaultOwner};
+      const srcUpdate={
+        calendar_id:cid,calendar_name:calName,enabled:true,
+        last_imported_at:now$(),imported_task_count:countPerCal[cid]||0,
+        default_proj:defaultProj,default_owner:defaultOwner,
+      };
       if(existing)await db.collection('calendar_sources').doc(existing.id).update(srcUpdate);
       else await db.collection('calendar_sources').add(srcUpdate);
     }
-    const msg=`取込完了 — 新規 ${nc}件・更新 ${uc}件`;
-    showSyncOk(msg);
+
+    showSyncOk(`取込完了 — 新規 ${nc}件・更新 ${uc}件`);
     await logOp('import',{new:nc,updated:uc,calendars:calIds});
 
-    // 未設定タスクがある場合はタブを表示
-    const unsetCount=TASKS.filter(t=>!t.archived&&isUnset(t)).length;
-    if(unsetCount>0||nc>0){
-      document.getElementById('tab-unset').style.display='';
-    }
-  }catch(e){showSyncErr('エラー: '+e.message);console.error('import',e);}
+    // 未設定タスクがあれば「未設定タスク」タブを表示
+    setTimeout(()=>{
+      const unsetCount=TASKS.filter(t=>!t.archived&&isUnset(t)).length;
+      if(unsetCount>0){
+        document.getElementById('tab-unset').style.display='';
+        document.getElementById('tab-unset').textContent=`未設定タスク (${unsetCount})`;
+      }
+    },1000);
+
+  }catch(e){
+    showSyncErr('エラー: '+e.message);
+    console.error('doImport error',e);
+  }
 }
 
 // ═══════════════════════════════════════════
