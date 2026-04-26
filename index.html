@@ -855,10 +855,11 @@ function onGapiLoad(){
 function initFB(cfg){
   showLoading('Firebase を初期化中...');
   try{
-    if(firebase.apps.length)firebase.apps.forEach(a=>{try{a.delete();}catch{}});
-    firebase.initializeApp(cfg.firebase);
-    db=firebase.firestore();auth=firebase.auth();
-    db.enablePersistence({synchronizeTabs:true}).catch(()=>{});
+    // 既存appを再利用し、未初期化時のみ初期化する
+    const app=firebase.apps.length===0
+      ? firebase.initializeApp(cfg.firebase)
+      : firebase.app();
+    db=app.firestore();auth=app.auth();
     auth.onAuthStateChanged(u=>{
       if(u) onSignedIn(u);
       else showLogin();
@@ -2580,6 +2581,8 @@ function showWorkspaceChecking(msg='ワークスペースを確認中...'){
 
 // 作成／参加フォームを表示（タイムアウトをキャンセル）
 function showWorkspaceForm(msg=''){
+  resolveWorkspaceRunId++;
+  clearResolveWorkspaceTimeout();
   showWorkspaceScreen();
   const ld=document.getElementById('ws-loading');
   const frm=document.getElementById('ws-forms');
@@ -2603,6 +2606,8 @@ let creatingWorkspace=false;
 let joiningWorkspace=false;
 let wsSlowTimer=null;
 let wsRecoverTimer=null;
+let resolveWorkspaceRunId=0;
+let resolveWorkspaceTimeoutTimer=null;
 
 function setWorkspaceSubmitState(loading){
   const createBtn=document.getElementById('ws-create-btn');
@@ -2623,6 +2628,12 @@ function setWorkspaceProgress(msg){
 function clearWorkspaceLoadingTimers(){
   if(wsSlowTimer){clearTimeout(wsSlowTimer);wsSlowTimer=null;}
   if(wsRecoverTimer){clearTimeout(wsRecoverTimer);wsRecoverTimer=null;}
+}
+function clearResolveWorkspaceTimeout(){
+  if(resolveWorkspaceTimeoutTimer){
+    clearTimeout(resolveWorkspaceTimeoutTimer);
+    resolveWorkspaceTimeoutTimer=null;
+  }
 }
 function startWorkspaceLoadingTimers(){
   clearWorkspaceLoadingTimers();
@@ -2775,6 +2786,7 @@ function applyRoleUI(){
 
 // ── ログイン後にワークスペースを解決 ──
 async function resolveWorkspace(user){
+  const runId=++resolveWorkspaceRunId;
   console.log('[v0.10.2] resolveWorkspace start:', user.email);
 
   // ステップ1: user_workspaces/{uid} を確認
@@ -2802,12 +2814,31 @@ async function resolveWorkspace(user){
   const wsId=uwDoc.data().workspace_id;
   console.log('[v0.10.2] workspace_id found:', wsId, '→ loading workspace');
   showWorkspaceChecking('ワークスペースを読み込み中...');
+  clearResolveWorkspaceTimeout();
+  resolveWorkspaceTimeoutTimer=setTimeout(()=>{
+    if(runId!==resolveWorkspaceRunId)return;
+    const recoverEl=document.getElementById('ws-loading-recover');
+    if(recoverEl){
+      recoverEl.style.display='block';
+      recoverEl.innerHTML=`<div style="font-size:12px;line-height:1.6;margin-bottom:8px">
+        ワークスペースの読み込みに時間がかかっています。<br>
+        状態を確認するか、作成／参加画面へ戻ってください。
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px;max-width:220px;margin:0 auto">
+        <button class="btn sm" onclick="recheckWorkspace()">状態を再確認する</button>
+        <button class="btn sm" onclick="showWorkspaceForm()">ワークスペース作成／参加画面へ戻る</button>
+        <button class="btn sm" onclick="confirmSignOut()">ログアウトしてやり直す</button>
+      </div>`;
+    }
+  },5000);
 
   try{
     const [wsDoc,memberDoc]=await Promise.all([
       db.collection('workspaces').doc(wsId).get(),
       db.collection('workspaces').doc(wsId).collection('members').doc(user.uid).get()
     ]);
+    if(runId!==resolveWorkspaceRunId)return;
+    clearResolveWorkspaceTimeout();
 
     if(!wsDoc.exists){
       // ワークスペース本体が存在しない（壊れた参照）
@@ -2834,6 +2865,8 @@ async function resolveWorkspace(user){
     await enterWorkspace(wsId,{id:wsId,...wsDoc.data()},memberDoc.data().role);
 
   }catch(e){
+    if(runId!==resolveWorkspaceRunId)return;
+    clearResolveWorkspaceTimeout();
     console.error('[v0.10.2] workspace load error:', e);
     // 取得失敗でも真っ白にしない → フォームへ
     showWorkspaceForm();
