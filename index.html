@@ -97,7 +97,7 @@ input.fi{width:100%;border:1px solid #dadce0;border-radius:8px;padding:9px 10px;
 .cal-head{display:grid;grid-template-columns:repeat(7,1fr);margin-bottom:3px}
 .cal-wd{font-size:12px;color:#888;text-align:center;padding:3px 0;font-weight:600}
 .cal-grid{display:grid;grid-template-columns:repeat(7,1fr)}
-.cal-cell{border-top:1px solid #e8e6df;padding:3px 3px 5px;cursor:pointer;min-height:88px}
+.cal-cell{border-top:1px solid #e8e6df;padding:3px 3px 5px;cursor:pointer;min-height:82px}
 .cal-cell:hover{background:#f8f9fa}
 .cal-cell.sel{background:#e8f0fe}
 .cal-dn{font-size:12px;color:#444;text-align:right;margin-bottom:3px;font-weight:500}
@@ -297,6 +297,43 @@ input[type=checkbox]{width:15px;height:15px;cursor:pointer}
   </div>
 </div>
 
+<!-- ── WORKSPACE ── -->
+<div id="screen-workspace" class="screen">
+  <div class="card-setup">
+    <h2 class="card-h">ワークスペースの設定</h2>
+    <p class="card-p">制作チームのワークスペースを作成するか、招待コードで参加してください。</p>
+
+    <div id="ws-loading" style="text-align:center;padding:20px 0;color:#888">
+      <div class="spinner" style="width:20px;height:20px;margin:0 auto 8px"></div>
+      ワークスペースを確認中...
+    </div>
+
+    <div id="ws-forms" style="display:none">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:8px">
+        <div style="border:1px solid #dadce0;border-radius:12px;padding:16px">
+          <div style="font-size:14px;font-weight:600;margin-bottom:8px">新しく作成する</div>
+          <p style="font-size:12px;color:#666;margin-bottom:12px">このアカウントが管理者になります</p>
+          <label class="flbl" style="margin-top:0">チーム名</label>
+          <input class="fi" id="ws-name" type="text" placeholder="例: 線香制作チーム">
+          <button class="btn pr" onclick="createWorkspace()" style="width:100%;justify-content:center;margin-top:10px">ワークスペースを作成</button>
+        </div>
+        <div style="border:1px solid #dadce0;border-radius:12px;padding:16px">
+          <div style="font-size:14px;font-weight:600;margin-bottom:8px">招待コードで参加</div>
+          <p style="font-size:12px;color:#666;margin-bottom:12px">管理者から招待コードをもらってください</p>
+          <label class="flbl" style="margin-top:0">招待コード</label>
+          <input class="fi" id="ws-invite" type="text" placeholder="例: ABC123" style="text-transform:uppercase">
+          <button class="btn" onclick="joinWorkspace()" style="width:100%;justify-content:center;margin-top:10px">参加する</button>
+        </div>
+      </div>
+      <div class="ferr" id="ws-err"></div>
+    </div>
+
+    <div style="text-align:center;margin-top:12px">
+      <button class="btn sm" onclick="confirmSignOut()">別のアカウントでログイン</button>
+    </div>
+  </div>
+</div>
+
 <!-- ── LOGIN ── -->
 <div id="screen-login" class="screen">
   <div class="card-setup">
@@ -314,10 +351,11 @@ input[type=checkbox]{width:15px;height:15px;cursor:pointer}
 <!-- ── APP ── -->
 <div id="screen-app" class="screen">
   <div class="hdr">
-    <div class="hdr-title">制作進行管理</div>
+    <div class="hdr-title" id="hdr-ws-name">制作進行管理</div>
     <div class="hdr-today" id="hdr-today"></div>
     <div class="live"><div class="ld"></div>リアルタイム同期</div>
     <button class="hbtn pr" onclick="openSync()">カレンダー同期</button>
+    <button class="hbtn" id="hdr-member-btn" onclick="openMemberModal()" title="メンバー管理" style="display:none">👥 メンバー</button>
     <button class="hbtn" onclick="sw('oplog')" title="操作ログ" style="font-size:14px">≡</button>
     <div class="av" id="user-av" onclick="confirmSignOut()" title="クリックでログアウト">?</div>
   </div>
@@ -393,10 +431,11 @@ input[type=checkbox]{width:15px;height:15px;cursor:pointer}
 
     <!-- 接続済み -->
     <div id="cal-con" style="display:none">
-      <div class="notice ok" style="margin-bottom:14px;display:flex;align-items:center;gap:8px">
+      <div class="notice ok" style="margin-bottom:10px;display:flex;align-items:center;gap:8px">
         Googleカレンダーに接続済みです
-        <button class="btn sm" onclick="requestCalendarAccess()" style="margin-left:auto">再取得</button>
+        <button class="btn sm" onclick="requestCalendarAccess()" style="margin-left:auto">再許可</button>
       </div>
+      <div id="cal-account-mismatch" style="display:none;background:#fce8e6;border:1px solid #f5c6c2;border-radius:9px;padding:10px 13px;font-size:13px;color:#c5221f;margin-bottom:12px"></div>
 
       <!-- タブ分け -->
       <div class="sync-tab-bar">
@@ -441,6 +480,32 @@ input[type=checkbox]{width:15px;height:15px;cursor:pointer}
       </div>
     </div>
     <div style="text-align:right;margin-top:16px"><button class="btn" onclick="closeSync()">閉じる</button></div>
+  </div>
+</div>
+
+<!-- ── メンバー管理モーダル ── -->
+<div class="modal-bg" id="member-modal">
+  <div class="modal" style="max-width:560px">
+    <h2>👥 メンバー管理</h2>
+    <div class="modal-sub" id="member-ws-name"></div>
+    <div class="modal-sec">
+      <h3>ワークスペース名</h3>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
+        <input type="text" id="ws-rename-input" style="flex:1" placeholder="チーム名">
+        <button class="btn sm pr" onclick="renameWorkspace()">変更</button>
+      </div>
+      <h3>招待コード</h3>
+      <div id="member-invite-code" style="font-size:22px;font-weight:700;letter-spacing:4px;text-align:center;padding:14px;background:#f1f3f4;border-radius:10px;margin-bottom:8px"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px">
+        <div style="font-size:12px;color:#888">このコードを共有して、メンバーを招待できます</div>
+        <button class="btn sm" onclick="regenerateInviteCode()">コードを更新</button>
+      </div>
+    </div>
+    <div class="modal-sec">
+      <h3>メンバー一覧</h3>
+      <div id="member-list"></div>
+    </div>
+    <div style="text-align:right"><button class="btn" onclick="closeMemberModal()">閉じる</button></div>
   </div>
 </div>
 
@@ -509,7 +574,11 @@ const OC={senko:'9',sato:'2',sunayuki:'6',shikamii:'1',b:'5'};
 // ═══════════════════════════════════════════
 let TASKS=[], FIXES=[], CAL_SRCS=[];
 let db=null, auth=null, unsubT=null, unsubF=null, unsubCS=null;
-let tokenClient=null, gCalToken=null, gCalExp=0;
+// ── ワークスペース・権限管理 ──
+let WORKSPACE=null;      // {id, name, created_by, invite_code}
+let MY_ROLE=null;        // 'admin'|'editor'|'viewer'
+let unsubWS=null;        // workspace購読解除関数
+let tokenClient=null, gCalToken=null, gCalExp=0, gCalAccountEmail=null;
 let gapiReady=false, gsiReady=false;
 let calList=[], selectedCalIds=new Set();
 let visPeople=new Set(PEOPLE.map(p=>p.id));
@@ -565,11 +634,13 @@ function saveConfig(){
     initFB({firebase:fb,oauthClientId:oauth});
   }catch{err.style.display='block';}
 }
-const showSetup=()=>{['setup','login','app'].forEach(n=>setScr(n,n==='setup'));};
-const showLogin=()=>{['setup','login','app'].forEach(n=>setScr(n,n==='login'));};
-const showApp=()=>{['setup','login','app'].forEach(n=>setScr(n,n==='app'));};
+const showSetup=()=>{['setup','login','workspace','app'].forEach(n=>setScr(n,n==='setup'));}
+const showWorkspaceScreen=()=>{['setup','login','workspace','app'].forEach(n=>setScr(n,n==='workspace'));};
+const showLogin=()=>{['setup','login','workspace','app'].forEach(n=>setScr(n,n==='login'));};
+const showApp=()=>{['setup','login','workspace','app'].forEach(n=>setScr(n,n==='app'));};
 function setScr(name,on){
   const el=document.getElementById('screen-'+name);
+  if(!el)return;
   el.classList.toggle('active',on);
   if(name==='app'&&on){el.style.cssText='display:flex;flex-direction:column;align-items:stretch;padding:0;min-height:100vh';}
   else if(name==='app')el.style.cssText='';
@@ -586,14 +657,43 @@ function initTokenClient(clientId){
     callback:onTokenResponse,error_callback:e=>showSyncErr('Calendar認証エラー: '+e.message),
   });
 }
-function onTokenResponse(resp){
+async function onTokenResponse(resp){
   if(resp.error){showSyncErr('Calendar認証エラー: '+resp.error);return;}
   gCalToken=resp.access_token;
   gCalExp=Date.now()+((resp.expires_in||3600)-60)*1000;
   if(gapiReady)gapi.client.setToken({access_token:gCalToken});
+
+  // FirebaseログインアカウントとCalendarアカウントの一致確認
+  try{
+    const info=await fetch('https://www.googleapis.com/oauth2/v3/userinfo',{
+      headers:{Authorization:'Bearer '+gCalToken}
+    }).then(r=>r.json());
+    gCalAccountEmail=info.email||null;
+    const fbEmail=auth.currentUser?.email||null;
+    if(fbEmail&&gCalAccountEmail&&fbEmail.toLowerCase()!==gCalAccountEmail.toLowerCase()){
+      document.getElementById('cal-account-mismatch').style.display='block';
+      document.getElementById('cal-account-mismatch').innerHTML=
+        `⚠ Googleカレンダーのアカウント（${gCalAccountEmail}）とログインアカウント（${fbEmail}）が異なります。`+
+        `同じアカウントで連携してください。取込・書き戻しは一時停止されています。`+
+        `<button class="btn sm" onclick="requestCalendarAccess()" style="margin-left:8px">再許可する</button>`;
+    }else{
+      document.getElementById('cal-account-mismatch').style.display='none';
+    }
+  }catch{}
+
   document.getElementById('cal-notcon').style.display='none';
   document.getElementById('cal-con').style.display='block';
   loadCalList();
+}
+// アカウント一致確認
+function checkCalAccountMatch(){
+  if(!gCalAccountEmail)return true;
+  const fbEmail=auth.currentUser?.email||null;
+  if(fbEmail&&gCalAccountEmail&&fbEmail.toLowerCase()!==gCalAccountEmail.toLowerCase()){
+    showSyncErr(`アカウントが異なります。Calendar: ${gCalAccountEmail} / ログイン: ${fbEmail}。再許可してください。`);
+    return false;
+  }
+  return true;
 }
 function requestCalendarAccess(){
   if(!tokenClient){
@@ -632,46 +732,78 @@ async function signIn(){
 }
 function confirmSignOut(){
   if(!confirm('ログアウトしますか？'))return;
-  gCalToken=null;gCalExp=0;calList=[];
-  [unsubT,unsubF,unsubCS].forEach(u=>{if(u)u();});
-  unsubT=unsubF=unsubCS=null;auth.signOut();
+  resetAllState();
+  auth.signOut();
+}
+function resetAllState(){
+  // Firestoreの購読を解除
+  [unsubT,unsubF,unsubCS].forEach(u=>{try{if(u)u();}catch{}});
+  unsubT=unsubF=unsubCS=null;
+  // ワークスペース状態をリセット
+  WORKSPACE=null;MY_ROLE=null;
+  // Calendar認証をリセット
+  gCalToken=null;gCalExp=0;gCalAccountEmail=null;
+  if(window.google?.accounts?.oauth2)try{google.accounts.oauth2.revoke(gCalToken,()=>{});}catch{}
+  calList=[];selectedCalIds=new Set();
+  // データ配列をリセット
+  TASKS=[];FIXES=[];CAL_SRCS=[];
+  // 画面状態をリセット
+  deleteMode=false;selectedForDelete.clear();
+  delaySortKey='start';delaySortAsc=true;delayFilterProj='';delayFilterOwner='';
+  delaySelected.clear();delayMergePreview=null;
+  selDay=null;calY=TODAY.getFullYear();calM=TODAY.getMonth();
+  visPeople=new Set(PEOPLE.map(p=>p.id));
+  showDone=false;showMergedOrig=false;showFixDeleted=false;showAddTask=false;
+  pushPlan=null;mgroups={};mgk=0;
+  // UI初期化
+  document.querySelectorAll('.ptog').forEach(el=>el.classList.remove('off'));
+  const sb=document.getElementById('summary-bar');if(sb)sb.innerHTML='';
+  const ua=document.getElementById('unset-alert-bar');if(ua)ua.style.display='none';
+  // ヘッダーのワークスペース名をリセット
+  const wn=document.getElementById('hdr-ws-name');if(wn)wn.textContent='制作進行管理';
+  const mb=document.getElementById('hdr-member-btn');if(mb)mb.style.display='none';
 }
 function onSignedIn(user){
-  showApp();
   const av=document.getElementById('user-av');
-  if(user.photoURL)av.innerHTML=`<img src="${user.photoURL}" alt="">`;
-  else av.textContent=(user.displayName||'?')[0].toUpperCase();
-  setupListeners();
+  if(av){
+    if(user.photoURL)av.innerHTML=`<img src="${user.photoURL}" alt="">`;
+    else av.textContent=(user.displayName||'?')[0].toUpperCase();
+  }
+  // まずワークスペースを解決してからアプリを表示
+  resolveWorkspace(user);
 }
 
 // ═══════════════════════════════════════════
 // FIRESTORE
 // ═══════════════════════════════════════════
 function setupListeners(){
+  if(!WORKSPACE){console.error('setupListeners: workspace not set');return;}
   if(unsubT)unsubT();if(unsubF)unsubF();if(unsubCS)unsubCS();
-  unsubT=db.collection('tasks').onSnapshot(snap=>{TASKS=snap.docs.map(d=>({...d.data(),id:d.id}));updateFxSel();renderAll();},e=>console.error('tasks',e));
-  unsubF=db.collection('fixes').onSnapshot(snap=>{FIXES=snap.docs.map(d=>({...d.data(),id:d.id}));rFixList();rStatus();},e=>console.error('fixes',e));
-  unsubCS=db.collection('calendar_sources').onSnapshot(snap=>{CAL_SRCS=snap.docs.map(d=>({...d.data(),id:d.id}));renderCalSrcList();},e=>console.error('cal_src',e));
+  // ワークスペース配下のコレクションのみ購読（他ワークスペースのデータは取得しない）
+  unsubT=wsCol('tasks').onSnapshot(snap=>{TASKS=snap.docs.map(d=>({...d.data(),id:d.id}));updateFxSel();renderAll();},e=>console.error('tasks',e));
+  unsubF=wsCol('fixes').onSnapshot(snap=>{FIXES=snap.docs.map(d=>({...d.data(),id:d.id}));rFixList();rStatus();},e=>console.error('fixes',e));
+  unsubCS=wsCol('calendar_sources').onSnapshot(snap=>{CAL_SRCS=snap.docs.map(d=>({...d.data(),id:d.id}));renderCalSrcList();},e=>console.error('cal_src',e));
 }
 
 const updT=(id,p)=>{
+  if(!canEdit()){console.warn('閲覧者は編集できません');return Promise.resolve();}
   const patch={...p,updated:now$()};
   const skip=['sync_status','updated','google_event_id','google_calendar_id'];
   const t=TASKS.find(x=>x.id===id);
   if(t&&t.google_event_id&&Object.keys(p).some(k=>!skip.includes(k)))patch.sync_status='dirty';
-  return db.collection('tasks').doc(id).update(patch);
+  return wsCol('tasks').doc(id).update(patch);
 };
-const addFx=f=>db.collection('fixes').add({...f,created:now$()});
-const updFx=(id,p)=>db.collection('fixes').doc(id).update(p);
+const addFx=f=>wsCol('fixes').add({...f,created:now$()});
+const updFx=(id,p)=>wsCol('fixes').doc(id).update(p);
 
 async function deleteTask(id,name){
   // 個別削除は削除モードのチェックボックス経由に誘導
   // 直接呼び出しの場合のみ（内部呼び出し等）論理削除を実行
   if(!confirm(`「${name}」を削除しますか？\nアーカイブとして記録されます。操作ログから確認できます。`))return;
-  await db.collection('tasks').doc(id).update({archived:true,visible:false,archived_at:now$(),archived_reason:'user_delete',updated:now$()});
+  await wsCol('tasks').doc(id).update({archived:true,visible:false,archived_at:now$(),archived_reason:'user_delete',updated:now$()});
   await logOp('delete_task',{name,gcal_note:'Googleカレンダー上の予定は削除されていません'});
   showUndo(`「${name}」を削除しました`,async()=>{
-    await db.collection('tasks').doc(id).update({archived:false,visible:true,updated:now$()});
+    await wsCol('tasks').doc(id).update({archived:false,visible:true,updated:now$()});
     showUndo('削除を取り消しました',null);
   });
 }
@@ -680,7 +812,7 @@ async function setTaskField(id,field,value){
 }
 
 async function logOp(type,detail){
-  try{await db.collection('op_logs').add({type,detail,created:now$()});}catch{}
+  try{await wsCol('op_logs').add({type,detail,created:now$()});}catch{}
 }
 
 // ═══════════════════════════════════════════
@@ -716,38 +848,55 @@ function rCal(){
   const el=document.getElementById('panel-cal');if(!el.classList.contains('active'))return;
   const MN=['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
   const tasks=filt();
-  const first=new Date(calY,calM,1),last=new Date(calY,calM+1,0);
-  const sdow=first.getDay(),total=Math.ceil((sdow+last.getDate())/7)*7;
-  let html=`<div class="cal-nav"><button class="btn sm" onclick="prevM()">◀ 前月</button><span>${calY}年 ${MN[calM]}</span><button class="btn sm" onclick="nextM()">次月 ▶</button></div>
+  const first=new Date(calY,calM,1);
+  const sdow=first.getDay(); // 月初の曜日
+  // ── 42セル固定（7列×6週）Googleカレンダー準拠 ──
+  const CELLS=42;
+  // 左上セル = 月初を含む週の日曜日
+  const gridStart=new Date(calY,calM,1-sdow);
+
+  let calHtml=`<div class="cal-nav"><button class="btn sm" onclick="prevM()">◀ 前月</button><span>${calY}年 ${MN[calM]}</span><button class="btn sm" onclick="nextM()">次月 ▶</button></div>
   <div class="cal-head">${['日','月','火','水','木','金','土'].map((d,i)=>`<div class="cal-wd" style="color:${i===0?'#ea4335':i===6?'#1a73e8':''}">${d}</div>`).join('')}</div>
   <div class="cal-grid">`;
-  for(let i=0;i<total;i++){
-    const dn=i-sdow+1,date=new Date(calY,calM,dn);
-    const thisMo=date.getMonth()===calM,isT=date.toDateString()===TODAY.toDateString();
+
+  for(let i=0;i<CELLS;i++){
+    const date=new Date(gridStart.getTime()+i*86400000);
+    const thisMo=date.getMonth()===calM;
+    const isT=date.toDateString()===TODAY.toDateString();
     const isSel=selDay&&date.toDateString()===selDay.toDateString();
     const ds=date.toISOString().slice(0,10);
     const dt=sortByDate(tasks.filter(t=>pd(t.start)<=date&&pd(t.end)>=date));
     const dow=date.getDay();
-    html+=`<div class="cal-cell${isSel?' sel':''}" style="${!thisMo?'opacity:.22':''}" onclick="selDay$('${ds}')">
+    calHtml+=`<div class="cal-cell${isSel?' sel':''}" style="${!thisMo?'opacity:.28':''}" onclick="selDay$('${ds}')">
       <div class="cal-dn${isT?' today':''}" style="${dow===0?'color:#ea4335':dow===6?'color:#1a73e8':''}">${date.getDate()}</div>`;
     dt.slice(0,3).forEach(t=>{
-      const cl=date>pd(t.start),cr=date<pd(t.end),p=getP(t.owner);
-      const col=isDel(t)?'#ea4335':isMg(t)?'#4f46e5':PROJ[t.proj]?.color||p.color;
-      html+=`<div class="cev${cl?' cl':''}${cr?' cr':''}" style="background:${col}" title="${t.name}">${!cl?(isMg(t)?'★ ':isUnset(t)?'⚠ ':'')+t.name:''}</div>`;
+      const cl=date>pd(t.start),cr=date<pd(t.end);
+      const col=isDel(t)?'#ea4335':isMg(t)?'#4f46e5':PROJ[t.proj]?.color||getP(t.owner).color;
+      calHtml+=`<div class="cev${cl?' cl':''}${cr?' cr':''}" style="background:${col}" title="${t.name}">${!cl?(isMg(t)?'★ ':isUnset(t)?'⚠ ':'')+t.name:''}</div>`;
     });
-    if(dt.length>3)html+=`<div class="cal-more">+${dt.length-3}件</div>`;
-    html+='</div>';
+    if(dt.length>3)calHtml+=`<div class="cal-more">+${dt.length-3}件</div>`;
+    calHtml+='</div>';
   }
-  html+='</div>';
-  if(selDay){
-    const sdt=sortByDate(tasks.filter(t=>pd(t.start)<=selDay&&pd(t.end)>=selDay));
-    html=`<div style="display:grid;grid-template-columns:1fr 340px;gap:14px;align-items:start" class="cal-2col"><div>${html}</div><div class="cal-detail" style="position:sticky;top:66px"><div style="font-size:14px;font-weight:600;margin-bottom:10px">${selDay.getMonth()+1}月${selDay.getDate()}日のタスク（${sdt.length}件）</div>`;
+  calHtml+='</div>';
+
+  // ── 右側詳細パネルを常時表示 ──
+  const panelDay=selDay||TODAY;
+  const sdt=sortByDate(tasks.filter(t=>pd(t.start)<=panelDay&&pd(t.end)>=panelDay));
+  const panelTitle=selDay
+    ?`${panelDay.getMonth()+1}月${panelDay.getDate()}日のタスク（${sdt.length}件）`
+    :`今日 ${panelDay.getMonth()+1}月${panelDay.getDate()}日（${sdt.length}件）`;
+
+  let detailHtml=`<div style="font-size:14px;font-weight:600;margin-bottom:10px">${panelTitle}</div>`;
+  if(deleteMode)detailHtml+=`<div class="delete-bar" style="margin-bottom:8px"><span class="del-count">${selectedForDelete.size}件を選択中</span><button class="btn sm del-exec-btn" onclick="execDelete()" ${selectedForDelete.size===0?'disabled':''}>削除</button><button class="btn sm" onclick="exitDeleteMode()">終了</button></div>`;
+  else detailHtml+=`<div style="text-align:right;margin-bottom:6px"><button class="del-mode-enter del-mode-btn" onclick="enterDeleteMode()">削除モード</button></div>`;
+
+  if(sdt.length){
     sdt.forEach(t=>{
       const p=getP(t.owner),pj=PROJ[t.proj],ss=ssBadge(t);
-      html+=`<div class="tr">
+      detailHtml+=`<div class="tr">
         ${pj?`<span class="badge" style="background:${pj.color}18;color:${pj.color}">${pj.name}</span>`:''}
         <span class="badge" style="background:${p.color}18;color:${p.color}">${p.name}</span>
-        <span class="tn">${t.name}${isUnset(t)?' <span class="unset-badge">未設定あり</span>':''}</span>
+        <span class="tn">${t.name}${isUnset(t)?' <span class="unset-badge">未設定</span>':''}</span>
         <span class="ss ${ss.cls}">${ss.lbl}</span>
         <span class="td">${fs(t.start)}〜${fs(t.end)}</span>
         <div class="mpw"><div class="mpbar"><div class="mpfil" style="width:${t.prog||0}%;background:${isDel(t)?'#ea4335':pj?.color||p.color}"></div></div><div class="mplbl">${t.prog||0}%</div></div>
@@ -755,12 +904,21 @@ function rCal(){
         ${deleteMode?`<input type="checkbox" class="del-chk" onchange="toggleDelSel('${t.id}',this.checked)" ${selectedForDelete.has(t.id)?'checked':''}>`:''}
       </div>`;
     });
-    if(!sdt.length)html+=`<div style="font-size:13px;color:#888">この日のタスクはありません</div>`;
-    html+='</div></div>';
+  }else{
+    detailHtml+=`<div style="font-size:13px;color:#888">${selDay?'この日のタスクはありません':'今日対応中のタスクはありません'}</div>`;
   }
-  el.innerHTML=html;
+
+  // 常に2カラムレイアウト（右側は常時表示）
+  el.innerHTML=`<div style="display:grid;grid-template-columns:1fr 320px;gap:14px;align-items:start" class="cal-2col">
+    <div>${calHtml}</div>
+    <div class="cal-detail" style="position:sticky;top:66px;min-height:400px">${detailHtml}</div>
+  </div>`;
 }
-function selDay$(ds){const d=pd(ds);selDay=selDay&&selDay.toDateString()===d.toDateString()?null:d;rCal();}
+function selDay$(ds){
+  const d=pd(ds);
+  selDay=selDay&&selDay.toDateString()===d.toDateString()?null:d;
+  rCal(); // 右側パネルだけ更新でもよいが、選択状態のハイライトのため全体再描画
+}
 function prevM(){if(calM===0){calM=11;calY--;}else calM--;selDay=null;rCal();}
 function nextM(){if(calM===11){calM=0;calY++;}else calM++;selDay=null;rCal();}
 
@@ -940,7 +1098,7 @@ function progRow(t,person,isDone=false){
 async function createTaskFromForm(){
   const name=document.getElementById('at-name').value.trim();if(!name){return;}
   const id='manual-'+Date.now();
-  await db.collection('tasks').doc(id).set({id,name,
+  await wsCol('tasks').doc(id).set({id,name,
     owner:document.getElementById('at-owner').value,
     proj:document.getElementById('at-proj').value,
     start:document.getElementById('at-start').value||TODAY_STR,
@@ -1227,12 +1385,12 @@ async function executeMergePreview(){
     merge_duration_days:days,can_unmerge:true,
     visible:true,archived:false,merged:false,google_event_id:null,sync_status:'unsynced'};
   const batch=db.batch();
-  tasks.forEach(t=>batch.update(db.collection('tasks').doc(t.id),{merged:true,merged_into:mergeId,merge_group_id:groupId,visible:false,updated:now$()}));
-  batch.set(db.collection('tasks').doc(mergeId),{...merged,created:now$(),updated:now$()});
-  batch.set(db.collection('merge_groups').doc(groupId),{id:groupId,merged_task_id:mergeId,duration_days:days,
+  tasks.forEach(t=>batch.update(wsCol('tasks').doc(t.id),{merged:true,merged_into:mergeId,merge_group_id:groupId,visible:false,updated:now$()}));
+  batch.set(wsCol('tasks').doc(mergeId),{...merged,created:now$(),updated:now$()});
+  batch.set(wsCol('merge_groups').doc(groupId),{id:groupId,merged_task_id:mergeId,duration_days:days,
     original_tasks:tasks.map(t=>({id:t.id,name:t.name,start:t.start,end:t.end,prog:t.prog,owner:t.owner,proj:t.proj,cond:t.cond||''})),
     created_at:now$(),restored_at:null,status:'active'});
-  batch.set(db.collection('fixes').doc(),{task:PROJ[tasks[0].proj]?.name||'',pri:'mid',status:'pending',done:false,
+  batch.set(wsCol('fixes').doc(),{task:PROJ[tasks[0].proj]?.name||'',pri:'mid',status:'pending',done:false,
     content:'統合タスク品質懸念: '+tasks.map(t=>t.name).join('、'),when:'全体修正期間',created:now$()});
   await batch.commit();
   await logOp('merge',{merged_task:mergeId,tasks:tasks.map(t=>t.name),duration_days:days});
@@ -1249,12 +1407,12 @@ async function applyMerge(k){
     merge_group_id:groupId,merged_from_task_ids:tasks.map(t=>t.id),
     merge_duration_days:days,can_unmerge:true,visible:true,archived:false,merged:false,google_event_id:null,sync_status:'unsynced'};
   const batch=db.batch();
-  tasks.forEach(t=>batch.update(db.collection('tasks').doc(t.id),{merged:true,merged_into:mergeId,merge_group_id:groupId,visible:false,updated:now$()}));
-  batch.set(db.collection('tasks').doc(mergeId),{...merged,created:now$(),updated:now$()});
-  batch.set(db.collection('merge_groups').doc(groupId),{id:groupId,merged_task_id:mergeId,duration_days:days,
+  tasks.forEach(t=>batch.update(wsCol('tasks').doc(t.id),{merged:true,merged_into:mergeId,merge_group_id:groupId,visible:false,updated:now$()}));
+  batch.set(wsCol('tasks').doc(mergeId),{...merged,created:now$(),updated:now$()});
+  batch.set(wsCol('merge_groups').doc(groupId),{id:groupId,merged_task_id:mergeId,duration_days:days,
     original_tasks:tasks.map(t=>({id:t.id,name:t.name,start:t.start,end:t.end,prog:t.prog,owner:t.owner,proj:t.proj,cond:t.cond||''})),
     created_at:now$(),restored_at:null,status:'active'});
-  batch.set(db.collection('fixes').doc(),{task:PROJ[tasks[0].proj]?.name||'',pri:'mid',status:'pending',done:false,
+  batch.set(wsCol('fixes').doc(),{task:PROJ[tasks[0].proj]?.name||'',pri:'mid',status:'pending',done:false,
     content:'統合タスク品質懸念: '+tasks.map(t=>t.name).join('、'),when:'全体修正期間',created:now$()});
   await batch.commit();
   await logOp('merge',{merged_task:mergeId,tasks:tasks.map(t=>t.name),duration_days:days});
@@ -1265,7 +1423,7 @@ async function bulkPostpone(){
   const newEnd=addDays(TODAY_STR,4);
   if(!confirm(`選択した${tasks.length}件の終了日を${newEnd}まで延長します。`))return;
   const batch=db.batch();
-  tasks.forEach(t=>batch.update(db.collection('tasks').doc(t.id),{end:newEnd,sync_status:'dirty',updated:now$()}));
+  tasks.forEach(t=>batch.update(wsCol('tasks').doc(t.id),{end:newEnd,sync_status:'dirty',updated:now$()}));
   await batch.commit();
   await logOp('bulk_postpone',{task_ids:[...delaySelected],new_end:newEnd});
   delaySelected.clear();
@@ -1275,9 +1433,9 @@ async function bulkSendToFix(){
   if(!confirm(`選択した${tasks.length}件を修正リストへ移します。`))return;
   const batch=db.batch();
   tasks.forEach(t=>{
-    batch.set(db.collection('fixes').doc(),{task:t.name,pri:'high',status:'pending',done:false,
+    batch.set(wsCol('fixes').doc(),{task:t.name,pri:'high',status:'pending',done:false,
       content:`遅延により修正リストへ移動。次工程最低条件: ${t.cond||'未設定'}`,when:'全体修正期間',created:now$()});
-    batch.update(db.collection('tasks').doc(t.id),{end:addDays(TODAY_STR,2),sync_status:'dirty',updated:now$()});
+    batch.update(wsCol('tasks').doc(t.id),{end:addDays(TODAY_STR,2),sync_status:'dirty',updated:now$()});
   });
   await batch.commit();
   await logOp('bulk_send_to_fix',{tasks:tasks.map(t=>t.name)});
@@ -1286,7 +1444,7 @@ async function bulkSendToFix(){
 async function applyPost(k,newEnd){
   const g=mgroups[k];if(!g)return;
   const batch=db.batch();
-  g.ids.forEach(id=>batch.update(db.collection('tasks').doc(id),{end:newEnd,sync_status:'dirty',updated:now$()}));
+  g.ids.forEach(id=>batch.update(wsCol('tasks').doc(id),{end:newEnd,sync_status:'dirty',updated:now$()}));
   await batch.commit();await logOp('postpone',{task_ids:g.ids,new_end:newEnd});delete mgroups[k];
 }
 async function sendToFix(k){
@@ -1294,21 +1452,21 @@ async function sendToFix(k){
   const tasks=TASKS.filter(t=>g.ids.includes(t.id));
   const batch=db.batch();
   tasks.forEach(t=>{
-    batch.set(db.collection('fixes').doc(),{task:t.name,pri:'high',status:'pending',done:false,
+    batch.set(wsCol('fixes').doc(),{task:t.name,pri:'high',status:'pending',done:false,
       content:`遅延により修正リストへ移動。次工程最低条件: ${t.cond||'未設定'}`,when:'全体修正期間',created:now$()});
-    batch.update(db.collection('tasks').doc(t.id),{end:addDays(TODAY_STR,2),sync_status:'dirty',updated:now$()});
+    batch.update(wsCol('tasks').doc(t.id),{end:addDays(TODAY_STR,2),sync_status:'dirty',updated:now$()});
   });
   await batch.commit();await logOp('send_to_fix',{tasks:tasks.map(t=>t.name)});delete mgroups[k];sw('fixlist');
 }
 async function restoreMerge(mergedTaskId,groupId){
   if(!confirm('この統合タスクを解除し、元のタスクを復元します。実行しますか？'))return;
   try{
-    const mg=(await db.collection('merge_groups').doc(groupId).get()).data();
+    const mg=(await wsCol('merge_groups').doc(groupId).get()).data();
     if(!mg){alert('統合グループ情報が見つかりません。');return;}
     const batch=db.batch();
-    batch.update(db.collection('tasks').doc(mergedTaskId),{archived:true,visible:false,updated:now$()});
-    mg.original_tasks.forEach(ot=>batch.update(db.collection('tasks').doc(ot.id),{merged:false,merged_into:null,merge_group_id:null,visible:true,updated:now$()}));
-    batch.update(db.collection('merge_groups').doc(groupId),{restored_at:now$(),status:'restored'});
+    batch.update(wsCol('tasks').doc(mergedTaskId),{archived:true,visible:false,updated:now$()});
+    mg.original_tasks.forEach(ot=>batch.update(wsCol('tasks').doc(ot.id),{merged:false,merged_into:null,merge_group_id:null,visible:true,updated:now$()}));
+    batch.update(wsCol('merge_groups').doc(groupId),{restored_at:now$(),status:'restored'});
     await batch.commit();await logOp('unmerge',{merged_task_id:mergedTaskId,group_id:groupId});
   }catch(e){alert('復元に失敗しました: '+e.message);}
 }
@@ -1454,7 +1612,7 @@ async function loadOpLogs(){
   const el=document.getElementById('panel-oplog');if(!el||!el.classList.contains('active'))return;
   el.innerHTML='<div class="notice" style="display:flex;align-items:center;gap:8px"><div class="spinner"></div>読み込み中...</div>';
   try{
-    const snap=await db.collection('op_logs').orderBy('created','desc').limit(100).get();
+    const snap=await wsCol('op_logs').orderBy('created','desc').limit(100).get();
     const logs=snap.docs.map(d=>({...d.data(),id:d.id}));
     if(!logs.length){el.innerHTML='<div class="notice">操作ログはまだありません</div>';return;}
     const LM={import:{l:'カレンダー取込',c:'#059669'},writeback:{l:'書き戻し',c:'#1a73e8'},merge:{l:'タスク統合',c:'#4f46e5'},unmerge:{l:'統合解除',c:'#059669'},postpone:{l:'終了日延長',c:'#d97706'},send_to_fix:{l:'修正リスト送り',c:'#1a73e8'},delete_task:{l:'タスク削除',c:'#ea4335'},delete_fix:{l:'修正リスト削除',c:'#ea4335'},cal_stop:{l:'カレンダー停止',c:'#ea4335'},cal_del_tasks:{l:'取込タスク削除',c:'#ea4335'},cal_restart:{l:'カレンダー再開',c:'#059669'}};
@@ -1571,9 +1729,9 @@ function toggleImportCal(calId,checked){
   const existing=CAL_SRCS.find(s=>s.calendar_id===calId);
   const calName=calList.find(c=>c.id===calId)?.name||calId;
   if(existing){
-    db.collection('calendar_sources').doc(existing.id).update({enabled:checked});
+    wsCol('calendar_sources').doc(existing.id).update({enabled:checked});
   } else if(checked){
-    db.collection('calendar_sources').add({
+    wsCol('calendar_sources').add({
       calendar_id:calId,calendar_name:calName,enabled:true,
       default_proj:'unset',default_owner:'unset',
       imported_task_count:0,last_imported_at:null,
@@ -1585,10 +1743,10 @@ async function saveCalMapping(calId,field,value){
   const existing=CAL_SRCS.find(s=>s.calendar_id===calId);
   const calName=calList.find(c=>c.id===calId)?.name||calId;
   if(existing){
-    await db.collection('calendar_sources').doc(existing.id).update({[field]:value});
+    await wsCol('calendar_sources').doc(existing.id).update({[field]:value});
   } else {
     // ドキュメントがまだない場合は作成してからフィールドをセット
-    await db.collection('calendar_sources').add({
+    await wsCol('calendar_sources').add({
       calendar_id:calId,calendar_name:calName,enabled:selectedCalIds.has(calId),
       default_proj:'unset',default_owner:'unset',
       imported_task_count:0,last_imported_at:null,
@@ -1596,8 +1754,8 @@ async function saveCalMapping(calId,field,value){
     });
   }
 }
-async function stopCalSrc(srcId){await db.collection('calendar_sources').doc(srcId).update({enabled:false});await logOp('cal_stop',{src_id:srcId});}
-async function restartCalSrc(srcId,calId){selectedCalIds.add(calId);await db.collection('calendar_sources').doc(srcId).update({enabled:true});await logOp('cal_restart',{src_id:srcId});}
+async function stopCalSrc(srcId){await wsCol('calendar_sources').doc(srcId).update({enabled:false});await logOp('cal_stop',{src_id:srcId});}
+async function restartCalSrc(srcId,calId){selectedCalIds.add(calId);await wsCol('calendar_sources').doc(srcId).update({enabled:true});await logOp('cal_restart',{src_id:srcId});}
 async function deleteCalSrcTasks(srcId,calId,calName){
   const affected=sortByDate(TASKS.filter(t=>t.source_calendar_id===calId&&!t.archived));
   if(!affected.length){alert(`「${calName}」から取り込んだタスクはありません。`);return;}
@@ -1618,24 +1776,9 @@ async function deleteCalSrcTasks(srcId,calId,calName){
         </div>`;
       }).join('');
   }
-  // 確認後実行
+  // モーダルのモードを 'cal_src' にセット（onclick上書きではなくモード管理）
+  _delConfirmMode={type:'cal_src',srcId,calId,calName,affected};
   document.getElementById('del-confirm-modal').classList.add('open');
-  // モーダルの確認ボタンを一時的に上書き
-  const btn=document.getElementById('del-confirm-modal').querySelector('.btn');
-  if(btn){
-    btn.textContent='カレンダー由来タスクを削除する';
-    btn.onclick=async()=>{
-      const batch=db.batch();
-      affected.forEach(t=>batch.update(db.collection('tasks').doc(t.id),{archived:true,visible:false,archived_at:now$(),archived_reason:'cal_src_delete',updated:now$()}));
-      batch.update(db.collection('calendar_sources').doc(srcId),{imported_task_count:0});
-      await batch.commit();
-      await logOp('cal_del_tasks',{calendar_name:calName,calendar_id:calId,count:affected.length,gcal_note:'Googleカレンダー上の予定は削除されていません'});
-      closeDelConfirm();
-      btn.textContent='削除する';btn.onclick=confirmDelete; // 元に戻す
-      renderAll();
-      showUndo(`${affected.length}件のタスクをアプリ内から削除しました`,null);
-    };
-  }
 }
 
 // ═══════════════════════════════════════════
@@ -1644,7 +1787,7 @@ async function deleteCalSrcTasks(srcId,calId,calName){
 async function doImport(){
   const res=document.getElementById('sync-res');
   res.style.display='none';res.className='sync-res';
-
+  if(!checkCalAccountMatch())return;
   if(!hasTok()){
     showSyncErr('Calendarへのアクセスがありません。「Googleカレンダーへのアクセスを許可する」ボタンを押してください。');
     return;
@@ -1672,12 +1815,14 @@ async function doImport(){
 
   // 取込中メッセージを表示
   res.className='sync-res ok';
-  res.textContent='取込中... しばらくお待ちください';
+  res.textContent='カレンダーを読み込んでプレビューを作成中...';
   res.style.display='block';
 
   const tmin=new Date(Date.now()-30*86400000).toISOString();
   const tmax=new Date(Date.now()+300*86400000).toISOString();
   let nc=0,uc=0;
+  // プレビュー用カウント
+  let previewNew=0,previewUpd=0,previewSkip=0,previewUnset=0;
 
   const byId=Object.fromEntries(TASKS.filter(t=>!t.archived&&!t.merged).map(t=>[t.id,t]));
   const byGcalKey={};
@@ -1705,11 +1850,13 @@ async function doImport(){
       last_imported_at: now$(), imported_task_count: countPerCal[cid] || 0,
       default_proj: defaultProj, default_owner: defaultOwner,
     };
-    if (existing) await db.collection('calendar_sources').doc(existing.id).update(srcUpdate);
-    else await db.collection('calendar_sources').add(srcUpdate);
+    if (existing) await wsCol('calendar_sources').doc(existing.id).update(srcUpdate);
+    else await wsCol('calendar_sources').add(srcUpdate);
   }));
 
-  showSyncOk(`取込完了 — 新規 ${nc}件・更新 ${uc}件`);
+  let importMsg=`取込完了 — 新規 ${nc}件・更新 ${uc}件`;
+  if(previewUnset>0)importMsg+=` （うち未設定 ${previewUnset}件 → 「未設定タスク」タブで設定してください）`;
+  showSyncOk(importMsg);
   await logOp('import', {new: nc, updated: uc, calendars: calIds});
 
   }catch(e){
@@ -1746,17 +1893,17 @@ async function importOneCalendar(cid, calNameMap, byId, byGcalKey, countPerCal){
     if(ev.status === 'cancelled'){
       const local = byGcalKey[dedupKey]||(pmId?byId[pmId]:null);
       if(local && local.sync_status !== 'gcal_deleted')
-        ops.push({type:'update', ref:db.collection('tasks').doc(local.id), data:{sync_status:'gcal_deleted', updated:now$()}});
+        ops.push({type:'update', ref:wsCol('tasks').doc(local.id), data:{sync_status:'gcal_deleted', updated:now$()}});
       continue;
     }
 
     if(pmId && byId[pmId]){
-      ops.push({type:'update', ref:db.collection('tasks').doc(pmId), data:{google_event_id:ev.id, google_calendar_id:cid, sync_status:'synced', updated:now$()}});
+      ops.push({type:'update', ref:wsCol('tasks').doc(pmId), data:{google_event_id:ev.id, google_calendar_id:cid, sync_status:'synced', updated:now$()}});
       uc++; countPerCal[cid]=(countPerCal[cid]||0)+1; continue;
     }
 
     if(byGcalKey[dedupKey]){
-      ops.push({type:'update', ref:db.collection('tasks').doc(byGcalKey[dedupKey].id), data:{google_event_id:ev.id, google_calendar_id:cid, sync_status:'synced', updated:now$()}});
+      ops.push({type:'update', ref:wsCol('tasks').doc(byGcalKey[dedupKey].id), data:{google_event_id:ev.id, google_calendar_id:cid, sync_status:'synced', updated:now$()}});
       uc++; countPerCal[cid]=(countPerCal[cid]||0)+1; continue;
     }
 
@@ -1773,7 +1920,7 @@ async function importOneCalendar(cid, calNameMap, byId, byGcalKey, countPerCal){
       source_type:'google_calendar', source_calendar_id:cid, source_calendar_name:calName,
       imported_at:now$(), visible:true, archived:false, merged:false, sync_status:'synced',
     };
-    ops.push({type:'set', ref:db.collection('tasks').doc(taskId), data:{...newTask, created:now$(), updated:now$()}});
+    ops.push({type:'set', ref:wsCol('tasks').doc(taskId), data:{...newTask, created:now$(), updated:now$()}});
     nc++; countPerCal[cid]=(countPerCal[cid]||0)+1;
   }
 
@@ -1794,6 +1941,7 @@ async function importOneCalendar(cid, calNameMap, byId, byGcalKey, countPerCal){
 // WRITEBACK — App → GCal
 // ═══════════════════════════════════════════
 async function doWriteback(){
+  if(!checkCalAccountMatch())return;
   if(!hasTok()){showSyncErr('Calendarへのアクセスがありません。');return;}
   if(!gapiReady){showSyncErr('Calendar APIの読み込みが未完了です。');return;}
   gapi.client.setToken({access_token:gCalToken});
@@ -1866,13 +2014,13 @@ async function executePush(){
     const ev=t2ev(t);
     try{
       if(isUpd){
-        try{await gapi.client.calendar.events.update({calendarId:t.google_calendar_id||cid,eventId:t.google_event_id,resource:ev});await db.collection('tasks').doc(t.id).update({sync_status:'synced',updated:now$()});uc++;}
-        catch{const r=await gapi.client.calendar.events.insert({calendarId:cid,resource:ev});await db.collection('tasks').doc(t.id).update({google_event_id:r.result.id,google_calendar_id:cid,sync_status:'synced',updated:now$()});cc++;}
+        try{await gapi.client.calendar.events.update({calendarId:t.google_calendar_id||cid,eventId:t.google_event_id,resource:ev});await wsCol('tasks').doc(t.id).update({sync_status:'synced',updated:now$()});uc++;}
+        catch{const r=await gapi.client.calendar.events.insert({calendarId:cid,resource:ev});await wsCol('tasks').doc(t.id).update({google_event_id:r.result.id,google_calendar_id:cid,sync_status:'synced',updated:now$()});cc++;}
       }else{
         const r=await gapi.client.calendar.events.insert({calendarId:cid,resource:ev});
-        await db.collection('tasks').doc(t.id).update({google_event_id:r.result.id,google_calendar_id:cid,sync_status:'synced',updated:now$()});cc++;
+        await wsCol('tasks').doc(t.id).update({google_event_id:r.result.id,google_calendar_id:cid,sync_status:'synced',updated:now$()});cc++;
       }
-    }catch(e2){ec++;ecList.push(t.name);await db.collection('tasks').doc(t.id).update({sync_status:'failed',updated:now$()});console.error('push',t.id,e2);}
+    }catch(e2){ec++;ecList.push(t.name);await wsCol('tasks').doc(t.id).update({sync_status:'failed',updated:now$()});console.error('push',t.id,e2);}
   }
   await logOp('writeback',{created:cc,updated:uc,failed:ec});
   btn.disabled=false;btn.textContent='書き戻しを実行する';
@@ -1923,7 +2071,10 @@ function openDelConfirm(){
   }
   document.getElementById('del-confirm-modal').classList.add('open');
 }
-function closeDelConfirm(){document.getElementById('del-confirm-modal').classList.remove('open');}
+function closeDelConfirm(){
+  document.getElementById('del-confirm-modal').classList.remove('open');
+  _delConfirmMode=null; // キャンセル時も必ずリセット
+}
 
 // 削除実行（論理削除 = archived:true、完全削除しない）
 async function confirmDelete(){
@@ -1931,7 +2082,7 @@ async function confirmDelete(){
   const tasks=TASKS.filter(t=>ids.includes(t.id));
   const gcalCount=tasks.filter(t=>t.source_type==='google_calendar').length;
   const batch=db.batch();
-  tasks.forEach(t=>batch.update(db.collection('tasks').doc(t.id),{
+  tasks.forEach(t=>batch.update(wsCol('tasks').doc(t.id),{
     archived:true,visible:false,
     archived_at:now$(),archived_reason:'user_delete',updated:now$()
   }));
@@ -1948,7 +2099,7 @@ async function confirmDelete(){
     `${ids.length}件のタスクを削除しました`,
     async()=>{
       const b=db.batch();
-      deletedTasks.forEach(t=>b.update(db.collection('tasks').doc(t.id),{archived:false,visible:true,updated:now$()}));
+      deletedTasks.forEach(t=>b.update(wsCol('tasks').doc(t.id),{archived:false,visible:true,updated:now$()}));
       await b.commit();
       showUndo(`${ids.length}件の削除を取り消しました`,null);
     }
@@ -1993,6 +2144,7 @@ function rToday(){
   const taskRow=(t)=>{
     const p=getP(t.owner),pj=PROJ[t.proj],ss=ssBadge(t);
     return `<div class="tr">
+      ${deleteMode?`<input type="checkbox" class="del-chk" onchange="toggleDelSel('${t.id}',this.checked)" ${selectedForDelete.has(t.id)?'checked':''}>`:''}
       ${pj?`<span class="badge" style="background:${pj.color}18;color:${pj.color}">${pj.name}</span>`:''}
       <span class="badge" style="background:${p.color}18;color:${p.color}">${p.name}</span>
       <span class="tn" title="${t.name}">${t.name}</span>
@@ -2003,7 +2155,8 @@ function rToday(){
     </div>`;
   };
   
-  let html='<div style="font-size:15px;font-weight:600;margin-bottom:16px">今日の進行状況 — '+(TODAY.getMonth()+1)+'月'+TODAY.getDate()+'日</div>';
+  const todayDelBar=deleteMode?`<div class="delete-bar" style="margin-bottom:12px"><span class="del-count">${selectedForDelete.size}件を選択中</span><button class="btn sm del-exec-btn" onclick="execDelete()" ${selectedForDelete.size===0?'disabled':''}>選択したタスクを削除</button><button class="btn sm" onclick="exitDeleteMode()">削除モード終了</button></div>`:'<div style="text-align:right;margin-bottom:8px"><button class="del-mode-enter del-mode-btn" onclick="enterDeleteMode()">削除モード</button></div>';
+  let html=todayDelBar+'<div style="font-size:15px;font-weight:600;margin-bottom:16px">今日の進行状況 — '+(TODAY.getMonth()+1)+'月'+TODAY.getDate()+'日</div>';
   html+=sec('▶ 今日対応中','#d97706',todayTasks,taskRow);
   html+=sec('⚠ 遅延中','#ea4335',delayedTasks,taskRow);
   
@@ -2073,6 +2226,9 @@ function logToText(log){
     delete_tasks:d.task_names?`「${(d.task_names||[]).slice(0,3).join('」「')}」${d.task_names.length>3?`など${d.task_names.length}件`:''}をアプリ内から削除しました。GCal上の予定は残っています。`:`${d.count||0}件のタスクをアプリ内から削除しました（GCal上の予定は残っています）`,
     delete_task:d.name?`「${d.name}」をアプリ内から削除しました（GCal上の予定は残っています）`:'タスクを削除しました',
     cal_del_tasks:d.calendar_name?`「${d.calendar_name}」カレンダー由来のタスク${d.count||0}件をアプリ内から削除しました（GCal上の予定は残っています）`:`カレンダー由来のタスク${d.count||0}件をアプリ内から削除しました`,
+    change_role:`「${d.name||d.uid}」の権限を「${({admin:'管理者',editor:'編集者',viewer:'閲覧者'})[d.role]||d.role}」に変更しました`,
+    remove_member:`「${d.name||d.uid}」をワークスペースから削除しました`,
+    rename_workspace:`ワークスペース名を「${d.name||''}」に変更しました`,
     delete_fix: `修正リストの項目を削除しました`,
     cal_stop:   `カレンダーの取込を停止しました`,
     cal_restart:`カレンダーの取込を再開しました`,
@@ -2080,6 +2236,240 @@ function logToText(log){
   };
   return {dt, text:texts[log.type]||log.type};
 }
+
+
+// ═══════════════════════════════════════════
+// WORKSPACE & PERMISSION
+// ═══════════════════════════════════════════
+
+// コレクションパスヘルパー（ワークスペース配下に集中管理）
+const wsCol=col=>{
+  if(!WORKSPACE)throw new Error('ワークスペース未設定');
+  return db.collection('workspaces').doc(WORKSPACE.id).collection(col);
+};
+const canEdit=()=>MY_ROLE==='admin'||MY_ROLE==='editor';
+const canAdmin=()=>MY_ROLE==='admin';
+
+// ── ワークスペース画面の表示 ──
+function showWorkspace(){
+  showWorkspaceScreen();
+  document.getElementById('ws-loading').style.display='block';
+  document.getElementById('ws-forms').style.display='none';
+}
+
+// ── ワークスペース作成 ──
+async function createWorkspace(){
+  const name=document.getElementById('ws-name').value.trim();
+  const err=document.getElementById('ws-err');
+  if(!name){err.textContent='チーム名を入力してください';err.style.display='block';return;}
+  err.style.display='none';
+  const user=auth.currentUser;
+  const wsId='ws-'+Date.now();
+  const inviteCode=Math.random().toString(36).slice(2,8).toUpperCase();
+  const wsData={
+    id:wsId,name,created_by:user.uid,
+    invite_code:inviteCode,created_at:now$()
+  };
+  await db.collection('workspaces').doc(wsId).set(wsData);
+  await db.collection('workspaces').doc(wsId).collection('members').doc(user.uid).set({
+    uid:user.uid,
+    email:user.email||'',
+    display_name:user.displayName||user.email||'管理者',
+    photo_url:user.photoURL||'',
+    role:'admin',
+    joined_at:now$()
+  });
+  await db.collection('user_workspaces').doc(user.uid).set({workspace_id:wsId,updated:now$()});
+  await enterWorkspace(wsId,wsData,'admin');
+}
+
+// ── 招待コードで参加 ──
+async function joinWorkspace(){
+  const code=document.getElementById('ws-invite').value.trim().toUpperCase();
+  const err=document.getElementById('ws-err');
+  if(!code){err.textContent='招待コードを入力してください';err.style.display='block';return;}
+  err.style.display='none';
+  // 招待コードでワークスペースを検索
+  const snap=await db.collection('workspaces').where('invite_code','==',code).limit(1).get();
+  if(snap.empty){err.textContent='招待コードが正しくありません';err.style.display='block';return;}
+  const wsDoc=snap.docs[0];
+  const wsData={id:wsDoc.id,...wsDoc.data()};
+  const user=auth.currentUser;
+  // すでにメンバーか確認
+  const existing=await db.collection('workspaces').doc(wsDoc.id).collection('members').doc(user.uid).get();
+  if(!existing.exists){
+    await db.collection('workspaces').doc(wsDoc.id).collection('members').doc(user.uid).set({
+      uid:user.uid,
+      email:user.email||'',
+      display_name:user.displayName||user.email||'メンバー',
+      photo_url:user.photoURL||'',
+      role:'editor',
+      joined_at:now$()
+    });
+    await db.collection('user_workspaces').doc(user.uid).set({workspace_id:wsDoc.id,updated:now$()});
+  }
+  await enterWorkspace(wsDoc.id,wsData,existing.exists?existing.data().role:'editor');
+}
+
+// ── ワークスペースに入る ──
+async function enterWorkspace(wsId,wsData,role){
+  WORKSPACE=wsData;
+  MY_ROLE=role;
+  // ヘッダー更新
+  const wsNameEl=document.getElementById('hdr-ws-name');
+  if(wsNameEl)wsNameEl.textContent=wsData.name||'制作進行管理';
+  // 管理者のみメンバーボタン表示
+  const memberBtn=document.getElementById('hdr-member-btn');
+  if(memberBtn)memberBtn.style.display=canAdmin()?'':'none';
+  // 権限に応じてUIを調整
+  applyRoleUI();
+  // アプリ画面を表示してデータを購読
+  showApp();
+  setupListeners();
+}
+
+// ── 権限に応じてUIを調整 ──
+function applyRoleUI(){
+  // 閲覧者は進捗変更・削除・遅延対応ボタンを無効化
+  if(MY_ROLE==='viewer'){
+    document.querySelectorAll('.btn.pr,.del-mode-btn,.sync-act.pr').forEach(el=>{
+      if(!el.id?.includes('close')&&!el.onclick?.toString().includes('sw('))
+        el.style.pointerEvents='none',el.style.opacity='.4',el.title='閲覧者は操作できません';
+    });
+  }
+}
+
+// ── ログイン後にワークスペースを解決 ──
+async function resolveWorkspace(user){
+  // このユーザーのワークスペースを取得
+  const uwDoc=await db.collection('user_workspaces').doc(user.uid).get();
+  if(!uwDoc.exists){
+    // ワークスペース未所属 → 作成/参加画面へ
+    showWorkspace();
+    document.getElementById('ws-loading').style.display='none';
+    document.getElementById('ws-forms').style.display='block';
+    return;
+  }
+  const wsId=uwDoc.data().workspace_id;
+  const [wsDoc,memberDoc]=await Promise.all([
+    db.collection('workspaces').doc(wsId).get(),
+    db.collection('workspaces').doc(wsId).collection('members').doc(user.uid).get()
+  ]);
+  if(!wsDoc.exists||!memberDoc.exists){
+    // ワークスペースが消えた等 → 再作成画面
+    await db.collection('user_workspaces').doc(user.uid).delete();
+    showWorkspace();
+    document.getElementById('ws-loading').style.display='none';
+    document.getElementById('ws-forms').style.display='block';
+    return;
+  }
+  await enterWorkspace(wsId,{id:wsId,...wsDoc.data()},memberDoc.data().role);
+}
+
+// ── メンバー管理モーダル ──
+async function openMemberModal(){
+  if(!WORKSPACE)return;
+  document.getElementById('member-modal').classList.add('open');
+  document.getElementById('member-ws-name').textContent=`チーム: ${WORKSPACE.name}`;
+  document.getElementById('member-invite-code').textContent=WORKSPACE.invite_code||'---';
+  const rn=document.getElementById('ws-rename-input');if(rn)rn.value=WORKSPACE.name||'';
+  document.getElementById('member-list').innerHTML='<div class="spinner"></div>';
+  const snap=await db.collection('workspaces').doc(WORKSPACE.id).collection('members').get();
+  const ROLE_LABELS={admin:'管理者',editor:'編集者',viewer:'閲覧者'};
+  document.getElementById('member-list').innerHTML=snap.docs.map(d=>{
+    const m=d.data();
+    const isMe=m.uid===auth.currentUser?.uid;
+    return `<div class="tr">
+      <div style="width:32px;height:32px;border-radius:50%;background:#1a73e8;color:#fff;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;flex-shrink:0">${(m.display_name||'?')[0].toUpperCase()}</div>
+      <div style="flex:1"><div style="font-size:13px;font-weight:500">${m.display_name||'名前なし'}${isMe?' <span style="font-size:11px;color:#888">（あなた）</span>':''}</div><div style="font-size:12px;color:#888">${m.email||''}</div></div>
+      ${canAdmin()&&!isMe?`<select onchange="changeMemberRole('${m.uid}',this.value)" style="font-size:12px;width:90px"><option value="admin" ${m.role==='admin'?'selected':''}>管理者</option><option value="editor" ${m.role==='editor'?'selected':''}>編集者</option><option value="viewer" ${m.role==='viewer'?'selected':''}>閲覧者</option></select>`:`<span class="badge" style="background:#f1f3f4;color:#555">${ROLE_LABELS[m.role]||m.role}</span>`}
+      ${canAdmin()&&!isMe?`<button class="btn sm danger" onclick="removeMember('${m.uid}','${m.display_name||'このメンバー'}')">削除</button>`:''}
+    </div>`;
+  }).join('');
+}
+function closeMemberModal(){document.getElementById('member-modal').classList.remove('open');}
+
+async function changeMemberRole(uid,role){
+  await db.collection('workspaces').doc(WORKSPACE.id).collection('members').doc(uid).update({role});
+  await logOp('change_role',{uid,role});
+}
+async function removeMember(uid,name){
+  if(!confirm(`「${name}」をワークスペースから削除しますか？`))return;
+  await db.collection('workspaces').doc(WORKSPACE.id).collection('members').doc(uid).delete();
+  await db.collection('user_workspaces').doc(uid).delete();
+  await logOp('remove_member',{uid,name});
+  openMemberModal();
+}
+async function renameWorkspace(){
+  const newName=document.getElementById('ws-rename-input')?.value.trim();
+  if(!newName){alert('チーム名を入力してください');return;}
+  await db.collection('workspaces').doc(WORKSPACE.id).update({name:newName});
+  WORKSPACE.name=newName;
+  const el=document.getElementById('hdr-ws-name');if(el)el.textContent=newName;
+  document.getElementById('member-ws-name').textContent=`チーム: ${newName}`;
+  await logOp('rename_workspace',{name:newName});
+}
+async function regenerateInviteCode(){
+  if(!confirm('招待コードを更新しますか？\n古いコードは使えなくなります。'))return;
+  const newCode=Math.random().toString(36).slice(2,8).toUpperCase();
+  await db.collection('workspaces').doc(WORKSPACE.id).update({invite_code:newCode});
+  WORKSPACE.invite_code=newCode;
+  const el=document.getElementById('member-invite-code');if(el)el.textContent=newCode;
+}
+
+
+/*
+ * ═══════════════════════════════════════════
+ * Firestore セキュリティルール（Firebase Console → Firestore → ルール に設定してください）
+ * ═══════════════════════════════════════════
+ *
+ * rules_version = '2';
+ * service cloud.firestore {
+ *   match /databases/{database}/documents {
+ *
+ *     // ワークスペース情報：メンバーのみ読み取り、作成は認証済みユーザー
+ *     match /workspaces/{wsId} {
+ *       allow read: if request.auth != null &&
+ *         exists(/databases/$(database)/documents/workspaces/$(wsId)/members/$(request.auth.uid));
+ *       allow create: if request.auth != null;
+ *       allow update: if request.auth != null &&
+ *         get(/databases/$(database)/documents/workspaces/$(wsId)/members/$(request.auth.uid)).data.role == 'admin';
+ *
+ *       // メンバー：メンバー自身と管理者が読み書き
+ *       match /members/{uid} {
+ *         allow read: if request.auth != null &&
+ *           exists(/databases/$(database)/documents/workspaces/$(wsId)/members/$(request.auth.uid));
+ *         allow write: if request.auth != null && (
+ *           request.auth.uid == uid ||
+ *           get(/databases/$(database)/documents/workspaces/$(wsId)/members/$(request.auth.uid)).data.role == 'admin'
+ *         );
+ *       }
+ *
+ *       // タスク・修正リスト等：メンバーのみ読み書き
+ *       match /tasks/{docId} {
+ *         allow read: if request.auth != null &&
+ *           exists(/databases/$(database)/documents/workspaces/$(wsId)/members/$(request.auth.uid));
+ *         allow write: if request.auth != null &&
+ *           get(/databases/$(database)/documents/workspaces/$(wsId)/members/$(request.auth.uid)).data.role in ['admin','editor'];
+ *       }
+ *       match /fixes/{docId} { allow read, write: if isMember(wsId); }
+ *       match /calendar_sources/{docId} { allow read, write: if isMember(wsId); }
+ *       match /op_logs/{docId} { allow read, write: if isMember(wsId); }
+ *       match /merge_groups/{docId} { allow read, write: if isMember(wsId); }
+ *     }
+ *
+ *     // ユーザーのワークスペース所属情報：本人のみ
+ *     match /user_workspaces/{uid} {
+ *       allow read, write: if request.auth != null && request.auth.uid == uid;
+ *     }
+ *
+ *     function isMember(wsId) {
+ *       return request.auth != null &&
+ *         exists(/databases/$(database)/documents/workspaces/$(wsId)/members/$(request.auth.uid));
+ *     }
+ *   }
+ * }
+ */
 
 (function boot(){
   document.getElementById('hdr-today').textContent='今日: '+(TODAY.getMonth()+1)+'月'+TODAY.getDate()+'日（'+['日','月','火','水','木','金','土'][TODAY.getDay()]+'）';
