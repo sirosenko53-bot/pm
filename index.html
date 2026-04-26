@@ -297,6 +297,34 @@ input[type=checkbox]{width:15px;height:15px;cursor:pointer}
   </div>
 </div>
 
+<!-- ── LOADING ── -->
+<div id="screen-loading" class="screen active">
+  <div style="text-align:center">
+    <div class="spinner" style="width:32px;height:32px;margin:0 auto 16px;border-width:3px"></div>
+    <div id="loading-msg" style="font-size:14px;color:#666">起動中...</div>
+  </div>
+</div>
+
+<!-- ── ERROR ── -->
+<div id="screen-error" class="screen">
+  <div class="card-setup" style="text-align:center">
+    <h2 class="card-h" style="color:#c5221f">起動に失敗しました</h2>
+    <div id="error-msg" class="card-p" style="text-align:left;background:#fce8e6;border-radius:9px;padding:12px;margin-bottom:14px"></div>
+    <p class="card-p" style="text-align:left;margin-bottom:14px">
+      原因候補:<br>
+      ・Firebase設定が間違っている<br>
+      ・Firestoreの権限設定が不足している<br>
+      ・ワークスペース情報が壊れている<br>
+      ・ネットワーク接続に問題がある
+    </p>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <button class="btn pr" onclick="location.reload()">再読み込み</button>
+      <button class="btn" onclick="confirmSignOut()">ログアウトしてやり直す</button>
+      <button class="btn" onclick="localStorage.removeItem('pm_cfg');location.reload()">初期設定に戻る</button>
+    </div>
+  </div>
+</div>
+
 <!-- ── WORKSPACE ── -->
 <div id="screen-workspace" class="screen">
   <div class="card-setup">
@@ -355,11 +383,33 @@ input[type=checkbox]{width:15px;height:15px;cursor:pointer}
     <div class="hdr-today" id="hdr-today"></div>
     <div class="live"><div class="ld"></div>リアルタイム同期</div>
     <button class="hbtn pr" onclick="openSync()">カレンダー同期</button>
-    <button class="hbtn" id="hdr-member-btn" onclick="openMemberModal()" title="メンバー管理" style="display:none">👥 メンバー</button>
+    <button class="hbtn" id="hdr-member-btn" onclick="openMemberModal()" title="管理" style="display:none">⚙ 管理</button>
     <button class="hbtn" onclick="sw('oplog')" title="操作ログ" style="font-size:14px">≡</button>
     <div class="av" id="user-av" onclick="confirmSignOut()" title="クリックでログアウト">?</div>
   </div>
-  <div class="pbar" id="pbar"></div>
+  <div class="pbar" id="pbar" style="align-items:center;gap:8px">
+    <span style="font-size:12px;color:#888;flex-shrink:0">表示対象:</span>
+    <div id="filter-people-wrap" style="position:relative;display:inline-block">
+      <button class="btn sm" id="filter-people-btn" onclick="togglePeopleFilter()" style="font-size:12px">全担当者 ▼</button>
+      <div id="filter-people-panel" style="display:none;position:absolute;top:100%;left:0;background:#fff;border:1px solid #dadce0;border-radius:10px;padding:10px;min-width:180px;box-shadow:0 4px 16px rgba(0,0,0,.1);z-index:200">
+        <div id="filter-people-checks"></div>
+        <div style="display:flex;gap:8px;margin-top:8px;border-top:1px solid #f0ede8;padding-top:8px">
+          <button class="btn sm" onclick="selectAllPeople(true)">全員</button>
+          <button class="btn sm" onclick="selectAllPeople(false)">解除</button>
+          <button class="btn sm pr" onclick="togglePeopleFilter()">閉じる</button>
+        </div>
+      </div>
+    </div>
+    <div id="filter-proj-wrap" style="position:relative;display:inline-block">
+      <button class="btn sm" id="filter-proj-btn" onclick="toggleProjFilter()" style="font-size:12px">全プロジェクト ▼</button>
+      <div id="filter-proj-panel" style="display:none;position:absolute;top:100%;left:0;background:#fff;border:1px solid #dadce0;border-radius:10px;padding:10px;min-width:180px;box-shadow:0 4px 16px rgba(0,0,0,.1);z-index:200">
+        <div id="filter-proj-checks"></div>
+        <div style="display:flex;gap:8px;margin-top:8px;border-top:1px solid #f0ede8;padding-top:8px">
+          <button class="btn sm pr" onclick="toggleProjFilter()">閉じる</button>
+        </div>
+      </div>
+    </div>
+  </div>
   <div id="summary-bar" style="background:#fff;border-bottom:1px solid #e8e6df;padding:5px 18px;display:flex;gap:12px;flex-wrap:wrap;font-size:12px"></div>
   <div class="tabs">
     <div class="tab active" onclick="sw('today')">今日の進行</div>
@@ -483,29 +533,81 @@ input[type=checkbox]{width:15px;height:15px;cursor:pointer}
   </div>
 </div>
 
-<!-- ── メンバー管理モーダル ── -->
+<!-- ── 管理モーダル（メンバー・担当者・プロジェクト） ── -->
 <div class="modal-bg" id="member-modal">
-  <div class="modal" style="max-width:560px">
-    <h2>👥 メンバー管理</h2>
+  <div class="modal" style="max-width:680px">
+    <h2>⚙ 管理</h2>
     <div class="modal-sub" id="member-ws-name"></div>
-    <div class="modal-sec">
-      <h3>ワークスペース名</h3>
-      <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
-        <input type="text" id="ws-rename-input" style="flex:1" placeholder="チーム名">
-        <button class="btn sm pr" onclick="renameWorkspace()">変更</button>
+    <div class="sync-tab-bar" style="margin-bottom:14px">
+      <div class="sync-tab active" id="atab-member" onclick="adminTabSwitch('member')">メンバー</div>
+      <div class="sync-tab" id="atab-assignee" onclick="adminTabSwitch('assignee')">担当者</div>
+      <div class="sync-tab" id="atab-project" onclick="adminTabSwitch('project')">プロジェクト</div>
+      <div class="sync-tab" id="atab-workspace" onclick="adminTabSwitch('workspace')">ワークスペース</div>
+    </div>
+
+    <!-- メンバータブ -->
+    <div id="apane-member">
+      <div class="modal-sec">
+        <h3>招待コード</h3>
+        <div id="member-invite-code" style="font-size:22px;font-weight:700;letter-spacing:4px;text-align:center;padding:14px;background:#f1f3f4;border-radius:10px;margin-bottom:8px"></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div style="font-size:12px;color:#888">このコードを共有して招待できます</div>
+          <button class="btn sm" onclick="regenerateInviteCode()">コードを更新</button>
+        </div>
       </div>
-      <h3>招待コード</h3>
-      <div id="member-invite-code" style="font-size:22px;font-weight:700;letter-spacing:4px;text-align:center;padding:14px;background:#f1f3f4;border-radius:10px;margin-bottom:8px"></div>
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px">
-        <div style="font-size:12px;color:#888">このコードを共有して、メンバーを招待できます</div>
-        <button class="btn sm" onclick="regenerateInviteCode()">コードを更新</button>
+      <div class="modal-sec">
+        <h3>メンバー一覧</h3>
+        <div id="member-list"></div>
       </div>
     </div>
-    <div class="modal-sec">
-      <h3>メンバー一覧</h3>
-      <div id="member-list"></div>
+
+    <!-- 担当者タブ -->
+    <div id="apane-assignee" style="display:none">
+      <div class="modal-sec">
+        <h3>担当者管理</h3>
+        <div class="notice" style="font-size:12px;margin-bottom:12px">担当者はタスクに割り当てる作業主体です。ログインしない外部協力者も登録できます。</div>
+        <div id="assignee-list"></div>
+        <div style="margin-top:12px;border:1px solid #e8e6df;border-radius:10px;padding:12px" id="assignee-add-form">
+          <div style="font-size:13px;font-weight:500;margin-bottom:10px">担当者を追加</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+            <div><label class="flbl" style="margin-top:0">名前</label><input type="text" id="new-assignee-name" placeholder="例: 田中 花子"></div>
+            <div><label class="flbl" style="margin-top:0">色</label><input type="color" id="new-assignee-color" value="#1a73e8" style="width:100%;height:38px;border:1px solid #dadce0;border-radius:8px;cursor:pointer"></div>
+            <div><label class="flbl" style="margin-top:0">メール（任意）</label><input type="text" id="new-assignee-email" placeholder="外部協力者のメール"></div>
+            <div><label class="flbl" style="margin-top:0">メモ</label><input type="text" id="new-assignee-memo" placeholder="役割など"></div>
+          </div>
+          <button class="btn pr sm" onclick="addAssignee()">追加する</button>
+        </div>
+      </div>
     </div>
-    <div style="text-align:right"><button class="btn" onclick="closeMemberModal()">閉じる</button></div>
+
+    <!-- プロジェクトタブ -->
+    <div id="apane-project" style="display:none">
+      <div class="modal-sec">
+        <h3>プロジェクト管理</h3>
+        <div id="project-list"></div>
+        <div style="margin-top:12px;border:1px solid #e8e6df;border-radius:10px;padding:12px" id="project-add-form">
+          <div style="font-size:13px;font-weight:500;margin-bottom:10px">プロジェクトを追加</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+            <div><label class="flbl" style="margin-top:0">プロジェクト名</label><input type="text" id="new-proj-name" placeholder="例: 2作目 詩集"></div>
+            <div><label class="flbl" style="margin-top:0">色</label><input type="color" id="new-proj-color" value="#1a73e8" style="width:100%;height:38px;border:1px solid #dadce0;border-radius:8px;cursor:pointer"></div>
+          </div>
+          <button class="btn pr sm" onclick="addProject()">追加する</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ワークスペースタブ -->
+    <div id="apane-workspace" style="display:none">
+      <div class="modal-sec">
+        <h3>ワークスペース名</h3>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input type="text" id="ws-rename-input" style="flex:1" placeholder="チーム名">
+          <button class="btn sm pr" onclick="renameWorkspace()">変更</button>
+        </div>
+      </div>
+    </div>
+
+    <div style="text-align:right;margin-top:14px"><button class="btn" onclick="closeMemberModal()">閉じる</button></div>
   </div>
 </div>
 
@@ -541,7 +643,7 @@ input[type=checkbox]{width:15px;height:15px;cursor:pointer}
 </div>
 
 <!-- ── Undo トースト ── -->
-<div id="undo-toast" style="display:none;position:fixed;bottom:58px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:10px 18px;border-radius:10px;font-size:13px;z-index:300;display:flex;align-items:center;gap:12px;box-shadow:0 4px 16px rgba(0,0,0,.25)">
+<div id="undo-toast" style="display:none;position:fixed;bottom:58px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:10px 18px;border-radius:10px;font-size:13px;z-index:300;align-items:center;gap:12px;box-shadow:0 4px 16px rgba(0,0,0,.25)">
   <span id="undo-msg"></span>
   <button id="undo-btn" style="background:#fff;color:#333;border:none;border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;font-weight:500">元に戻す</button>
   <button onclick="hideUndo()" style="background:none;border:none;color:#aaa;cursor:pointer;font-size:16px;padding:0">×</button>
@@ -553,21 +655,16 @@ input[type=checkbox]{width:15px;height:15px;cursor:pointer}
 // ═══════════════════════════════════════════
 const TODAY=new Date();TODAY.setHours(0,0,0,0);
 const TODAY_STR=TODAY.toISOString().slice(0,10);
-const PEOPLE=[
-  {id:'senko',    name:'線香（私）', color:'#4f46e5'},
-  {id:'sato',     name:'さと',       color:'#059669'},
-  {id:'sunayuki', name:'すなゆき',   color:'#b45309'},
-  {id:'shikamii', name:'しかみぃ',   color:'#1d4ed8'},
-  {id:'b',        name:'B（声優）',  color:'#d97706'},
-  {id:'unset',    name:'未設定',     color:'#9ca3af'},
+// ── 担当者・プロジェクトは動的管理（Firestoreから取得）──
+// 初期値はフォールバック用（初回起動・ワークスペース未設定時）
+let PEOPLE=[
+  {id:'unset', name:'未設定', color:'#9ca3af', status:'active'},
 ];
-const PROJ={
-  poetry: {name:'詩集',     color:'#4f46e5', ms:[{name:'第5作到達',date:'2026-04-26'},{name:'第10作到達',date:'2026-05-11'},{name:'最終入稿',date:'2026-06-30'}]},
-  audio:  {name:'音声作品', color:'#059669', ms:[{name:'仮台本前半',date:'2026-05-01'},{name:'本台本確定',date:'2026-06-03'}]},
-  exhibit:{name:'展示',     color:'#b45309', ms:[{name:'文言確定稿',date:'2026-05-09'},{name:'公開準備完了',date:'2026-05-31'}]},
-  unset:  {name:'未設定',   color:'#9ca3af', ms:[]},
+let PROJ={
+  unset:{name:'未設定', color:'#9ca3af', ms:[], status:'active'},
 };
 const OC={senko:'9',sato:'2',sunayuki:'6',shikamii:'1',b:'5'};
+let unsubPeople=null, unsubProjects=null; // 購読解除関数
 
 // ═══════════════════════════════════════════
 // STATE
@@ -581,7 +678,8 @@ let unsubWS=null;        // workspace購読解除関数
 let tokenClient=null, gCalToken=null, gCalExp=0, gCalAccountEmail=null;
 let gapiReady=false, gsiReady=false;
 let calList=[], selectedCalIds=new Set();
-let visPeople=new Set(PEOPLE.map(p=>p.id));
+let visPeople=new Set(['unset']);
+let visProjects=new Set(Object.keys(PROJ));
 let calY=TODAY.getFullYear(), calM=TODAY.getMonth(), selDay=null;
 let showDone=false, showMergedOrig=false, showFixDeleted=false, showAddTask=false;
 let mgroups={}, mgk=0;
@@ -606,7 +704,7 @@ const isTod=t=>pd(t.start)<=TODAY&&pd(t.end)>=TODAY&&t.prog<100;
 const isMg=t=>t.type==='merged_task';
 const isSyn=t=>!!t.google_event_id;
 const isUnset=t=>!t.owner||t.owner==='unset'||!t.proj||t.proj==='unset';
-const filt=()=>TASKS.filter(t=>t.visible!==false&&!t.archived&&!t.merged&&(visPeople.has(t.owner)||!t.owner||t.owner==='unset'));
+const filt=()=>TASKS.filter(t=>t.visible!==false&&!t.archived&&!t.merged&&(visPeople.has(t.owner)||!t.owner||t.owner==='unset')&&(visProjects.size===0||visProjects.has(t.proj)||!t.proj||t.proj==='unset'));
 const filtAll=()=>TASKS.filter(t=>!t.archived);
 const prio=t=>isMg(t)?0:isDel(t)?1:isTod(t)?2:3+Math.max(0,dd(TODAY,pd(t.start)))/365;
 const hasTok=()=>!!(gCalToken&&Date.now()<gCalExp);
@@ -634,10 +732,12 @@ function saveConfig(){
     initFB({firebase:fb,oauthClientId:oauth});
   }catch{err.style.display='block';}
 }
-const showSetup=()=>{['setup','login','workspace','app'].forEach(n=>setScr(n,n==='setup'));}
-const showWorkspaceScreen=()=>{['setup','login','workspace','app'].forEach(n=>setScr(n,n==='workspace'));};
-const showLogin=()=>{['setup','login','workspace','app'].forEach(n=>setScr(n,n==='login'));};
-const showApp=()=>{['setup','login','workspace','app'].forEach(n=>setScr(n,n==='app'));};
+const showSetup=()=>{['loading','error','setup','login','workspace','app'].forEach(n=>setScr(n,n==='setup'));}
+const showWorkspaceScreen=()=>{['loading','error','setup','login','workspace','app'].forEach(n=>setScr(n,n==='workspace'));}
+const showLoading=(msg='起動中...')=>{['loading','error','setup','login','workspace','app'].forEach(n=>setScr(n,n==='loading'));const el=document.getElementById('loading-msg');if(el)el.textContent=msg;}
+const showError=(msg)=>{['loading','error','setup','login','workspace','app'].forEach(n=>setScr(n,n==='error'));const el=document.getElementById('error-msg');if(el)el.textContent=msg;};
+const showLogin=()=>{['loading','error','setup','login','workspace','app'].forEach(n=>setScr(n,n==='login'));};
+const showApp=()=>{['loading','error','setup','login','workspace','app'].forEach(n=>setScr(n,n==='app'));};
 function setScr(name,on){
   const el=document.getElementById('screen-'+name);
   if(!el)return;
@@ -719,12 +819,21 @@ function onGapiLoad(){
 // FIREBASE
 // ═══════════════════════════════════════════
 function initFB(cfg){
-  try{if(firebase.apps.length)firebase.apps.forEach(a=>a.delete());}catch{}
-  firebase.initializeApp(cfg.firebase);
-  db=firebase.firestore();auth=firebase.auth();
-  db.enablePersistence({synchronizeTabs:true}).catch(()=>{});
-  auth.onAuthStateChanged(u=>u?onSignedIn(u):showLogin());
-  if(cfg.oauthClientId&&gsiReady)initTokenClient(cfg.oauthClientId);
+  showLoading('Firebase を初期化中...');
+  try{
+    if(firebase.apps.length)firebase.apps.forEach(a=>{try{a.delete();}catch{}});
+    firebase.initializeApp(cfg.firebase);
+    db=firebase.firestore();auth=firebase.auth();
+    db.enablePersistence({synchronizeTabs:true}).catch(()=>{});
+    auth.onAuthStateChanged(u=>{
+      if(u) onSignedIn(u);
+      else showLogin();
+    });
+    if(cfg.oauthClientId&&gsiReady)initTokenClient(cfg.oauthClientId);
+  }catch(e){
+    console.error('initFB error:',e);
+    showError('Firebase の初期化に失敗しました。設定を確認してください。\n\n'+e.message);
+  }
 }
 async function signIn(){
   try{await auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());}
@@ -737,18 +846,21 @@ function confirmSignOut(){
 }
 function resetAllState(){
   // Firestoreの購読を解除
-  [unsubT,unsubF,unsubCS].forEach(u=>{try{if(u)u();}catch{}});
-  unsubT=unsubF=unsubCS=null;
+  [unsubT,unsubF,unsubCS,unsubPeople,unsubProjects].forEach(u=>{try{if(u)u();}catch{}});
+  unsubT=unsubF=unsubCS=unsubPeople=unsubProjects=null;
   // ワークスペース状態をリセット
   WORKSPACE=null;MY_ROLE=null;
   // Calendar認証をリセット
+  // トークンを一時退避してからrevokeし、その後nullにする
+  const _oldToken=gCalToken;
   gCalToken=null;gCalExp=0;gCalAccountEmail=null;
-  if(window.google?.accounts?.oauth2)try{google.accounts.oauth2.revoke(gCalToken,()=>{});}catch{}
+  if(_oldToken&&window.google?.accounts?.oauth2)try{google.accounts.oauth2.revoke(_oldToken,()=>{});}catch{}
   calList=[];selectedCalIds=new Set();
   // データ配列をリセット
   TASKS=[];FIXES=[];CAL_SRCS=[];
   // 画面状態をリセット
   deleteMode=false;selectedForDelete.clear();
+  visProjects=new Set();
   delaySortKey='start';delaySortAsc=true;delayFilterProj='';delayFilterOwner='';
   delaySelected.clear();delayMergePreview=null;
   selDay=null;calY=TODAY.getFullYear();calM=TODAY.getMonth();
@@ -779,6 +891,31 @@ function onSignedIn(user){
 function setupListeners(){
   if(!WORKSPACE){console.error('setupListeners: workspace not set');return;}
   if(unsubT)unsubT();if(unsubF)unsubF();if(unsubCS)unsubCS();
+  if(unsubPeople)unsubPeople();if(unsubProjects)unsubProjects();
+
+  // 担当者を動的購読
+  unsubPeople=wsCol('assignees').orderBy('display_order').onSnapshot(snap=>{
+    const assignees=snap.docs.map(d=>({...d.data(),id:d.id})).filter(a=>a.status!=='archived');
+    PEOPLE=[
+      ...assignees.map(a=>({id:a.id,name:a.name,color:a.color||'#9ca3af',status:a.status})),
+      {id:'unset',name:'未設定',color:'#9ca3af',status:'active'},
+    ];
+    visPeople=new Set(PEOPLE.filter(p=>p.status!=='archived').map(p=>p.id));
+    initPBar();renderAll();
+  },e=>console.error('assignees',e));
+
+  // プロジェクトを動的購読
+  unsubProjects=wsCol('projects').onSnapshot(snap=>{
+    PROJ={unset:{name:'未設定',color:'#9ca3af',ms:[],status:'active'}};
+    snap.docs.forEach(d=>{
+      const p=d.data();
+      if(p.status!=='archived') PROJ[d.id]={name:p.name,color:p.color||'#1a73e8',ms:p.milestones||[],status:p.status||'active'};
+    });
+    // visProjects を新しいプロジェクト一覧に合わせて更新
+    visProjects=new Set(Object.keys(PROJ));
+    renderAll();
+  },e=>console.error('projects',e));
+
   // ワークスペース配下のコレクションのみ購読（他ワークスペースのデータは取得しない）
   unsubT=wsCol('tasks').onSnapshot(snap=>{TASKS=snap.docs.map(d=>({...d.data(),id:d.id}));updateFxSel();renderAll();},e=>console.error('tasks',e));
   unsubF=wsCol('fixes').onSnapshot(snap=>{FIXES=snap.docs.map(d=>({...d.data(),id:d.id}));rFixList();rStatus();},e=>console.error('fixes',e));
@@ -830,14 +967,63 @@ function sw(t){
   renderAll();
 }
 function initPBar(){
-  document.getElementById('pbar').innerHTML=PEOPLE.filter(p=>p.id!=='unset').map(p=>
-    `<div class="ptog" id="ptog-${p.id}" style="background:${p.color}18;border-color:${p.color};color:${p.color}" onclick="toggleP('${p.id}')"><span class="pdot" style="background:${p.color}"></span>${p.name}</div>`
-  ).join('');
+  // 担当者フィルターパネルを更新
+  const peoplePanel=document.getElementById('filter-people-checks');
+  const projPanel=document.getElementById('filter-proj-checks');
+  if(peoplePanel){
+    peoplePanel.innerHTML=PEOPLE.filter(p=>p.id!=='unset'&&p.status!=='archived').map(p=>`
+      <label style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer;font-size:13px">
+        <input type="checkbox" ${visPeople.has(p.id)?'checked':''} onchange="toggleP('${p.id}',this.checked)">
+        <span style="width:10px;height:10px;border-radius:50%;background:${p.color};flex-shrink:0"></span>
+        ${p.name}
+      </label>`).join('');
+  }
+  if(projPanel){
+    projPanel.innerHTML=Object.entries(PROJ).filter(([k])=>k!=='unset').map(([k,v])=>`
+      <label style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer;font-size:13px">
+        <input type="checkbox" ${visProjects.has(k)?'checked':''} onchange="toggleProjFilter2('${k}',this.checked)">
+        <span style="width:10px;height:10px;border-radius:4px;background:${v.color};flex-shrink:0"></span>
+        ${v.name}
+      </label>`).join('');
+  }
+  // ボタンラベル更新
+  const allPeople=PEOPLE.filter(p=>p.id!=='unset'&&p.status!=='archived');
+  const peopleBtn=document.getElementById('filter-people-btn');
+  if(peopleBtn){
+    const n=allPeople.filter(p=>visPeople.has(p.id)).length;
+    peopleBtn.textContent=n===allPeople.length?'全担当者 ▼':`${n}人を表示 ▼`;
+  }
+  const allProjs=Object.keys(PROJ).filter(k=>k!=='unset');
+  const projBtn=document.getElementById('filter-proj-btn');
+  if(projBtn){
+    const n=allProjs.filter(k=>visProjects.has(k)).length;
+    projBtn.textContent=n===allProjs.length?'全プロジェクト ▼':`${n}件を表示 ▼`;
+  }
 }
-function toggleP(id){
-  if(visPeople.has(id))visPeople.delete(id);else visPeople.add(id);
-  document.getElementById('ptog-'+id)?.classList.toggle('off',!visPeople.has(id));
-  renderAll();
+function togglePeopleFilter(){
+  const panel=document.getElementById('filter-people-panel');
+  if(!panel)return;
+  panel.style.display=panel.style.display==='none'?'block':'none';
+  if(panel.style.display==='block')initPBar();
+}
+function toggleProjFilter(){
+  const panel=document.getElementById('filter-proj-panel');
+  if(!panel)return;
+  panel.style.display=panel.style.display==='none'?'block':'none';
+  if(panel.style.display==='block')initPBar();
+}
+function toggleP(id,checked){
+  if(checked)visPeople.add(id);else visPeople.delete(id);
+  initPBar();renderAll();
+}
+function selectAllPeople(all){
+  if(all)PEOPLE.filter(p=>p.id!=='unset').forEach(p=>visPeople.add(p.id));
+  else PEOPLE.filter(p=>p.id!=='unset').forEach(p=>visPeople.delete(p.id));
+  initPBar();renderAll();
+}
+function toggleProjFilter2(id,checked){
+  if(checked)visProjects.add(id);else visProjects.delete(id);
+  initPBar();renderAll();
 }
 function renderAll(){rToday();rCal();rGantt();rOv();rProg();rDelay();rUnset();rStatus();}
 
@@ -1909,7 +2095,9 @@ async function importOneCalendar(cid, calNameMap, byId, byGcalKey, countPerCal){
 
     const start = ev.start?.date || ev.start?.dateTime?.slice(0,10) || '';
     let end = ev.end?.date || ev.end?.dateTime?.slice(0,10) || '';
-    if(start && end && dd(pd(start), pd(end))===1) end = start;
+    // GCal終日イベントのend.dateは排他的（4/1-4/3の予定はend=4/4）→ -1日する
+    if(end && ev.end?.date) end = addDays(end, -1);
+    if(start && end && start > end) end = start; // 安全チェック
     if(!start) continue;
 
     const taskId = 'gcal-'+ev.id.replace(/[^a-zA-Z0-9]/g,'').slice(-20);
@@ -1989,8 +2177,8 @@ function renderPushPreview(){
 function closePushPreview(){document.getElementById('push-preview-modal').classList.remove('open');pushPlan=null;}
 
 function t2ev(t){
-  let end=t.end;
-  if(t.start===t.end)end=addDays(t.end,1);
+  // GCalの終日イベントはend.dateが排他的なので常に+1日する
+  const end=addDays(t.end,1);
   return{
     summary:t.name,
     start:{date:t.start},end:{date:end},
@@ -2010,7 +2198,9 @@ async function executePush(){
 
   for(const t of [...toCreate,...toUpdate]){
     const isUpd=!!t.google_event_id;
-    const cid=pcm[t.proj]||TASKS.find(x=>x.id===t.id)?.google_calendar_id||'primary';
+    // 書き戻し先優先順位: 元カレンダー → sourceカレンダー → プロジェクトデフォルト → 最後のみprimary
+    const projDefaultCal=CAL_SRCS.find(s=>s.default_proj===t.proj&&s.enabled)?.calendar_id;
+    const cid=t.google_calendar_id||t.source_calendar_id||projDefaultCal||pcm[t.proj]||'primary';
     const ev=t2ev(t);
     try{
       if(isUpd){
@@ -2094,7 +2284,8 @@ async function confirmDelete(){
   });
   closeDelConfirm();
   const deletedTasks=[...tasks]; // undo用にコピー
-  deleteMode=false;selectedForDelete.clear();renderAll();
+  deleteMode=false;selectedForDelete.clear();
+  visProjects=new Set();renderAll();
   showUndo(
     `${ids.length}件のタスクを削除しました`,
     async()=>{
@@ -2250,6 +2441,40 @@ const wsCol=col=>{
 const canEdit=()=>MY_ROLE==='admin'||MY_ROLE==='editor';
 const canAdmin=()=>MY_ROLE==='admin';
 
+
+// ── 初回ワークスペース作成時のデフォルト担当者・プロジェクト投入 ──
+async function initDefaultMasters(wsId){
+  const ref=db.collection('workspaces').doc(wsId);
+  const [assigneeSnap,projectSnap]=await Promise.all([
+    ref.collection('assignees').limit(1).get(),
+    ref.collection('projects').limit(1).get()
+  ]);
+  const batch=db.batch();
+  if(assigneeSnap.empty){
+    // デフォルト担当者（管理者のアカウント情報で自動登録）
+    const user=auth.currentUser;
+    const defaultAssignees=[
+      {id:'senko',    name:user?.displayName||'線香（私）', color:'#4f46e5', display_order:1, status:'active', linked_user_uid:user?.uid||null, email:user?.email||''},
+      {id:'sato',     name:'さと',       color:'#059669', display_order:2, status:'active', linked_user_uid:null, email:''},
+      {id:'sunayuki', name:'すなゆき',   color:'#b45309', display_order:3, status:'active', linked_user_uid:null, email:''},
+      {id:'shikamii', name:'しかみぃ',   color:'#1d4ed8', display_order:4, status:'active', linked_user_uid:null, email:''},
+      {id:'b',        name:'B（声優）',  color:'#d97706', display_order:5, status:'active', linked_user_uid:null, email:''},
+    ];
+    defaultAssignees.forEach(a=>batch.set(ref.collection('assignees').doc(a.id),{...a,created_at:now$(),updated_at:now$()}));
+  }
+  if(projectSnap.empty){
+    // デフォルトプロジェクト
+    const defaultProjects=[
+      {id:'poetry',  name:'詩集',     color:'#4f46e5', display_order:1, status:'active', milestones:[{name:'最終入稿',date:'2026-06-30'}]},
+      {id:'audio',   name:'音声作品', color:'#059669', display_order:2, status:'active', milestones:[{name:'本台本確定',date:'2026-06-03'}]},
+      {id:'exhibit', name:'展示',     color:'#b45309', display_order:3, status:'active', milestones:[{name:'公開準備完了',date:'2026-05-31'}]},
+    ];
+    defaultProjects.forEach(p=>batch.set(ref.collection('projects').doc(p.id),{...p,created_at:now$(),updated_at:now$()}));
+  }
+  if(!assigneeSnap.empty&&!projectSnap.empty)return; // どちらも存在→スキップ
+  await batch.commit();
+}
+
 // ── ワークスペース画面の表示 ──
 function showWorkspace(){
   showWorkspaceScreen();
@@ -2270,7 +2495,13 @@ async function createWorkspace(){
     id:wsId,name,created_by:user.uid,
     invite_code:inviteCode,created_at:now$()
   };
-  await db.collection('workspaces').doc(wsId).set(wsData);
+  const batch0=db.batch();
+  batch0.set(db.collection('workspaces').doc(wsId),wsData);
+  // 招待コード用の公開コレクションに登録（Firestoreルールで認証済みユーザー全員が読める）
+  batch0.set(db.collection('workspace_invites').doc(inviteCode),{
+    workspace_id:wsId,enabled:true,created_at:now$()
+  });
+  await batch0.commit();
   await db.collection('workspaces').doc(wsId).collection('members').doc(user.uid).set({
     uid:user.uid,
     email:user.email||'',
@@ -2283,38 +2514,46 @@ async function createWorkspace(){
   await enterWorkspace(wsId,wsData,'admin');
 }
 
-// ── 招待コードで参加 ──
+// ── 招待コードで参加 (workspace_invites経由 → Firestoreルールと矛盾しない) ──
 async function joinWorkspace(){
   const code=document.getElementById('ws-invite').value.trim().toUpperCase();
   const err=document.getElementById('ws-err');
   if(!code){err.textContent='招待コードを入力してください';err.style.display='block';return;}
   err.style.display='none';
-  // 招待コードでワークスペースを検索
-  const snap=await db.collection('workspaces').where('invite_code','==',code).limit(1).get();
-  if(snap.empty){err.textContent='招待コードが正しくありません';err.style.display='block';return;}
-  const wsDoc=snap.docs[0];
-  const wsData={id:wsDoc.id,...wsDoc.data()};
-  const user=auth.currentUser;
-  // すでにメンバーか確認
-  const existing=await db.collection('workspaces').doc(wsDoc.id).collection('members').doc(user.uid).get();
-  if(!existing.exists){
-    await db.collection('workspaces').doc(wsDoc.id).collection('members').doc(user.uid).set({
-      uid:user.uid,
-      email:user.email||'',
-      display_name:user.displayName||user.email||'メンバー',
-      photo_url:user.photoURL||'',
-      role:'editor',
-      joined_at:now$()
-    });
-    await db.collection('user_workspaces').doc(user.uid).set({workspace_id:wsDoc.id,updated:now$()});
+  try{
+    // workspace_invites は認証済みユーザー全員が読める公開コレクション
+    const inviteDoc=await db.collection('workspace_invites').doc(code).get();
+    if(!inviteDoc.exists||!inviteDoc.data().enabled){
+      err.textContent='招待コードが正しくないか、無効になっています';err.style.display='block';return;
+    }
+    const wsId=inviteDoc.data().workspace_id;
+    const user=auth.currentUser;
+    // すでにメンバーか確認
+    const existing=await db.collection('workspaces').doc(wsId).collection('members').doc(user.uid).get();
+    if(!existing.exists){
+      const batch=db.batch();
+      batch.set(db.collection('workspaces').doc(wsId).collection('members').doc(user.uid),{
+        uid:user.uid,email:user.email||'',
+        display_name:user.displayName||user.email||'メンバー',
+        photo_url:user.photoURL||'',role:'editor',joined_at:now$()
+      });
+      batch.set(db.collection('user_workspaces').doc(user.uid),{workspace_id:wsId,updated:now$()});
+      await batch.commit();
+    }
+    // ワークスペース情報を取得してアプリへ
+    const wsDoc=await db.collection('workspaces').doc(wsId).get();
+    await enterWorkspace(wsId,{id:wsId,...wsDoc.data()},existing.exists?existing.data().role:'editor');
+  }catch(e){
+    err.textContent='参加に失敗しました: '+e.message;err.style.display='block';
   }
-  await enterWorkspace(wsDoc.id,wsData,existing.exists?existing.data().role:'editor');
 }
 
 // ── ワークスペースに入る ──
 async function enterWorkspace(wsId,wsData,role){
   WORKSPACE=wsData;
   MY_ROLE=role;
+  // 初回: assignees/projects が空ならデフォルトデータを投入
+  await initDefaultMasters(wsId);
   // ヘッダー更新
   const wsNameEl=document.getElementById('hdr-ws-name');
   if(wsNameEl)wsNameEl.textContent=wsData.name||'制作進行管理';
@@ -2341,52 +2580,35 @@ function applyRoleUI(){
 
 // ── ログイン後にワークスペースを解決 ──
 async function resolveWorkspace(user){
-  // このユーザーのワークスペースを取得
-  const uwDoc=await db.collection('user_workspaces').doc(user.uid).get();
-  if(!uwDoc.exists){
-    // ワークスペース未所属 → 作成/参加画面へ
-    showWorkspace();
-    document.getElementById('ws-loading').style.display='none';
-    document.getElementById('ws-forms').style.display='block';
-    return;
+  showLoading('ワークスペースを確認中...');
+  try{
+    const uwDoc=await db.collection('user_workspaces').doc(user.uid).get();
+    if(!uwDoc.exists){
+      showWorkspace();
+      document.getElementById('ws-loading').style.display='none';
+      document.getElementById('ws-forms').style.display='block';
+      return;
+    }
+    const wsId=uwDoc.data().workspace_id;
+    const [wsDoc,memberDoc]=await Promise.all([
+      db.collection('workspaces').doc(wsId).get(),
+      db.collection('workspaces').doc(wsId).collection('members').doc(user.uid).get()
+    ]);
+    if(!wsDoc.exists||!memberDoc.exists){
+      // ワークスペースが見つからない → 再作成画面（削除は試みない）
+      showWorkspace();
+      document.getElementById('ws-loading').style.display='none';
+      document.getElementById('ws-forms').style.display='block';
+      return;
+    }
+    await enterWorkspace(wsId,{id:wsId,...wsDoc.data()},memberDoc.data().role);
+  }catch(e){
+    console.error('resolveWorkspace error:',e);
+    showError('ワークスペースの取得に失敗しました。\n\n'+e.message);
   }
-  const wsId=uwDoc.data().workspace_id;
-  const [wsDoc,memberDoc]=await Promise.all([
-    db.collection('workspaces').doc(wsId).get(),
-    db.collection('workspaces').doc(wsId).collection('members').doc(user.uid).get()
-  ]);
-  if(!wsDoc.exists||!memberDoc.exists){
-    // ワークスペースが消えた等 → 再作成画面
-    await db.collection('user_workspaces').doc(user.uid).delete();
-    showWorkspace();
-    document.getElementById('ws-loading').style.display='none';
-    document.getElementById('ws-forms').style.display='block';
-    return;
-  }
-  await enterWorkspace(wsId,{id:wsId,...wsDoc.data()},memberDoc.data().role);
 }
 
 // ── メンバー管理モーダル ──
-async function openMemberModal(){
-  if(!WORKSPACE)return;
-  document.getElementById('member-modal').classList.add('open');
-  document.getElementById('member-ws-name').textContent=`チーム: ${WORKSPACE.name}`;
-  document.getElementById('member-invite-code').textContent=WORKSPACE.invite_code||'---';
-  const rn=document.getElementById('ws-rename-input');if(rn)rn.value=WORKSPACE.name||'';
-  document.getElementById('member-list').innerHTML='<div class="spinner"></div>';
-  const snap=await db.collection('workspaces').doc(WORKSPACE.id).collection('members').get();
-  const ROLE_LABELS={admin:'管理者',editor:'編集者',viewer:'閲覧者'};
-  document.getElementById('member-list').innerHTML=snap.docs.map(d=>{
-    const m=d.data();
-    const isMe=m.uid===auth.currentUser?.uid;
-    return `<div class="tr">
-      <div style="width:32px;height:32px;border-radius:50%;background:#1a73e8;color:#fff;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;flex-shrink:0">${(m.display_name||'?')[0].toUpperCase()}</div>
-      <div style="flex:1"><div style="font-size:13px;font-weight:500">${m.display_name||'名前なし'}${isMe?' <span style="font-size:11px;color:#888">（あなた）</span>':''}</div><div style="font-size:12px;color:#888">${m.email||''}</div></div>
-      ${canAdmin()&&!isMe?`<select onchange="changeMemberRole('${m.uid}',this.value)" style="font-size:12px;width:90px"><option value="admin" ${m.role==='admin'?'selected':''}>管理者</option><option value="editor" ${m.role==='editor'?'selected':''}>編集者</option><option value="viewer" ${m.role==='viewer'?'selected':''}>閲覧者</option></select>`:`<span class="badge" style="background:#f1f3f4;color:#555">${ROLE_LABELS[m.role]||m.role}</span>`}
-      ${canAdmin()&&!isMe?`<button class="btn sm danger" onclick="removeMember('${m.uid}','${m.display_name||'このメンバー'}')">削除</button>`:''}
-    </div>`;
-  }).join('');
-}
 function closeMemberModal(){document.getElementById('member-modal').classList.remove('open');}
 
 async function changeMemberRole(uid,role){
@@ -2412,7 +2634,13 @@ async function renameWorkspace(){
 async function regenerateInviteCode(){
   if(!confirm('招待コードを更新しますか？\n古いコードは使えなくなります。'))return;
   const newCode=Math.random().toString(36).slice(2,8).toUpperCase();
-  await db.collection('workspaces').doc(WORKSPACE.id).update({invite_code:newCode});
+  const batch=db.batch();
+  // 古いコードを無効化
+  if(WORKSPACE.invite_code)batch.update(db.collection('workspace_invites').doc(WORKSPACE.invite_code),{enabled:false});
+  // 新しいコードを登録
+  batch.set(db.collection('workspace_invites').doc(newCode),{workspace_id:WORKSPACE.id,enabled:true,created_at:now$()});
+  batch.update(db.collection('workspaces').doc(WORKSPACE.id),{invite_code:newCode});
+  await batch.commit();
   WORKSPACE.invite_code=newCode;
   const el=document.getElementById('member-invite-code');if(el)el.textContent=newCode;
 }
@@ -2471,14 +2699,198 @@ async function regenerateInviteCode(){
  * }
  */
 
+
+// ── 管理モーダル タブ切替 ──
+function adminTabSwitch(tab){
+  ['member','assignee','project','workspace'].forEach(t=>{
+    document.getElementById('atab-'+t)?.classList.toggle('active',t===tab);
+    const pane=document.getElementById('apane-'+t);
+    if(pane)pane.style.display=t===tab?'block':'none';
+  });
+  if(tab==='assignee')renderAssigneeList();
+  if(tab==='project')renderProjectList();
+}
+
+// ── openMemberModal を管理モーダルに更新 ──
+async function openMemberModal(){
+  if(!WORKSPACE)return;
+  document.getElementById('member-modal').classList.add('open');
+  document.getElementById('member-ws-name').textContent=`${WORKSPACE.name||''}`;
+  document.getElementById('member-invite-code').textContent=WORKSPACE.invite_code||'---';
+  const rn=document.getElementById('ws-rename-input');if(rn)rn.value=WORKSPACE.name||'';
+  adminTabSwitch('member');
+  // メンバー一覧
+  document.getElementById('member-list').innerHTML='<div class="spinner"></div>';
+  const snap=await db.collection('workspaces').doc(WORKSPACE.id).collection('members').get();
+  const ROLE_LABELS={admin:'管理者',editor:'編集者',viewer:'閲覧者'};
+  document.getElementById('member-list').innerHTML=snap.docs.map(d=>{
+    const m=d.data(),isMe=m.uid===auth.currentUser?.uid;
+    return `<div class="tr">
+      <div style="width:32px;height:32px;border-radius:50%;background:#1a73e8;color:#fff;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;flex-shrink:0">${(m.display_name||'?')[0].toUpperCase()}</div>
+      <div style="flex:1"><div style="font-size:13px;font-weight:500">${m.display_name||'名前なし'}${isMe?' <span style="font-size:11px;color:#888">（あなた）</span>':''}</div><div style="font-size:12px;color:#888">${m.email||''}</div></div>
+      ${canAdmin()&&!isMe?`<select onchange="changeMemberRole('${m.uid}',this.value)" style="font-size:12px;width:90px"><option value="admin" ${m.role==='admin'?'selected':''}>管理者</option><option value="editor" ${m.role==='editor'?'selected':''}>編集者</option><option value="viewer" ${m.role==='viewer'?'selected':''}>閲覧者</option></select>`:`<span class="badge" style="background:#f1f3f4;color:#555">${ROLE_LABELS[m.role]||m.role}</span>`}
+      ${canAdmin()&&!isMe?`<button class="btn sm danger" onclick="removeMember('${m.uid}','${m.display_name||'このメンバー'}')">削除</button>`:''}
+    </div>`;
+  }).join('')||'<div style="font-size:13px;color:#888">メンバーがいません</div>';
+}
+
+// ── 担当者一覧レンダリング ──
+async function renderAssigneeList(){
+  const el=document.getElementById('assignee-list');if(!el)return;
+  el.innerHTML='<div class="spinner"></div>';
+  const snap=await wsCol('assignees').orderBy('display_order').get();
+  if(snap.empty){el.innerHTML='<div style="font-size:13px;color:#888;margin-bottom:8px">担当者がいません</div>';return;}
+  el.innerHTML=snap.docs.map(d=>{
+    const a=d.data(),isArchived=a.status==='archived';
+    return `<div class="tr" style="opacity:${isArchived?.5:1}">
+      <div style="width:14px;height:14px;border-radius:50%;background:${a.color||'#9ca3af'};flex-shrink:0"></div>
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:500">${a.name}${isArchived?' <span style="font-size:11px;color:#aaa">（アーカイブ済み）</span>':''}</div>
+        ${a.email?`<div style="font-size:12px;color:#888">${a.email}</div>`:''}
+        ${a.linked_user_uid?'<span class="badge" style="background:#e6f4ea;color:#137333;font-size:10px">ログインメンバー</span>':''}
+      </div>
+      ${!isArchived&&canAdmin()?`
+        <input type="text" value="${a.name}" style="width:110px;font-size:12px" onblur="updateAssignee('${d.id}','name',this.value)">
+        <input type="color" value="${a.color||'#1a73e8'}" style="width:36px;height:28px;border:1px solid #dadce0;border-radius:6px;cursor:pointer" onchange="updateAssignee('${d.id}','color',this.value)">
+        <button class="btn sm danger" onclick="archiveAssignee('${d.id}','${a.name.replace(/'/g,"\\'")}')">整理</button>
+      `:''}
+    </div>`;
+  }).join('');
+}
+
+// ── 担当者追加 ──
+async function addAssignee(){
+  const name=document.getElementById('new-assignee-name').value.trim();
+  if(!name){alert('名前を入力してください');return;}
+  const color=document.getElementById('new-assignee-color').value;
+  const email=document.getElementById('new-assignee-email').value.trim();
+  const memo=document.getElementById('new-assignee-memo').value.trim();
+  const snap=await wsCol('assignees').orderBy('display_order','desc').limit(1).get();
+  const maxOrder=snap.empty?0:snap.docs[0].data().display_order||0;
+  await wsCol('assignees').add({name,color,email,memo,display_order:maxOrder+1,status:'active',linked_user_uid:null,created_at:now$(),updated_at:now$()});
+  document.getElementById('new-assignee-name').value='';
+  document.getElementById('new-assignee-email').value='';
+  document.getElementById('new-assignee-memo').value='';
+  await renderAssigneeList();
+}
+
+// ── 担当者更新 ──
+async function updateAssignee(id,field,value){
+  await wsCol('assignees').doc(id).update({[field]:value,updated_at:now$()});
+}
+
+// ── 担当者アーカイブ（未完了タスクの引き継ぎ確認） ──
+async function archiveAssignee(id,name){
+  const unfinished=TASKS.filter(t=>t.owner===id&&(t.prog||0)<100&&!t.archived);
+  if(unfinished.length>0){
+    const choice=prompt(`「${name}」には未完了タスクが${unfinished.length}件あります。
+
+引き継ぎ先の担当者IDを入力してください（空欄で「未設定」に戻す）:
+${PEOPLE.filter(p=>p.id!=='unset'&&p.id!==id).map(p=>p.id+': '+p.name).join('\n')}`);
+    if(choice===null)return; // キャンセル
+    const newOwner=choice.trim()||'unset';
+    const batch=db.batch();
+    unfinished.forEach(t=>batch.update(wsCol('tasks').doc(t.id),{owner:newOwner,updated:now$()}));
+    await batch.commit();
+  }
+  await wsCol('assignees').doc(id).update({status:'archived',updated_at:now$()});
+  await logOp('archive_assignee',{id,name});
+  await renderAssigneeList();
+}
+
+// ── プロジェクト一覧レンダリング ──
+async function renderProjectList(){
+  const el=document.getElementById('project-list');if(!el)return;
+  el.innerHTML='<div class="spinner"></div>';
+  const snap=await wsCol('projects').orderBy('display_order').get();
+  if(snap.empty){el.innerHTML='<div style="font-size:13px;color:#888;margin-bottom:8px">プロジェクトがありません</div>';return;}
+  el.innerHTML=snap.docs.map(d=>{
+    const p=d.data(),isArchived=p.status==='archived';
+    return `<div class="tr" style="opacity:${isArchived?.5:1}">
+      <div style="width:14px;height:14px;border-radius:4px;background:${p.color||'#1a73e8'};flex-shrink:0"></div>
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:500">${p.name}${isArchived?' <span style="font-size:11px;color:#aaa">（アーカイブ済み）</span>':''}</div>
+        ${(p.milestones||[]).length?`<div style="font-size:11px;color:#888">マイルストーン ${p.milestones.length}件</div>`:''}
+      </div>
+      ${!isArchived&&canAdmin()?`
+        <input type="text" value="${p.name}" style="width:120px;font-size:12px" onblur="updateProject('${d.id}','name',this.value)">
+        <input type="color" value="${p.color||'#1a73e8'}" style="width:36px;height:28px;border:1px solid #dadce0;border-radius:6px;cursor:pointer" onchange="updateProject('${d.id}','color',this.value)">
+        <button class="btn sm danger" onclick="archiveProject('${d.id}','${p.name.replace(/'/g,"\\'")}')">整理</button>
+      `:''}
+    </div>`;
+  }).join('');
+}
+
+// ── プロジェクト追加 ──
+async function addProject(){
+  const name=document.getElementById('new-proj-name').value.trim();
+  if(!name){alert('プロジェクト名を入力してください');return;}
+  const color=document.getElementById('new-proj-color').value;
+  const snap=await wsCol('projects').orderBy('display_order','desc').limit(1).get();
+  const maxOrder=snap.empty?0:snap.docs[0].data().display_order||0;
+  await wsCol('projects').add({name,color,display_order:maxOrder+1,status:'active',milestones:[],created_at:now$(),updated_at:now$()});
+  document.getElementById('new-proj-name').value='';
+  await renderProjectList();
+}
+
+// ── プロジェクト更新 ──
+async function updateProject(id,field,value){
+  await wsCol('projects').doc(id).update({[field]:value,updated_at:now$()});
+}
+
+// ── プロジェクトアーカイブ（未完了タスクの移行確認） ──
+async function archiveProject(id,name){
+  const unfinished=TASKS.filter(t=>t.proj===id&&(t.prog||0)<100&&!t.archived);
+  if(unfinished.length>0){
+    const projOptions=Object.entries(PROJ).filter(([k])=>k!=='unset'&&k!==id).map(([k,v])=>k+': '+v.name).join('\n');
+    const choice=prompt(`「${name}」には未完了タスクが${unfinished.length}件あります。
+
+移行先のプロジェクトIDを入力してください（空欄で「未設定」に戻す）:
+${projOptions}`);
+    if(choice===null)return;
+    const newProj=choice.trim()||'unset';
+    const batch=db.batch();
+    unfinished.forEach(t=>batch.update(wsCol('tasks').doc(t.id),{proj:newProj,updated:now$()}));
+    await batch.commit();
+  }
+  // GCalとの紐づき確認
+  const calSrc=CAL_SRCS.find(s=>s.default_proj===id);
+  if(calSrc){
+    if(!confirm(`「${name}」はGoogleカレンダー「${calSrc.calendar_name}」と紐づいています。
+Googleカレンダーへの取込を停止しますか？
+（GCal上の予定は削除されません）`))return;
+    await wsCol('calendar_sources').doc(calSrc.id).update({enabled:false});
+  }
+  await wsCol('projects').doc(id).update({status:'archived',updated_at:now$()});
+  await logOp('archive_project',{id,name});
+  await renderProjectList();
+}
+
 (function boot(){
-  document.getElementById('hdr-today').textContent='今日: '+(TODAY.getMonth()+1)+'月'+TODAY.getDate()+'日（'+['日','月','火','水','木','金','土'][TODAY.getDay()]+'）';
-  initPBar();
-  document.getElementById('sync-modal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeSync();});
-  document.getElementById('push-preview-modal').addEventListener('click',e=>{if(e.target===e.currentTarget)closePushPreview();});
+  // 必ず最初にローディング画面を表示（真っ白画面を防ぐ）
+  showLoading('起動中...');
+  // ヘッダー初期化（失敗しても続行）
+  try{
+    document.getElementById('hdr-today').textContent='今日: '+(TODAY.getMonth()+1)+'月'+TODAY.getDate()+'日（'+['日','月','火','水','木','金','土'][TODAY.getDay()]+'）';
+  }catch{}
+  try{initPBar();}catch{}
+  try{
+    document.getElementById('sync-modal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeSync();});
+    document.getElementById('push-preview-modal').addEventListener('click',e=>{if(e.target===e.currentTarget)closePushPreview();});
+    document.getElementById('del-confirm-modal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeDelConfirm();});
+    document.getElementById('member-modal')?.addEventListener('click',e=>{if(e.target===e.currentTarget)closeMemberModal();});
+  }catch{}
+  // Firebase設定確認
   const stored=localStorage.getItem('pm_cfg');
-  if(stored){try{initFB(JSON.parse(stored));}catch{showSetup();}}
-  else showSetup();
+  if(!stored){showSetup();return;}
+  try{
+    const cfg=JSON.parse(stored);
+    if(!cfg.firebase?.apiKey){showSetup();return;}
+    initFB(cfg);
+  }catch(e){
+    console.error('boot error:',e);
+    showSetup();
+  }
 })();
 </script>
 </body>
