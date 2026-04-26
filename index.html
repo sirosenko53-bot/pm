@@ -329,12 +329,26 @@ input[type=checkbox]{width:15px;height:15px;cursor:pointer}
 <div id="screen-workspace" class="screen">
   <div class="card-setup">
     <h2 class="card-h">ワークスペースの設定</h2>
-    <div id="app-version-tag" style="font-size:11px;color:#aaa;text-align:right;margin-bottom:4px">v0.10.1</div>
+    <div id="app-version-tag" style="font-size:11px;color:#aaa;text-align:right;margin-bottom:4px">v0.10.2</div>
     <p class="card-p">制作チームのワークスペースを作成するか、招待コードで参加してください。</p>
 
     <div id="ws-loading" style="text-align:center;padding:20px 0;color:#888">
       <div class="spinner" style="width:20px;height:20px;margin:0 auto 8px"></div>
-      ワークスペースを確認中...
+      <div id="ws-loading-message">ワークスペースを確認中...</div>
+      <div id="ws-loading-progress" style="display:none;margin-top:8px;font-size:12px;color:#666"></div>
+      <div id="ws-loading-slow" style="display:none;margin-top:10px;font-size:12px;color:#b45309">
+        作成に時間がかかっています。通信状況を確認しています。このままお待ちください。
+      </div>
+      <div id="ws-loading-recover" style="display:none;margin-top:10px;padding:10px;border:1px solid #f1d3a9;background:#fff7ed;border-radius:10px;color:#7c2d12">
+        <div style="font-size:12px;line-height:1.6;margin-bottom:8px">
+          ワークスペース作成の完了を確認できませんでした。<br>
+          作成が途中まで完了している可能性があります。
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;max-width:220px;margin:0 auto">
+          <button class="btn sm" onclick="recheckWorkspace()">状態を再確認する</button>
+          <button class="btn sm" onclick="confirmSignOut()">ログアウトしてやり直す</button>
+        </div>
+      </div>
     </div>
 
     <div id="ws-forms" style="display:none">
@@ -344,14 +358,14 @@ input[type=checkbox]{width:15px;height:15px;cursor:pointer}
           <p style="font-size:12px;color:#666;margin-bottom:12px">このアカウントが管理者になります</p>
           <label class="flbl" style="margin-top:0">チーム名</label>
           <input class="fi" id="ws-name" type="text" placeholder="例: 線香制作チーム">
-          <button class="btn pr" onclick="createWorkspace()" style="width:100%;justify-content:center;margin-top:10px">ワークスペースを作成</button>
+          <button id="ws-create-btn" class="btn pr" onclick="createWorkspace()" style="width:100%;justify-content:center;margin-top:10px">ワークスペースを作成</button>
         </div>
         <div style="border:1px solid #dadce0;border-radius:12px;padding:16px">
           <div style="font-size:14px;font-weight:600;margin-bottom:8px">招待コードで参加</div>
           <p style="font-size:12px;color:#666;margin-bottom:12px">管理者から招待コードをもらってください</p>
           <label class="flbl" style="margin-top:0">招待コード</label>
           <input class="fi" id="ws-invite" type="text" placeholder="例: ABC123" style="text-transform:uppercase">
-          <button class="btn" onclick="joinWorkspace()" style="width:100%;justify-content:center;margin-top:10px">参加する</button>
+          <button id="ws-join-btn" class="btn" onclick="joinWorkspace()" style="width:100%;justify-content:center;margin-top:10px">参加する</button>
         </div>
       </div>
       <div class="ferr" id="ws-err"></div>
@@ -367,7 +381,7 @@ input[type=checkbox]{width:15px;height:15px;cursor:pointer}
 <div id="screen-login" class="screen">
   <div class="card-setup">
     <h2 class="card-h">制作進行管理</h2>
-    <p class="card-p" style="text-align:right;font-size:11px;color:#aaa;margin-bottom:4px">v0.10.1</p>
+    <p class="card-p" style="text-align:right;font-size:11px;color:#aaa;margin-bottom:4px">v0.10.2</p>
     <p class="card-p">Googleアカウントでログインします。<br>Googleカレンダーとの連携は、ログイン後に「カレンダー同期」から行います。</p>
     <button class="gbtn" onclick="signIn()">
       <svg width="20" height="20" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
@@ -896,7 +910,7 @@ function resetAllState(){
   const mb=document.getElementById('hdr-member-btn');if(mb)mb.style.display='none';
 }
 function onSignedIn(user){
-  console.log('[v0.10.1] onSignedIn:', user.email);
+  console.log('[v0.10.2] onSignedIn:', user.email);
   const av=document.getElementById('user-av');
   if(av){
     if(user.photoURL)av.innerHTML=`<img src="${user.photoURL}" alt="">`;
@@ -2529,28 +2543,18 @@ async function initDefaultMasters(wsId){
     ref.collection('projects').limit(1).get()
   ]);
   const batch=db.batch();
+  let hasBatchWrite=false;
   if(assigneeSnap.empty){
-    // デフォルト担当者（管理者のアカウント情報で自動登録）
+    // 初期担当者（作成者本人のみ）
     const user=auth.currentUser;
-    const defaultAssignees=[
-      {id:'senko',    name:user?.displayName||'線香（私）', color:'#4f46e5', display_order:1, status:'active', linked_user_uid:user?.uid||null, email:user?.email||''},
-      {id:'sato',     name:'さと',       color:'#059669', display_order:2, status:'active', linked_user_uid:null, email:''},
-      {id:'sunayuki', name:'すなゆき',   color:'#b45309', display_order:3, status:'active', linked_user_uid:null, email:''},
-      {id:'shikamii', name:'しかみぃ',   color:'#1d4ed8', display_order:4, status:'active', linked_user_uid:null, email:''},
-      {id:'b',        name:'B（声優）',  color:'#d97706', display_order:5, status:'active', linked_user_uid:null, email:''},
-    ];
-    defaultAssignees.forEach(a=>batch.set(ref.collection('assignees').doc(a.id),{...a,created_at:now$(),updated_at:now$()}));
+    const ownerAssignee={id:`owner-${user?.uid||'me'}`, name:user?.displayName||user?.email||'作成者', color:'#4f46e5', display_order:1, status:'active', linked_user_uid:user?.uid||null, email:user?.email||''};
+    batch.set(ref.collection('assignees').doc(ownerAssignee.id),{...ownerAssignee,created_at:now$(),updated_at:now$()});
+    hasBatchWrite=true;
   }
   if(projectSnap.empty){
-    // デフォルトプロジェクト
-    const defaultProjects=[
-      {id:'poetry',  name:'詩集',     color:'#4f46e5', display_order:1, status:'active', milestones:[{name:'最終入稿',date:'2026-06-30'}]},
-      {id:'audio',   name:'音声作品', color:'#059669', display_order:2, status:'active', milestones:[{name:'本台本確定',date:'2026-06-03'}]},
-      {id:'exhibit', name:'展示',     color:'#b45309', display_order:3, status:'active', milestones:[{name:'公開準備完了',date:'2026-05-31'}]},
-    ];
-    defaultProjects.forEach(p=>batch.set(ref.collection('projects').doc(p.id),{...p,created_at:now$(),updated_at:now$()}));
+    // 初期プロジェクトは作成しない（画面側の未設定フォールバックを利用）
   }
-  if(!assigneeSnap.empty&&!projectSnap.empty)return; // どちらも存在→スキップ
+  if(!hasBatchWrite)return;
   await batch.commit();
 }
 
@@ -2560,28 +2564,22 @@ function showWorkspaceChecking(msg='ワークスペースを確認中...'){
   showWorkspaceScreen();
   const ld=document.getElementById('ws-loading');
   const frm=document.getElementById('ws-forms');
-  if(ld){ld.style.display='block';ld.querySelector('div:last-child').textContent=msg;}
+  const wsErr=document.getElementById('ws-err');
+  const msgEl=document.getElementById('ws-loading-message');
+  const progressEl=document.getElementById('ws-loading-progress');
+  const slowEl=document.getElementById('ws-loading-slow');
+  const recoverEl=document.getElementById('ws-loading-recover');
+  if(ld)ld.style.display='block';
   if(frm)frm.style.display='none';
-  // タイムアウト：5秒以上待っていたらフォームへ促す
-  if(window._wsCheckTimer)clearTimeout(window._wsCheckTimer);
-  window._wsCheckTimer=setTimeout(()=>{
-    const ld2=document.getElementById('ws-loading');
-    if(ld2&&ld2.style.display!=='none'){
-      ld2.innerHTML=`<div style="text-align:center;padding:20px">
-        <div style="font-size:14px;color:#555;margin-bottom:12px">確認に時間がかかっています</div>
-        <div style="display:flex;flex-direction:column;gap:8px;max-width:240px;margin:0 auto">
-          <button class="btn" onclick="showWorkspaceForm()">ワークスペースを作成／参加する</button>
-          <button class="btn" onclick="confirmSignOut()">ログアウトしてやり直す</button>
-          <button class="btn" onclick="location.reload()">再読み込み</button>
-        </div>
-      </div>`;
-    }
-  },5000);
+  if(wsErr)wsErr.style.display='none';
+  if(msgEl)msgEl.textContent=msg;
+  if(progressEl){progressEl.style.display='none';progressEl.textContent='';}
+  if(slowEl)slowEl.style.display='none';
+  if(recoverEl)recoverEl.style.display='none';
 }
 
 // 作成／参加フォームを表示（タイムアウトをキャンセル）
 function showWorkspaceForm(msg=''){
-  if(window._wsCheckTimer)clearTimeout(window._wsCheckTimer);
   showWorkspaceScreen();
   const ld=document.getElementById('ws-loading');
   const frm=document.getElementById('ws-forms');
@@ -2595,21 +2593,65 @@ function showWorkspaceForm(msg=''){
     const err=document.getElementById('ws-err');
     if(err)err.style.display='none';
   }
-  console.log('[v0.10.1] showWorkspaceForm called');
+  console.log('[v0.10.2] showWorkspaceForm called');
 }
 
 // 後方互換
 function showWorkspace(){showWorkspaceChecking();}
 
+let creatingWorkspace=false;
+let joiningWorkspace=false;
+let wsSlowTimer=null;
+let wsRecoverTimer=null;
+
+function setWorkspaceSubmitState(loading){
+  const createBtn=document.getElementById('ws-create-btn');
+  const joinBtn=document.getElementById('ws-join-btn');
+  if(createBtn){
+    createBtn.disabled=loading;
+    createBtn.textContent=loading?'作成中...':'ワークスペースを作成';
+  }
+  if(joinBtn)joinBtn.disabled=loading;
+}
+function setWorkspaceProgress(msg){
+  const progressEl=document.getElementById('ws-loading-progress');
+  if(progressEl){
+    progressEl.style.display='block';
+    progressEl.textContent=msg;
+  }
+}
+function clearWorkspaceLoadingTimers(){
+  if(wsSlowTimer){clearTimeout(wsSlowTimer);wsSlowTimer=null;}
+  if(wsRecoverTimer){clearTimeout(wsRecoverTimer);wsRecoverTimer=null;}
+}
+function startWorkspaceLoadingTimers(){
+  clearWorkspaceLoadingTimers();
+  const slowEl=document.getElementById('ws-loading-slow');
+  const recoverEl=document.getElementById('ws-loading-recover');
+  if(slowEl)slowEl.style.display='none';
+  if(recoverEl)recoverEl.style.display='none';
+  wsSlowTimer=setTimeout(()=>{if(slowEl)slowEl.style.display='block';},10000);
+  wsRecoverTimer=setTimeout(()=>{if(recoverEl)recoverEl.style.display='block';},30000);
+}
+
 
 // ── ワークスペース作成 ──
 async function createWorkspace(){
+  if(creatingWorkspace||joiningWorkspace)return;
+  creatingWorkspace=true;
   const name=document.getElementById('ws-name').value.trim();
   const err=document.getElementById('ws-err');
-  if(!name){err.textContent='チーム名を入力してください';err.style.display='block';return;}
+  if(!name){
+    err.textContent='チーム名を入力してください';
+    err.style.display='block';
+    creatingWorkspace=false;
+    return;
+  }
   err.style.display='none';
-  const btn=document.querySelector('#ws-forms button.btn.pr');
-  if(btn){btn.disabled=true;btn.textContent='作成中...';}
+  showWorkspaceChecking('ワークスペースを作成しています...');
+  setWorkspaceSubmitState(true);
+  setWorkspaceProgress('1/4 ワークスペース作成中');
+  startWorkspaceLoadingTimers();
   try{
     const user=auth.currentUser;
     const wsId='ws-'+Date.now();
@@ -2624,23 +2666,42 @@ async function createWorkspace(){
       display_name:user.displayName||user.email||'管理者',
       photo_url:user.photoURL||'',role:'admin',joined_at:now$()
     });
+    setWorkspaceProgress('2/4 管理者登録中');
     batch.set(db.collection('user_workspaces').doc(user.uid),{workspace_id:wsId,updated:now$()});
     await batch.commit();
+    setWorkspaceProgress('3/4 初期データ準備中');
+    setWorkspaceProgress('4/4 ホーム読み込み中');
     await enterWorkspace(wsId,wsData,'admin');
   }catch(e){
+    showWorkspaceForm();
     err.textContent='ワークスペースの作成に失敗しました: '+e.message;
     err.style.display='block';
     console.error('createWorkspace error:',e);
-    if(btn){btn.disabled=false;btn.textContent='ワークスペースを作成';}
+  }finally{
+    clearWorkspaceLoadingTimers();
+    const slowEl=document.getElementById('ws-loading-slow');
+    const recoverEl=document.getElementById('ws-loading-recover');
+    if(slowEl)slowEl.style.display='none';
+    if(recoverEl)recoverEl.style.display='none';
+    setWorkspaceSubmitState(false);
+    creatingWorkspace=false;
   }
 }
 
 // ── 招待コードで参加 (workspace_invites経由 → Firestoreルールと矛盾しない) ──
 async function joinWorkspace(){
+  if(creatingWorkspace||joiningWorkspace)return;
+  joiningWorkspace=true;
   const code=document.getElementById('ws-invite').value.trim().toUpperCase();
   const err=document.getElementById('ws-err');
-  if(!code){err.textContent='招待コードを入力してください';err.style.display='block';return;}
+  if(!code){
+    err.textContent='招待コードを入力してください';
+    err.style.display='block';
+    joiningWorkspace=false;
+    return;
+  }
   err.style.display='none';
+  setWorkspaceSubmitState(true);
   try{
     // workspace_invites は認証済みユーザー全員が読める公開コレクション
     const inviteDoc=await db.collection('workspace_invites').doc(code).get();
@@ -2666,6 +2727,9 @@ async function joinWorkspace(){
     await enterWorkspace(wsId,{id:wsId,...wsDoc.data()},role);
   }catch(e){
     err.textContent='参加に失敗しました: '+e.message;err.style.display='block';
+  }finally{
+    setWorkspaceSubmitState(false);
+    joiningWorkspace=false;
   }
 }
 
@@ -2688,6 +2752,16 @@ async function enterWorkspace(wsId,wsData,role){
   setupListeners();
 }
 
+async function recheckWorkspace(){
+  const user=auth.currentUser;
+  if(!user){
+    showLogin();
+    return;
+  }
+  showWorkspaceChecking('状態を再確認しています...');
+  await resolveWorkspace(user);
+}
+
 // ── 権限に応じてUIを調整 ──
 function applyRoleUI(){
   // 閲覧者は進捗変更・削除・遅延対応ボタンを無効化
@@ -2701,7 +2775,7 @@ function applyRoleUI(){
 
 // ── ログイン後にワークスペースを解決 ──
 async function resolveWorkspace(user){
-  console.log('[v0.10.1] resolveWorkspace start:', user.email);
+  console.log('[v0.10.2] resolveWorkspace start:', user.email);
 
   // ステップ1: user_workspaces/{uid} を確認
   // 存在しない場合は即フォーム表示（確認中画面を続けない）
@@ -2709,7 +2783,7 @@ async function resolveWorkspace(user){
   try{
     uwDoc=await db.collection('user_workspaces').doc(user.uid).get();
   }catch(e){
-    console.warn('[v0.10.1] user_workspaces read failed:', e.message);
+    console.warn('[v0.10.2] user_workspaces read failed:', e.message);
     // 権限エラー等 → フォームへ（エラー画面で止めない）
     showWorkspaceForm();
     const el=document.getElementById('ws-err');
@@ -2719,14 +2793,14 @@ async function resolveWorkspace(user){
 
   if(!uwDoc.exists){
     // 初回ユーザー → 確認中画面を出さず即フォーム
-    console.log('[v0.10.1] user_workspaces not found → show workspace form');
+    console.log('[v0.10.2] user_workspaces not found → show workspace form');
     showWorkspaceForm();
     return;
   }
 
   // ステップ2: 既存ワークスペースがある場合のみ確認中画面を表示
   const wsId=uwDoc.data().workspace_id;
-  console.log('[v0.10.1] workspace_id found:', wsId, '→ loading workspace');
+  console.log('[v0.10.2] workspace_id found:', wsId, '→ loading workspace');
   showWorkspaceChecking('ワークスペースを読み込み中...');
 
   try{
@@ -2737,7 +2811,7 @@ async function resolveWorkspace(user){
 
     if(!wsDoc.exists){
       // ワークスペース本体が存在しない（壊れた参照）
-      console.warn('[v0.10.1] workspace doc not found for wsId:', wsId);
+      console.warn('[v0.10.2] workspace doc not found for wsId:', wsId);
       try{await db.collection('user_workspaces').doc(user.uid).delete();}catch{}
       showWorkspaceForm();
       const el=document.getElementById('ws-err');
@@ -2747,7 +2821,7 @@ async function resolveWorkspace(user){
 
     if(!memberDoc.exists){
       // メンバー情報が存在しない（所属情報が壊れている）
-      console.warn('[v0.10.1] member doc not found for uid:', user.uid, 'in workspace:', wsId);
+      console.warn('[v0.10.2] member doc not found for uid:', user.uid, 'in workspace:', wsId);
       try{await db.collection('user_workspaces').doc(user.uid).delete();}catch{}
       showWorkspaceForm();
       const el=document.getElementById('ws-err');
@@ -2756,11 +2830,11 @@ async function resolveWorkspace(user){
     }
 
     // 正常：ワークスペースに入る
-    console.log('[v0.10.1] workspace loaded OK, entering as role:', memberDoc.data().role);
+    console.log('[v0.10.2] workspace loaded OK, entering as role:', memberDoc.data().role);
     await enterWorkspace(wsId,{id:wsId,...wsDoc.data()},memberDoc.data().role);
 
   }catch(e){
-    console.error('[v0.10.1] workspace load error:', e);
+    console.error('[v0.10.2] workspace load error:', e);
     // 取得失敗でも真っ白にしない → フォームへ
     showWorkspaceForm();
     const el=document.getElementById('ws-err');
@@ -3105,7 +3179,7 @@ async function executeImport(){
 
 (function boot(){
   // バージョン確認（キャッシュ問題の検出用）
-  const APP_VERSION='v0.10.1';
+  const APP_VERSION='v0.10.2';
   console.log('['+APP_VERSION+'] App starting...');
   // 必ず最初にローディング画面を表示（真っ白画面を防ぐ）
   showLoading('起動中...');
