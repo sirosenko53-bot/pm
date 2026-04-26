@@ -611,6 +611,20 @@ input[type=checkbox]{width:15px;height:15px;cursor:pointer}
   </div>
 </div>
 
+
+<!-- ── 取込プレビューモーダル ── -->
+<div class="modal-bg" id="import-preview-modal">
+  <div class="modal" style="max-width:560px">
+    <h2>取込内容の確認</h2>
+    <div class="modal-sub">以下の内容をFirestoreに書き込みます。確認してから実行してください。</div>
+    <div id="import-preview-body"></div>
+    <div class="btn-row" style="margin-top:16px">
+      <button class="btn pr" onclick="executeImport()">取り込む</button>
+      <button class="btn" onclick="closeImportPreview()">キャンセル</button>
+    </div>
+    <div class="sync-res" id="import-preview-res"></div>
+  </div>
+</div>
 <!-- ── PUSH PREVIEW MODAL ── -->
 <div class="modal-bg" id="push-preview-modal">
   <div class="modal" style="max-width:700px">
@@ -785,12 +799,16 @@ async function onTokenResponse(resp){
   document.getElementById('cal-con').style.display='block';
   loadCalList();
 }
-// アカウント一致確認
+// アカウント一致確認（メール取得不能の場合も停止）
 function checkCalAccountMatch(){
-  if(!gCalAccountEmail)return true;
   const fbEmail=auth.currentUser?.email||null;
-  if(fbEmail&&gCalAccountEmail&&fbEmail.toLowerCase()!==gCalAccountEmail.toLowerCase()){
-    showSyncErr(`アカウントが異なります。Calendar: ${gCalAccountEmail} / ログイン: ${fbEmail}。再許可してください。`);
+  if(!gCalAccountEmail){
+    // メール取得できていない場合は安全のため停止
+    showSyncErr('Googleカレンダーの連携アカウントを確認できません。「再許可」を押してCalendar連携をやり直してください。');
+    return false;
+  }
+  if(fbEmail&&fbEmail.toLowerCase()!==gCalAccountEmail.toLowerCase()){
+    showSyncErr(`アカウントが異なります。Calendar: ${gCalAccountEmail} / ログイン: ${fbEmail}。同じアカウントで再許可してください。`);
     return false;
   }
   return true;
@@ -896,11 +914,18 @@ function setupListeners(){
   // 担当者を動的購読
   unsubPeople=wsCol('assignees').orderBy('display_order').onSnapshot(snap=>{
     const assignees=snap.docs.map(d=>({...d.data(),id:d.id})).filter(a=>a.status!=='archived');
-    PEOPLE=[
+    const newPeople=[
       ...assignees.map(a=>({id:a.id,name:a.name,color:a.color||'#9ca3af',status:a.status})),
       {id:'unset',name:'未設定',color:'#9ca3af',status:'active'},
     ];
-    visPeople=new Set(PEOPLE.filter(p=>p.status!=='archived').map(p=>p.id));
+    // フィルター状態を保持（初回のみ全件ON、2回目以降は既存状態を維持）
+    const isFirstLoad=PEOPLE.length<=1; // unsetだけの初期状態
+    newPeople.forEach(p=>{
+      if(isFirstLoad) visPeople.add(p.id);
+      else if(p.status==='archived') visPeople.delete(p.id); // アーカイブは除去
+      else if(!PEOPLE.find(x=>x.id===p.id)) visPeople.add(p.id); // 新規追加はON
+    });
+    PEOPLE=newPeople;
     initPBar();renderAll();
   },e=>console.error('assignees',e));
 
@@ -911,8 +936,14 @@ function setupListeners(){
       const p=d.data();
       if(p.status!=='archived') PROJ[d.id]={name:p.name,color:p.color||'#1a73e8',ms:p.milestones||[],status:p.status||'active'};
     });
-    // visProjects を新しいプロジェクト一覧に合わせて更新
-    visProjects=new Set(Object.keys(PROJ));
+    // フィルター状態を保持（初回のみ全件ON）
+    const isFirstProjLoad=Object.keys(PROJ).filter(k=>k!=='unset').length<=0;
+    Object.entries(PROJ).forEach(([k,v])=>{
+      if(k==='unset')return;
+      if(isFirstProjLoad) visProjects.add(k);
+      else if(v.status==='archived') visProjects.delete(k);
+      else if(!visProjects.has(k)) visProjects.add(k); // 新規追加はON
+    });
     renderAll();
   },e=>console.error('projects',e));
 
@@ -1717,7 +1748,8 @@ function rFixList(){
   const bp={high:[],mid:[],low:[]};
   visible.forEach(f=>bp[f.pri||'mid'].push(f));
   const lbl={high:'高（修正期間前半）',mid:'中（修正期間中盤）',low:'低（時間があれば）'};
-  let html=`<div class="fix-toolbar"><label style="font-size:13px;color:#444;display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" ${showFixDeleted?'checked':''} onchange="showFixDeleted=this.checked;rFixList()"> 削除済みも表示</label><span style="font-size:13px;color:#888">未完了 ${FIXES.filter(f=>!f.done&&!f.deleted).length}件</span></div>`;
+  const fixDelBar2=deleteMode?`<div class="delete-bar" style="margin-bottom:10px"><span class="del-count">${selectedForDelete.size}件を選択中</span><button class="btn sm del-exec-btn" onclick="execFixDelete()" ${selectedForDelete.size===0?'disabled':''}>選択した項目を削除</button><button class="btn sm" onclick="exitDeleteMode()">削除モード終了</button></div>`:`<div style="text-align:right;margin-bottom:6px"><button class="del-mode-enter del-mode-btn" onclick="enterDeleteMode()">削除モード</button></div>`;
+  let html=fixDelBar2+`<div class="fix-toolbar"><label style="font-size:13px;color:#444;display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" ${showFixDeleted?'checked':''} onchange="showFixDeleted=this.checked;rFixList()"> 削除済みも表示</label><span style="font-size:13px;color:#888">未完了 ${FIXES.filter(f=>!f.done&&!f.deleted).length}件</span></div>`;
   ['high','mid','low'].forEach(p=>{
     if(!bp[p].length)return;
     html+=`<div class="card"><div class="card-t">${lbl[p]}</div>`;
@@ -1725,12 +1757,12 @@ function rFixList(){
       const sm=SM[f.status||'pending']||SM.pending;
       const isDeleted=!!f.deleted;
       html+=`<div class="fix-row${isDeleted?' fix-row-deleted':''}">
-        <input type="checkbox" ${f.done||isDeleted?'checked':''} ${isDeleted?'disabled':''} onchange="updFx('${f.id}',{done:this.checked,status:this.checked?'done':'pending'})" style="margin-top:4px"/>
+        ${!deleteMode?`<input type="checkbox" ${f.done||isDeleted?'checked':''} ${isDeleted?'disabled':''} onchange="updFx('${f.id}',{done:this.checked,status:this.checked?'done':'pending'})" style="margin-top:4px"/>`:``}
         <div style="flex:1;opacity:${f.done?.4:1};text-decoration:${f.done||isDeleted?'line-through':'none'}">
           <div style="font-size:14px;font-weight:500;color:${isDeleted?'#aaa':'#1a1a1a'}">${f.content}</div>
           <div class="fix-meta">${f.task?`<span class="badge" style="background:#f1f3f4;color:#555">${f.task}</span>`:''}${!isDeleted?`<span class="fix-st" style="background:${sm.bg};color:${sm.c};border-color:${sm.c}" onclick="cycleFix('${f.id}','${f.status||'pending'}')" title="クリックで状態変更">${sm.l}</span>`:'<span style="font-size:12px;color:#aaa">削除済み</span>'}${f.when?`<span style="font-size:12px;color:#888">🗓 ${f.when}</span>`:''}</div>
         </div>
-        ${!isDeleted?`<button class="btn sm danger" onclick="deleteFix('${f.id}','${f.content.replace(/'/g,"\\'")}')">削</button>`:''}
+        ${!isDeleted&&deleteMode?`<input type="checkbox" class="del-chk" onchange="toggleFixDelSel('${f.id}',this.checked)" ${selectedForDelete.has(f.id)?'checked':''}>`:''}
       </div>`;
     });
     html+='</div>';
@@ -1999,10 +2031,13 @@ async function doImport(){
     return;
   }
 
-  // 取込中メッセージを表示
+  // プレビューモードで実行（Firestoreへは書かない）
   res.className='sync-res ok';
-  res.textContent='カレンダーを読み込んでプレビューを作成中...';
+  res.textContent='カレンダーからイベントを取得中...';
   res.style.display='block';
+  // importPreviewMode=true のとき: ops収集のみ、batch commitしない
+  window._importPreviewMode=true;
+  window._importPreviewOps=[];
 
   const tmin=new Date(Date.now()-30*86400000).toISOString();
   const tmax=new Date(Date.now()+300*86400000).toISOString();
@@ -2040,9 +2075,9 @@ async function doImport(){
     else await wsCol('calendar_sources').add(srcUpdate);
   }));
 
-  let importMsg=`取込完了 — 新規 ${nc}件・更新 ${uc}件`;
-  if(previewUnset>0)importMsg+=` （うち未設定 ${previewUnset}件 → 「未設定タスク」タブで設定してください）`;
-  showSyncOk(importMsg);
+  // プレビューモーダルを開く（まだFirestoreへは書いていない）
+  window._importPreviewMode=false;
+  showImportPreviewModal({nc,uc,previewUnset,calIds});
   await logOp('import', {new: nc, updated: uc, calendars: calIds});
 
   }catch(e){
@@ -2112,6 +2147,11 @@ async function importOneCalendar(cid, calNameMap, byId, byGcalKey, countPerCal){
     nc++; countPerCal[cid]=(countPerCal[cid]||0)+1;
   }
 
+  // プレビューモードならopsを返すだけ（Firestoreへは書かない）
+  if(window._importPreviewMode){
+    window._importPreviewOps=[...(window._importPreviewOps||[]),...ops];
+    return {nc, uc, ops};
+  }
   // 499件ずつバッチコミット
   for(let i=0; i<ops.length; i+=499){
     const batch = db.batch();
@@ -2268,6 +2308,43 @@ function closeDelConfirm(){
 
 // 削除実行（論理削除 = archived:true、完全削除しない）
 async function confirmDelete(){
+  // ══ モード分岐 ══
+  if(_delConfirmMode?.type==='fix_items'){
+    const {fixes}=_delConfirmMode;
+    const batch=db.batch();
+    fixes.forEach(f=>batch.update(wsCol('fixes').doc(f.id),{deleted:true}));
+    await batch.commit();
+    await logOp('delete_fix_items',{count:fixes.length});
+    closeDelConfirm();
+    deleteMode=false;selectedForDelete.clear();rFixList();
+    showUndo(`${fixes.length}件の修正リスト項目を削除しました`,null);
+    return;
+  }
+
+  if(_delConfirmMode?.type==='cal_src'){
+    // カレンダー由来タスクの一括削除
+    const {srcId,calId,calName,affected}=_delConfirmMode;
+    try{
+      const batch=db.batch();
+      affected.forEach(t=>batch.update(wsCol('tasks').doc(t.id),{
+        archived:true,visible:false,archived_at:now$(),archived_reason:'cal_src_delete',updated:now$()
+      }));
+      batch.update(wsCol('calendar_sources').doc(srcId),{imported_task_count:0});
+      await batch.commit();
+      await logOp('cal_del_tasks',{
+        calendar_name:calName,calendar_id:calId,count:affected.length,
+        gcal_note:'Googleカレンダー上の予定は削除されていません'
+      });
+      closeDelConfirm();renderAll();
+      showUndo(`${affected.length}件をアプリ内から削除しました`,null);
+    }catch(e){
+      const res=document.getElementById('push-res')||document.getElementById('del-confirm-list');
+      if(res)res.innerHTML=`<div style="color:#c5221f;font-size:13px">削除に失敗しました: ${e.message}</div>`;
+    }
+    return;
+  }
+
+  // 通常タスク削除
   const ids=[...selectedForDelete];if(!ids.length)return;
   const tasks=TASKS.filter(t=>ids.includes(t.id));
   const gcalCount=tasks.filter(t=>t.source_type==='google_calendar').length;
@@ -2283,9 +2360,8 @@ async function confirmDelete(){
     gcal_note:'Googleカレンダー上の予定は削除されていません'
   });
   closeDelConfirm();
-  const deletedTasks=[...tasks]; // undo用にコピー
-  deleteMode=false;selectedForDelete.clear();
-  visProjects=new Set();renderAll();
+  const deletedTasks=[...tasks];
+  deleteMode=false;selectedForDelete.clear();renderAll();
   showUndo(
     `${ids.length}件のタスクを削除しました`,
     async()=>{
@@ -2476,11 +2552,43 @@ async function initDefaultMasters(wsId){
 }
 
 // ── ワークスペース画面の表示 ──
-function showWorkspace(){
+// 「確認中」状態を表示（フォームは出さない）
+function showWorkspaceChecking(msg='ワークスペースを確認中...'){
   showWorkspaceScreen();
-  document.getElementById('ws-loading').style.display='block';
-  document.getElementById('ws-forms').style.display='none';
+  const ld=document.getElementById('ws-loading');
+  const frm=document.getElementById('ws-forms');
+  if(ld){ld.style.display='block';ld.querySelector('div:last-child').textContent=msg;}
+  if(frm)frm.style.display='none';
+  // タイムアウト：5秒以上待っていたらフォームへ促す
+  if(window._wsCheckTimer)clearTimeout(window._wsCheckTimer);
+  window._wsCheckTimer=setTimeout(()=>{
+    const ld2=document.getElementById('ws-loading');
+    if(ld2&&ld2.style.display!=='none'){
+      ld2.innerHTML=`<div style="text-align:center;padding:20px">
+        <div style="font-size:14px;color:#555;margin-bottom:12px">確認に時間がかかっています</div>
+        <div style="display:flex;flex-direction:column;gap:8px;max-width:240px;margin:0 auto">
+          <button class="btn" onclick="showWorkspaceForm()">ワークスペースを作成／参加する</button>
+          <button class="btn" onclick="confirmSignOut()">ログアウトしてやり直す</button>
+          <button class="btn" onclick="location.reload()">再読み込み</button>
+        </div>
+      </div>`;
+    }
+  },5000);
 }
+
+// 作成／参加フォームを表示（タイムアウトをキャンセル）
+function showWorkspaceForm(){
+  if(window._wsCheckTimer)clearTimeout(window._wsCheckTimer);
+  showWorkspaceScreen();
+  const ld=document.getElementById('ws-loading');
+  const frm=document.getElementById('ws-forms');
+  if(ld)ld.style.display='none';
+  if(frm)frm.style.display='block';
+}
+
+// 後方互換
+function showWorkspace(){showWorkspaceChecking();}
+
 
 // ── ワークスペース作成 ──
 async function createWorkspace(){
@@ -2488,30 +2596,31 @@ async function createWorkspace(){
   const err=document.getElementById('ws-err');
   if(!name){err.textContent='チーム名を入力してください';err.style.display='block';return;}
   err.style.display='none';
-  const user=auth.currentUser;
-  const wsId='ws-'+Date.now();
-  const inviteCode=Math.random().toString(36).slice(2,8).toUpperCase();
-  const wsData={
-    id:wsId,name,created_by:user.uid,
-    invite_code:inviteCode,created_at:now$()
-  };
-  const batch0=db.batch();
-  batch0.set(db.collection('workspaces').doc(wsId),wsData);
-  // 招待コード用の公開コレクションに登録（Firestoreルールで認証済みユーザー全員が読める）
-  batch0.set(db.collection('workspace_invites').doc(inviteCode),{
-    workspace_id:wsId,enabled:true,created_at:now$()
-  });
-  await batch0.commit();
-  await db.collection('workspaces').doc(wsId).collection('members').doc(user.uid).set({
-    uid:user.uid,
-    email:user.email||'',
-    display_name:user.displayName||user.email||'管理者',
-    photo_url:user.photoURL||'',
-    role:'admin',
-    joined_at:now$()
-  });
-  await db.collection('user_workspaces').doc(user.uid).set({workspace_id:wsId,updated:now$()});
-  await enterWorkspace(wsId,wsData,'admin');
+  const btn=document.querySelector('#ws-forms button.btn.pr');
+  if(btn){btn.disabled=true;btn.textContent='作成中...';}
+  try{
+    const user=auth.currentUser;
+    const wsId='ws-'+Date.now();
+    const inviteCode=Math.random().toString(36).slice(2,8).toUpperCase();
+    const wsData={id:wsId,name,created_by:user.uid,invite_code:inviteCode,created_at:now$()};
+    // workspaces / workspace_invites / members / user_workspaces を1つのbatchで作成
+    const batch=db.batch();
+    batch.set(db.collection('workspaces').doc(wsId),wsData);
+    batch.set(db.collection('workspace_invites').doc(inviteCode),{workspace_id:wsId,enabled:true,created_at:now$()});
+    batch.set(db.collection('workspaces').doc(wsId).collection('members').doc(user.uid),{
+      uid:user.uid,email:user.email||'',
+      display_name:user.displayName||user.email||'管理者',
+      photo_url:user.photoURL||'',role:'admin',joined_at:now$()
+    });
+    batch.set(db.collection('user_workspaces').doc(user.uid),{workspace_id:wsId,updated:now$()});
+    await batch.commit();
+    await enterWorkspace(wsId,wsData,'admin');
+  }catch(e){
+    err.textContent='ワークスペースの作成に失敗しました: '+e.message;
+    err.style.display='block';
+    console.error('createWorkspace error:',e);
+    if(btn){btn.disabled=false;btn.textContent='ワークスペースを作成';}
+  }
 }
 
 // ── 招待コードで参加 (workspace_invites経由 → Firestoreルールと矛盾しない) ──
@@ -2528,21 +2637,21 @@ async function joinWorkspace(){
     }
     const wsId=inviteDoc.data().workspace_id;
     const user=auth.currentUser;
-    // すでにメンバーか確認
-    const existing=await db.collection('workspaces').doc(wsId).collection('members').doc(user.uid).get();
-    if(!existing.exists){
-      const batch=db.batch();
-      batch.set(db.collection('workspaces').doc(wsId).collection('members').doc(user.uid),{
-        uid:user.uid,email:user.email||'',
-        display_name:user.displayName||user.email||'メンバー',
-        photo_url:user.photoURL||'',role:'editor',joined_at:now$()
-      });
-      batch.set(db.collection('user_workspaces').doc(user.uid),{workspace_id:wsId,updated:now$()});
-      await batch.commit();
-    }
-    // ワークスペース情報を取得してアプリへ
+    // members を先に読まず set({merge:true}) で参加（Firestoreルール上、未参加者が自分のmemberを先に読めない問題を回避）
+    // role は editor で固定（Firestoreルールで本人がroleをadminに変更できないよう制限する）
+    const batch=db.batch();
+    batch.set(db.collection('workspaces').doc(wsId).collection('members').doc(user.uid),{
+      uid:user.uid,email:user.email||'',
+      display_name:user.displayName||user.email||'メンバー',
+      photo_url:user.photoURL||'',role:'editor',joined_at:now$()
+    },{merge:true}); // 既存メンバーの場合は joined_at 以外は上書きしない
+    batch.set(db.collection('user_workspaces').doc(user.uid),{workspace_id:wsId,updated:now$()});
+    await batch.commit();
+    // ワークスペース情報を取得してアプリへ（参加後に読む）
     const wsDoc=await db.collection('workspaces').doc(wsId).get();
-    await enterWorkspace(wsId,{id:wsId,...wsDoc.data()},existing.exists?existing.data().role:'editor');
+    const memberDoc=await db.collection('workspaces').doc(wsId).collection('members').doc(user.uid).get();
+    const role=memberDoc.exists?memberDoc.data().role:'editor';
+    await enterWorkspace(wsId,{id:wsId,...wsDoc.data()},role);
   }catch(e){
     err.textContent='参加に失敗しました: '+e.message;err.style.display='block';
   }
@@ -2584,9 +2693,7 @@ async function resolveWorkspace(user){
   try{
     const uwDoc=await db.collection('user_workspaces').doc(user.uid).get();
     if(!uwDoc.exists){
-      showWorkspace();
-      document.getElementById('ws-loading').style.display='none';
-      document.getElementById('ws-forms').style.display='block';
+      showWorkspaceForm(); // 未所属→即フォーム表示
       return;
     }
     const wsId=uwDoc.data().workspace_id;
@@ -2595,10 +2702,8 @@ async function resolveWorkspace(user){
       db.collection('workspaces').doc(wsId).collection('members').doc(user.uid).get()
     ]);
     if(!wsDoc.exists||!memberDoc.exists){
-      // ワークスペースが見つからない → 再作成画面（削除は試みない）
-      showWorkspace();
-      document.getElementById('ws-loading').style.display='none';
-      document.getElementById('ws-forms').style.display='block';
+      // ワークスペースが見つからない → 再作成画面
+      showWorkspaceForm();
       return;
     }
     await enterWorkspace(wsId,{id:wsId,...wsDoc.data()},memberDoc.data().role);
@@ -2864,6 +2969,83 @@ Googleカレンダーへの取込を停止しますか？
   await wsCol('projects').doc(id).update({status:'archived',updated_at:now$()});
   await logOp('archive_project',{id,name});
   await renderProjectList();
+}
+
+
+// 修正リスト専用の削除選択切替
+function toggleFixDelSel(id,checked){
+  if(checked)selectedForDelete.add(id);else selectedForDelete.delete(id);
+  document.querySelectorAll('.del-count').forEach(el=>el.textContent=selectedForDelete.size+'件を選択中');
+  document.querySelectorAll('.del-exec-btn').forEach(btn=>btn.disabled=selectedForDelete.size===0);
+}
+
+// 修正リスト削除実行
+async function execFixDelete(){
+  const ids=[...selectedForDelete];if(!ids.length)return;
+  const fixes=FIXES.filter(f=>ids.includes(f.id));
+  const listEl=document.getElementById('del-confirm-list');
+  if(listEl)listEl.innerHTML=`<div style="font-size:13px;font-weight:500;margin-bottom:8px;color:#555">${fixes.length}件の修正リスト項目を削除します</div>`+
+    fixes.map(f=>`<div style="padding:6px 0;border-top:0.5px solid #e8e6df;font-size:13px">${f.content.substring(0,60)}${f.content.length>60?'…':''}</div>`).join('');
+  document.getElementById('del-confirm-gcal-notice').style.display='none';
+  _delConfirmMode={type:'fix_items',fixes};
+  document.getElementById('del-confirm-modal').classList.add('open');
+}
+
+
+function showImportPreviewModal({nc,uc,previewUnset,calIds}){
+  const el=document.getElementById('import-preview-body');
+  if(!el)return;
+  el.innerHTML=`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;text-align:center">
+    <div style="background:#e6f4ea;border-radius:10px;padding:12px"><div style="font-size:26px;font-weight:600;color:#137333">${nc}</div><div style="font-size:13px;color:#137333">新規取込</div></div>
+    <div style="background:#e8f0fe;border-radius:10px;padding:12px"><div style="font-size:26px;font-weight:600;color:#1557b0">${uc}</div><div style="font-size:13px;color:#1557b0">同期更新</div></div>
+    <div style="background:#fff8e1;border-radius:10px;padding:12px"><div style="font-size:26px;font-weight:600;color:#7c5400">${previewUnset}</div><div style="font-size:13px;color:#7c5400">未設定（要確認）</div></div>
+  </div>
+  ${nc===0&&uc===0?'<div class="notice" style="color:#555">取り込む予定がありません。カレンダーが選択されているか確認してください。</div>':''}
+  <div style="font-size:13px;color:#555">対象カレンダー: ${calIds.join(', ')}</div>`;
+  document.getElementById('import-preview-res').style.display='none';
+  document.getElementById('import-preview-modal').classList.add('open');
+  window._pendingImport={nc,uc,calIds};
+}
+function closeImportPreview(){
+  document.getElementById('import-preview-modal').classList.remove('open');
+  window._importPreviewOps=[];
+  window._pendingImport=null;
+}
+async function executeImport(){
+  const btn=document.querySelector('#import-preview-modal .btn.pr');
+  if(btn){btn.disabled=true;btn.textContent='取込中...';}
+  const res=document.getElementById('import-preview-res');
+  try{
+    const ops=window._importPreviewOps||[];
+    for(let i=0;i<ops.length;i+=499){
+      const batch=db.batch();
+      ops.slice(i,i+499).forEach(op=>{
+        if(op.type==='set')batch.set(op.ref,op.data);
+        else batch.update(op.ref,op.data);
+      });
+      await batch.commit();
+    }
+    // calendar_sources を更新
+    const {calIds=[]}=window._pendingImport||{};
+    const calNameMap=Object.fromEntries(calList.map(c=>[c.id,c.name]));
+    for(const cid of calIds){
+      const srcData=CAL_SRCS.find(s=>s.calendar_id===cid)||{};
+      const existing=CAL_SRCS.find(s=>s.calendar_id===cid);
+      const srcUpdate={calendar_id:cid,calendar_name:calNameMap[cid]||cid,enabled:true,last_imported_at:now$()};
+      if(existing)await wsCol('calendar_sources').doc(existing.id).update(srcUpdate);
+      else await wsCol('calendar_sources').add(srcUpdate);
+    }
+    const {nc=0,uc=0}=window._pendingImport||{};
+    await logOp('import',{new:nc,updated:uc,calendars:calIds});
+    res.className='sync-res ok';res.textContent=`取込完了 — 新規 ${nc}件・更新 ${uc}件`;res.style.display='block';
+    if(btn){btn.disabled=false;btn.textContent='取り込む';}
+    setTimeout(closeImportPreview,2000);
+    // syncモーダルの結果にも反映
+    showSyncOk(`取込完了 — 新規 ${nc}件・更新 ${uc}件`);
+  }catch(e){
+    res.className='sync-res err';res.textContent='エラー: '+e.message;res.style.display='block';
+    if(btn){btn.disabled=false;btn.textContent='取り込む';}
+  }
 }
 
 (function boot(){
