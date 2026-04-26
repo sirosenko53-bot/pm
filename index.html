@@ -329,6 +329,7 @@ input[type=checkbox]{width:15px;height:15px;cursor:pointer}
 <div id="screen-workspace" class="screen">
   <div class="card-setup">
     <h2 class="card-h">ワークスペースの設定</h2>
+    <div id="app-version-tag" style="font-size:11px;color:#aaa;text-align:right;margin-bottom:4px">v0.10.1</div>
     <p class="card-p">制作チームのワークスペースを作成するか、招待コードで参加してください。</p>
 
     <div id="ws-loading" style="text-align:center;padding:20px 0;color:#888">
@@ -366,6 +367,7 @@ input[type=checkbox]{width:15px;height:15px;cursor:pointer}
 <div id="screen-login" class="screen">
   <div class="card-setup">
     <h2 class="card-h">制作進行管理</h2>
+    <p class="card-p" style="text-align:right;font-size:11px;color:#aaa;margin-bottom:4px">v0.10.1</p>
     <p class="card-p">Googleアカウントでログインします。<br>Googleカレンダーとの連携は、ログイン後に「カレンダー同期」から行います。</p>
     <button class="gbtn" onclick="signIn()">
       <svg width="20" height="20" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
@@ -894,6 +896,7 @@ function resetAllState(){
   const mb=document.getElementById('hdr-member-btn');if(mb)mb.style.display='none';
 }
 function onSignedIn(user){
+  console.log('[v0.10.1] onSignedIn:', user.email);
   const av=document.getElementById('user-av');
   if(av){
     if(user.photoURL)av.innerHTML=`<img src="${user.photoURL}" alt="">`;
@@ -2577,13 +2580,22 @@ function showWorkspaceChecking(msg='ワークスペースを確認中...'){
 }
 
 // 作成／参加フォームを表示（タイムアウトをキャンセル）
-function showWorkspaceForm(){
+function showWorkspaceForm(msg=''){
   if(window._wsCheckTimer)clearTimeout(window._wsCheckTimer);
   showWorkspaceScreen();
   const ld=document.getElementById('ws-loading');
   const frm=document.getElementById('ws-forms');
   if(ld)ld.style.display='none';
   if(frm)frm.style.display='block';
+  // エラーメッセージが渡された場合は表示
+  if(msg){
+    const err=document.getElementById('ws-err');
+    if(err){err.textContent=msg;err.style.display='block';}
+  } else {
+    const err=document.getElementById('ws-err');
+    if(err)err.style.display='none';
+  }
+  console.log('[v0.10.1] showWorkspaceForm called');
 }
 
 // 後方互換
@@ -2689,27 +2701,70 @@ function applyRoleUI(){
 
 // ── ログイン後にワークスペースを解決 ──
 async function resolveWorkspace(user){
-  showLoading('ワークスペースを確認中...');
+  console.log('[v0.10.1] resolveWorkspace start:', user.email);
+
+  // ステップ1: user_workspaces/{uid} を確認
+  // 存在しない場合は即フォーム表示（確認中画面を続けない）
+  let uwDoc;
   try{
-    const uwDoc=await db.collection('user_workspaces').doc(user.uid).get();
-    if(!uwDoc.exists){
-      showWorkspaceForm(); // 未所属→即フォーム表示
-      return;
-    }
-    const wsId=uwDoc.data().workspace_id;
+    uwDoc=await db.collection('user_workspaces').doc(user.uid).get();
+  }catch(e){
+    console.warn('[v0.10.1] user_workspaces read failed:', e.message);
+    // 権限エラー等 → フォームへ（エラー画面で止めない）
+    showWorkspaceForm();
+    const el=document.getElementById('ws-err');
+    if(el){el.textContent='ワークスペース情報の読み込みに失敗しました（'+e.message+'）。新しく作成するか、招待コードで参加してください。';el.style.display='block';}
+    return;
+  }
+
+  if(!uwDoc.exists){
+    // 初回ユーザー → 確認中画面を出さず即フォーム
+    console.log('[v0.10.1] user_workspaces not found → show workspace form');
+    showWorkspaceForm();
+    return;
+  }
+
+  // ステップ2: 既存ワークスペースがある場合のみ確認中画面を表示
+  const wsId=uwDoc.data().workspace_id;
+  console.log('[v0.10.1] workspace_id found:', wsId, '→ loading workspace');
+  showWorkspaceChecking('ワークスペースを読み込み中...');
+
+  try{
     const [wsDoc,memberDoc]=await Promise.all([
       db.collection('workspaces').doc(wsId).get(),
       db.collection('workspaces').doc(wsId).collection('members').doc(user.uid).get()
     ]);
-    if(!wsDoc.exists||!memberDoc.exists){
-      // ワークスペースが見つからない → 再作成画面
+
+    if(!wsDoc.exists){
+      // ワークスペース本体が存在しない（壊れた参照）
+      console.warn('[v0.10.1] workspace doc not found for wsId:', wsId);
+      try{await db.collection('user_workspaces').doc(user.uid).delete();}catch{}
       showWorkspaceForm();
+      const el=document.getElementById('ws-err');
+      if(el){el.textContent='以前のワークスペース情報が見つかりません。新しく作成するか、招待コードで参加してください。';el.style.display='block';}
       return;
     }
+
+    if(!memberDoc.exists){
+      // メンバー情報が存在しない（所属情報が壊れている）
+      console.warn('[v0.10.1] member doc not found for uid:', user.uid, 'in workspace:', wsId);
+      try{await db.collection('user_workspaces').doc(user.uid).delete();}catch{}
+      showWorkspaceForm();
+      const el=document.getElementById('ws-err');
+      if(el){el.textContent='ワークスペースへの参加情報が見つかりません。招待コードで再参加してください。';el.style.display='block';}
+      return;
+    }
+
+    // 正常：ワークスペースに入る
+    console.log('[v0.10.1] workspace loaded OK, entering as role:', memberDoc.data().role);
     await enterWorkspace(wsId,{id:wsId,...wsDoc.data()},memberDoc.data().role);
+
   }catch(e){
-    console.error('resolveWorkspace error:',e);
-    showError('ワークスペースの取得に失敗しました。\n\n'+e.message);
+    console.error('[v0.10.1] workspace load error:', e);
+    // 取得失敗でも真っ白にしない → フォームへ
+    showWorkspaceForm();
+    const el=document.getElementById('ws-err');
+    if(el){el.textContent='ワークスペースの読み込みに失敗しました（'+e.message+'）。再試行するか、新しく作成してください。';el.style.display='block';}
   }
 }
 
@@ -3049,6 +3104,9 @@ async function executeImport(){
 }
 
 (function boot(){
+  // バージョン確認（キャッシュ問題の検出用）
+  const APP_VERSION='v0.10.1';
+  console.log('['+APP_VERSION+'] App starting...');
   // 必ず最初にローディング画面を表示（真っ白画面を防ぐ）
   showLoading('起動中...');
   // ヘッダー初期化（失敗しても続行）
