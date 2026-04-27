@@ -4,11 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>制作進行管理</title>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
-<script src="https://accounts.google.com/gsi/client" async onload="onGsiLoad()"></script>
-<script src="https://apis.google.com/js/api.js" async onload="onGapiLoad()"></script>
+<script id="gsi-script" src="https://accounts.google.com/gsi/client" async></script>
+<script id="gapi-script" src="https://apis.google.com/js/api.js" async></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,'Hiragino Sans','Yu Gothic UI',sans-serif;background:#f5f4f0;color:#1a1a1a;font-size:15px}
@@ -282,15 +279,12 @@ input[type=checkbox]{width:15px;height:15px;cursor:pointer}
 <!-- ── SETUP ── -->
 <div id="screen-setup" class="screen">
   <div class="card-setup">
-    <h2 class="card-h">初期設定</h2>
-    <p class="card-p">Firebase設定とGoogle OAuth Client IDを入力してください。</p>
-    <div class="step"><div class="sn">1</div><p><strong>console.firebase.google.com</strong> でプロジェクト作成 → ウェブアプリ追加 → <code>firebaseConfig</code> の <strong>{ }の中身（波括弧は不要）</strong>をコピー</p></div>
-    <div class="step"><div class="sn">2</div><p><strong>console.cloud.google.com</strong> → 認証情報 → OAuthクライアントID（ウェブ）をコピー（例: <code>123456.apps.googleusercontent.com</code>）</p></div>
-    <label class="flbl">Firebase設定 JSON（{ }の中身のみ。波括弧は入れない）</label>
-    <textarea class="fi" id="cfg-fb" placeholder='  "apiKey": "AIza...",&#10;  "authDomain": "xxx.firebaseapp.com",&#10;  "projectId": "xxx",&#10;  "storageBucket": "xxx.appspot.com",&#10;  "messagingSenderId": "123456",&#10;  "appId": "1:xxx:web:xxx"'></textarea>
+    <h2 class="card-h">Googleカレンダー接続設定</h2>
+    <p class="card-p">Google OAuth Client ID を入力してください。</p>
+    <div class="step"><div class="sn">1</div><p><strong>console.cloud.google.com</strong> → 認証情報 → OAuthクライアントID（ウェブ）をコピー（例: <code>123456.apps.googleusercontent.com</code>）</p></div>
     <label class="flbl">Google OAuth Client ID</label>
     <input class="fi" id="cfg-oauth" type="text" placeholder="123456789-xxx.apps.googleusercontent.com">
-    <div class="ferr" id="cfg-err">JSONの形式が正しくありません。波括弧（{ }）は不要です。</div>
+    <div class="ferr" id="cfg-err">Google OAuth Client ID を入力してください。</div>
     <div class="btn-row" style="margin-top:14px">
       <button class="btn pr" onclick="saveConfig()" style="width:100%;justify-content:center;padding:11px">保存して開始</button>
     </div>
@@ -312,9 +306,9 @@ input[type=checkbox]{width:15px;height:15px;cursor:pointer}
     <div id="error-msg" class="card-p" style="text-align:left;background:#fce8e6;border-radius:9px;padding:12px;margin-bottom:14px"></div>
     <p class="card-p" style="text-align:left;margin-bottom:14px">
       原因候補:<br>
-      ・Firebase設定が間違っている<br>
-      ・Firestoreの権限設定が不足している<br>
-      ・ワークスペース情報が壊れている<br>
+      ・Google OAuth Client ID が誤っている<br>
+      ・Googleカレンダーへの接続が完了していない<br>
+      ・Google API通信がブロックされている<br>
       ・ネットワーク接続に問題がある
     </p>
     <div style="display:flex;flex-direction:column;gap:8px">
@@ -328,48 +322,13 @@ input[type=checkbox]{width:15px;height:15px;cursor:pointer}
 <!-- ── WORKSPACE ── -->
 <div id="screen-workspace" class="screen">
   <div class="card-setup">
-    <h2 class="card-h">ワークスペースの設定</h2>
+    <h2 class="card-h">カレンダーを選択</h2>
     <div id="app-version-tag" style="font-size:11px;color:#aaa;text-align:right;margin-bottom:4px">v0.10.2</div>
-    <p class="card-p">制作チームのワークスペースを作成するか、招待コードで参加してください。</p>
-
-    <div id="ws-loading" style="text-align:center;padding:20px 0;color:#888">
-      <div class="spinner" style="width:20px;height:20px;margin:0 auto 8px"></div>
-      <div id="ws-loading-message">ワークスペースを確認中...</div>
-      <div id="ws-loading-progress" style="display:none;margin-top:8px;font-size:12px;color:#666"></div>
-      <div id="ws-loading-slow" style="display:none;margin-top:10px;font-size:12px;color:#b45309">
-        作成に時間がかかっています。通信状況を確認しています。このままお待ちください。
-      </div>
-      <div id="ws-loading-recover" style="display:none;margin-top:10px;padding:10px;border:1px solid #f1d3a9;background:#fff7ed;border-radius:10px;color:#7c2d12">
-        <div style="font-size:12px;line-height:1.6;margin-bottom:8px">
-          ワークスペース作成の完了を確認できませんでした。<br>
-          作成が途中まで完了している可能性があります。
-        </div>
-        <div style="display:flex;flex-direction:column;gap:8px;max-width:220px;margin:0 auto">
-          <button class="btn sm" onclick="recheckWorkspace()">状態を再確認する</button>
-          <button class="btn sm" onclick="confirmSignOut()">ログアウトしてやり直す</button>
-        </div>
-      </div>
+    <p class="card-p">表示するGoogleカレンダーを選択してください。</p>
+    <div class="btn-row" style="margin-top:12px">
+      <button id="ws-enter-btn" class="btn pr" style="width:100%;justify-content:center" onclick="openSync()">カレンダー選択へ進む</button>
     </div>
-
-    <div id="ws-forms" style="display:none">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:8px">
-        <div style="border:1px solid #dadce0;border-radius:12px;padding:16px">
-          <div style="font-size:14px;font-weight:600;margin-bottom:8px">新しく作成する</div>
-          <p style="font-size:12px;color:#666;margin-bottom:12px">このアカウントが管理者になります</p>
-          <label class="flbl" style="margin-top:0">チーム名</label>
-          <input class="fi" id="ws-name" type="text" placeholder="例: 線香制作チーム">
-          <button id="ws-create-btn" class="btn pr" onclick="createWorkspace()" style="width:100%;justify-content:center;margin-top:10px">ワークスペースを作成</button>
-        </div>
-        <div style="border:1px solid #dadce0;border-radius:12px;padding:16px">
-          <div style="font-size:14px;font-weight:600;margin-bottom:8px">招待コードで参加</div>
-          <p style="font-size:12px;color:#666;margin-bottom:12px">管理者から招待コードをもらってください</p>
-          <label class="flbl" style="margin-top:0">招待コード</label>
-          <input class="fi" id="ws-invite" type="text" placeholder="例: ABC123" style="text-transform:uppercase">
-          <button id="ws-join-btn" class="btn" onclick="joinWorkspace()" style="width:100%;justify-content:center;margin-top:10px">参加する</button>
-        </div>
-      </div>
-      <div class="ferr" id="ws-err"></div>
-    </div>
+    <div class="ferr" id="ws-err"></div>
 
     <div style="text-align:center;margin-top:12px">
       <button class="btn sm" onclick="confirmSignOut()">別のアカウントでログイン</button>
@@ -380,14 +339,14 @@ input[type=checkbox]{width:15px;height:15px;cursor:pointer}
 <!-- ── LOGIN ── -->
 <div id="screen-login" class="screen">
   <div class="card-setup">
-    <h2 class="card-h">制作進行管理</h2>
+    <h2 class="card-h">Googleカレンダー接続</h2>
     <p class="card-p" style="text-align:right;font-size:11px;color:#aaa;margin-bottom:4px">v0.10.2</p>
-    <p class="card-p">Googleアカウントでログインします。<br>Googleカレンダーとの連携は、ログイン後に「カレンダー同期」から行います。</p>
+    <p class="card-p">Googleカレンダーに接続して、予定を制作進行ビューとして表示します。</p>
     <button class="gbtn" onclick="signIn()">
       <svg width="20" height="20" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
-      Googleでログイン
+      Googleカレンダーに接続
     </button>
-    <p style="font-size:12px;color:#999;text-align:center;margin-top:12px">ログインはアプリ利用のための認証です。Googleカレンダーへのアクセスは別途許可します。</p>
+    <p style="font-size:12px;color:#999;text-align:center;margin-top:12px">接続後は、選択したカレンダーを同期して表示します。</p>
     <div style="text-align:center;margin-top:10px"><button class="btn sm" onclick="showSetup()">設定を変更する</button></div>
   </div>
 </div>
@@ -397,9 +356,9 @@ input[type=checkbox]{width:15px;height:15px;cursor:pointer}
   <div class="hdr">
     <div class="hdr-title" id="hdr-ws-name">制作進行管理</div>
     <div class="hdr-today" id="hdr-today"></div>
-    <div class="live"><div class="ld"></div>リアルタイム同期</div>
+    <div class="live"><div class="ld"></div>Googleカレンダー同期</div>
     <button class="hbtn pr" onclick="openSync()">カレンダー同期</button>
-    <button class="hbtn" id="hdr-member-btn" onclick="openMemberModal()" title="管理" style="display:none">⚙ 管理</button>
+    <button class="hbtn" id="backup-dir-btn" onclick="pickBackupDir()" title="バックアップ保存先">📁 バックアップ保存先を選択</button>
     <button class="hbtn" onclick="sw('oplog')" title="操作ログ" style="font-size:14px">≡</button>
     <div class="av" id="user-av" onclick="confirmSignOut()" title="クリックでログアウト">?</div>
   </div>
@@ -487,7 +446,7 @@ input[type=checkbox]{width:15px;height:15px;cursor:pointer}
     <div id="cal-notcon">
       <div class="notice warn" style="margin-bottom:12px">
         <strong style="display:block;margin-bottom:4px">Googleカレンダーへのアクセスがまだ許可されていません</strong>
-        下のボタンを押してアクセスを許可してください。Googleのポップアップが開きます。
+        下のボタンを押してアクセスを許可してください。Googleの認可画面を開きます。
       </div>
       <button class="cal-access-btn" onclick="requestCalendarAccess()">
         <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
@@ -526,6 +485,21 @@ input[type=checkbox]{width:15px;height:15px;cursor:pointer}
       </div>
 
       <div class="sync-actions">
+        <div style="width:100%;margin-bottom:6px">
+          <label class="flbl" style="margin-top:0">取込期間</label>
+          <select id="sync-range-preset" onchange="onRangePresetChange(this.value)">
+            <option value="past30_future180" selected>過去30日〜未来180日</option>
+            <option value="this_month">今月</option>
+            <option value="next_month">来月</option>
+            <option value="past30_future90">過去30日〜未来90日</option>
+            <option value="future180">今日から未来180日</option>
+            <option value="custom">任意期間</option>
+          </select>
+          <div id="sync-range-custom" style="display:none;margin-top:8px;grid-template-columns:1fr 1fr;gap:8px">
+            <div><label class="flbl" style="margin-top:0">開始日</label><input type="date" id="sync-range-start"></div>
+            <div><label class="flbl" style="margin-top:0">終了日</label><input type="date" id="sync-range-end"></div>
+          </div>
+        </div>
         <button class="sync-act pr" onclick="doImport()">Googleカレンダーから取り込む</button>
       </div>
       <div class="sync-res" id="sync-res"></div>
@@ -541,7 +515,7 @@ input[type=checkbox]{width:15px;height:15px;cursor:pointer}
         <div class="notice" style="margin-bottom:12px;font-size:12px">アプリ内で変更されたタスク（変更あり・未同期・失敗）をGoogleカレンダーへ書き戻します。</div>
         <div class="sync-res" id="sync-res-write"></div>
         <div class="sync-actions">
-          <button class="sync-act pr" onclick="doWriteback()">書き戻し確認画面を開く</button>
+          <button class="sync-act pr" id="writeback-open-btn" onclick="doWriteback()" disabled title="書き戻しバックアップ未実装のため一時停止中">書き戻し確認画面を開く（準備中）</button>
         </div>
       </div>
     </div>
@@ -555,16 +529,16 @@ input[type=checkbox]{width:15px;height:15px;cursor:pointer}
     <h2>⚙ 管理</h2>
     <div class="modal-sub" id="member-ws-name"></div>
     <div class="sync-tab-bar" style="margin-bottom:14px">
-      <div class="sync-tab active" id="atab-member" onclick="adminTabSwitch('member')">メンバー</div>
+      <div class="sync-tab" id="atab-member" style="display:none">メンバー</div>
       <div class="sync-tab" id="atab-assignee" onclick="adminTabSwitch('assignee')">担当者</div>
       <div class="sync-tab" id="atab-project" onclick="adminTabSwitch('project')">プロジェクト</div>
-      <div class="sync-tab" id="atab-workspace" onclick="adminTabSwitch('workspace')">ワークスペース</div>
+      <div class="sync-tab" id="atab-workspace" style="display:none">ワークスペース</div>
     </div>
 
     <!-- メンバータブ -->
-    <div id="apane-member">
+    <div id="apane-member" style="display:none">
       <div class="modal-sec">
-        <h3>招待コード</h3>
+        <h3>共有情報（未使用）</h3>
         <div id="member-invite-code" style="font-size:22px;font-weight:700;letter-spacing:4px;text-align:center;padding:14px;background:#f1f3f4;border-radius:10px;margin-bottom:8px"></div>
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
           <div style="font-size:12px;color:#888">このコードを共有して招待できます</div>
@@ -700,7 +674,55 @@ let unsubPeople=null, unsubProjects=null; // 購読解除関数
 // STATE
 // ═══════════════════════════════════════════
 let TASKS=[], FIXES=[], CAL_SRCS=[];
-let db=null, auth=null, unsubT=null, unsubF=null, unsubCS=null;
+function createLocalDbStub(){
+  const KEY='pm_local_db_stub';
+  const read=()=>{try{return JSON.parse(localStorage.getItem(KEY)||'{}');}catch{return {};}}
+  const write=v=>localStorage.setItem(KEY,JSON.stringify(v));
+  const getByPath=path=>read()[path];
+  const setByPath=(path,val)=>{const d=read();if(val===undefined)delete d[path];else d[path]=val;write(d);};
+  const allUnder=prefix=>{
+    const d=read();
+    const p=prefix.endsWith('/')?prefix:prefix+'/';
+    return Object.entries(d).filter(([k])=>k.startsWith(p)&&!k.slice(p.length).includes('/'));
+  };
+  class DocRef{
+    constructor(path){this.path=path;}
+    async get(){const v=getByPath(this.path);return{exists:v!==undefined,id:this.path.split('/').pop(),data:()=>v};}
+    set(data,opt){const cur=getByPath(this.path)||{};setByPath(this.path,opt?.merge?{...cur,...data}:data);return Promise.resolve();}
+    update(data){const cur=getByPath(this.path)||{};setByPath(this.path,{...cur,...data});return Promise.resolve();}
+    delete(){setByPath(this.path,undefined);return Promise.resolve();}
+    collection(name){return new ColRef(this.path+'/'+name);}
+  }
+  class ColRef{
+    constructor(path){this.path=path;this._limit=null;}
+    doc(id){return new DocRef(this.path+'/'+id);}
+    add(data){const id='d-'+Date.now()+'-'+Math.random().toString(36).slice(2,6);setByPath(this.path+'/'+id,data);return Promise.resolve({id});}
+    orderBy(){return this;}
+    limit(n){this._limit=n;return this;}
+    async get(){
+      let rows=allUnder(this.path).map(([k,v])=>({id:k.split('/').pop(),data:()=>v}));
+      if(this._limit!=null)rows=rows.slice(0,this._limit);
+      return{empty:rows.length===0,docs:rows};
+    }
+    onSnapshot(cb){
+      this.get().then(cb);
+      return ()=>{};
+    }
+  }
+  return{
+    collection:name=>new ColRef(name),
+    batch(){
+      const ops=[];
+      return{
+        set:(ref,data,opt)=>ops.push(()=>ref.set(data,opt)),
+        update:(ref,data)=>ops.push(()=>ref.update(data)),
+        delete:(ref)=>ops.push(()=>ref.delete()),
+        commit:async()=>{for(const op of ops)await op();}
+      };
+    }
+  };
+}
+let db=createLocalDbStub(), auth={currentUser:null}, unsubT=null, unsubF=null, unsubCS=null;
 // ── ワークスペース・権限管理 ──
 let WORKSPACE=null;      // {id, name, created_by, invite_code}
 let MY_ROLE=null;        // 'admin'|'editor'|'viewer'
@@ -714,6 +736,7 @@ let calY=TODAY.getFullYear(), calM=TODAY.getMonth(), selDay=null;
 let showDone=false, showMergedOrig=false, showFixDeleted=false, showAddTask=false;
 let mgroups={}, mgk=0;
 let pushPlan=null;
+const WRITEBACK_ENABLED=false;
 let delaySortKey='start',delayFilterProj='',delayFilterOwner='';
 let delaySelected=new Set(),delayMergePreview=null,delaySortAsc=true;
 // 削除モード
@@ -729,6 +752,52 @@ const dd=(a,b)=>Math.round((b-a)/86400000);
 const addDays=(s,n)=>new Date(pd(s).getTime()+n*86400000).toISOString().slice(0,10);
 const now$=()=>new Date().toISOString();
 const getP=id=>PEOPLE.find(p=>p.id===id)||{name:id||'未設定',color:'#9ca3af'};
+function getProjectName(idOrName){
+  if(!idOrName||idOrName==='unset')return '未設定';
+  return PROJ[idOrName]?.name||idOrName;
+}
+function applyImportOpsToTasks(ops){
+  if(!Array.isArray(ops)||!ops.length)return;
+  const map=new Map(TASKS.map(t=>[t.id,t]));
+  for(const op of ops){
+    const id=op?.ref?.path?.split('/').pop();
+    if(!id)continue;
+    if(op.type==='set'){
+      map.set(id,{...(map.get(id)||{}),...(op.data||{})});
+    }else if(op.type==='update'){
+      const cur=map.get(id);
+      if(cur)map.set(id,{...cur,...(op.data||{})});
+    }
+  }
+  TASKS=[...map.values()];
+  LocalStore.saveTaskCache(TASKS);
+}
+
+async function ensureAppStateBackupOrAbort(actionLabel){
+  try{
+    await BackupStore.writeAppState({tasks:TASKS,fixes:FIXES,calendar_sources:CAL_SRCS,settingsSnapshot:BackupStore.getSettingsSnapshot({action:actionLabel})});
+    await BackupStore.updateManifest();
+    return true;
+  }catch(e){
+    alert(`バックアップ保存に失敗したため、${actionLabel}を中止しました: ${e.message}`);
+    return false;
+  }
+}
+
+function syncMastersFromTasks(){
+  const ownerIds=new Set(TASKS.map(t=>t.owner).filter(v=>v&&v!=='unset'));
+  ownerIds.forEach(owner=>{
+    if(!PEOPLE.find(p=>p.id===owner))PEOPLE.push({id:owner,name:owner,color:'#9ca3af',status:'active'});
+    visPeople.add(owner);
+  });
+  const projIds=new Set(TASKS.map(t=>t.proj).filter(v=>v&&v!=='unset'));
+  projIds.forEach(proj=>{
+    if(!PROJ[proj])PROJ[proj]={name:proj,color:'#1a73e8',ms:[],status:'active'};
+    visProjects.add(proj);
+  });
+  LocalStore.savePeople(PEOPLE);
+  LocalStore.saveProjects(PROJ);
+}
 const isDel=t=>pd(t.end)<TODAY&&t.prog<100;
 const isTod=t=>pd(t.start)<=TODAY&&pd(t.end)>=TODAY&&t.prog<100;
 const isMg=t=>t.type==='merged_task';
@@ -738,6 +807,40 @@ const filt=()=>TASKS.filter(t=>t.visible!==false&&!t.archived&&!t.merged&&(visPe
 const filtAll=()=>TASKS.filter(t=>!t.archived);
 const prio=t=>isMg(t)?0:isDel(t)?1:isTod(t)?2:3+Math.max(0,dd(TODAY,pd(t.start)))/365;
 const hasTok=()=>!!(gCalToken&&Date.now()<gCalExp);
+const FIRESTORE_TIMEOUT_MS=12000;
+function withTimeout(promise,ms,label='通信'){
+  let timer=null;
+  const timeout=new Promise((_,reject)=>{
+    timer=setTimeout(()=>reject(new Error(`${label}がタイムアウトしました（${Math.floor(ms/1000)}秒）`)),ms);
+  });
+  return Promise.race([promise,timeout]).finally(()=>{if(timer)clearTimeout(timer);});
+}
+const fsRun=(promise,label='Firestore通信')=>withTimeout(promise,FIRESTORE_TIMEOUT_MS,label);
+function toUserErrorMessage(err,prefix='通信に失敗しました'){
+  const code=String(err?.code||'');
+  const msg=String(err?.message||'');
+  if(navigator.onLine===false||msg.includes('offline')||msg.includes('client is offline')){
+    return `${prefix}。端末がオフラインです。ネットワーク接続を確認してください。`;
+  }
+  if(msg.includes('ERR_BLOCKED_BY_CLIENT')||msg.includes('blocked by client')){
+    return `${prefix}。ブラウザの保護機能や拡張機能により通信がブロックされています。アプリの同一オリジンAPI移行版をご利用ください。`;
+  }
+  if(code==='permission-denied'||msg.includes('permission-denied')){
+    return `${prefix}。アクセス権限がありません。管理者に権限設定を確認してください。`;
+  }
+  return `${prefix}。${msg||'時間をおいて再試行してください。'}`;
+}
+function showAppInlineError(msg){
+  let el=document.getElementById('app-inline-error');
+  if(!el){
+    el=document.createElement('div');
+    el.id='app-inline-error';
+    el.style.cssText='position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:9999;background:#fce8e6;color:#c5221f;border:1px solid #f5c6c2;border-radius:10px;padding:10px 14px;font-size:13px;max-width:min(92vw,860px);box-shadow:0 4px 14px rgba(0,0,0,.12)';
+    document.body.appendChild(el);
+  }
+  el.textContent=msg;
+  el.style.display='block';
+}
 
 function ssBadge(t){
   const s=t.sync_status;
@@ -751,15 +854,13 @@ function ssBadge(t){
 // ═══════════════════════════════════════════
 function getCfg(){try{return JSON.parse(localStorage.getItem('pm_cfg')||'{}');}catch{return {};}}
 function saveConfig(){
-  const raw=document.getElementById('cfg-fb').value.trim();
   const oauth=document.getElementById('cfg-oauth').value.trim();
   const err=document.getElementById('cfg-err');
   try{
-    const fb=JSON.parse('{'+raw+'}');
-    if(!fb.apiKey||!fb.projectId)throw new Error();
-    localStorage.setItem('pm_cfg',JSON.stringify({firebase:fb,oauthClientId:oauth}));
+    if(!oauth)throw new Error();
+    localStorage.setItem('pm_cfg',JSON.stringify({oauthClientId:oauth}));
     err.style.display='none';
-    initFB({firebase:fb,oauthClientId:oauth});
+    showLogin();
   }catch{err.style.display='block';}
 }
 const showSetup=()=>{['loading','error','setup','login','workspace','app'].forEach(n=>setScr(n,n==='setup'));}
@@ -793,27 +894,23 @@ async function onTokenResponse(resp){
   gCalExp=Date.now()+((resp.expires_in||3600)-60)*1000;
   if(gapiReady)gapi.client.setToken({access_token:gCalToken});
 
-  // FirebaseログインアカウントとCalendarアカウントの一致確認
   try{
     const info=await fetch('https://www.googleapis.com/oauth2/v3/userinfo',{
       headers:{Authorization:'Bearer '+gCalToken}
     }).then(r=>r.json());
     gCalAccountEmail=info.email||null;
-    const fbEmail=auth.currentUser?.email||null;
-    if(fbEmail&&gCalAccountEmail&&fbEmail.toLowerCase()!==gCalAccountEmail.toLowerCase()){
-      document.getElementById('cal-account-mismatch').style.display='block';
-      document.getElementById('cal-account-mismatch').innerHTML=
-        `⚠ Googleカレンダーのアカウント（${gCalAccountEmail}）とログインアカウント（${fbEmail}）が異なります。`+
-        `同じアカウントで連携してください。取込・書き戻しは一時停止されています。`+
-        `<button class="btn sm" onclick="requestCalendarAccess()" style="margin-left:8px">再許可する</button>`;
-    }else{
-      document.getElementById('cal-account-mismatch').style.display='none';
+    auth={currentUser:{email:gCalAccountEmail,displayName:info.name||gCalAccountEmail,photoURL:info.picture||''}};
+    const av=document.getElementById('user-av');
+    if(av){
+      if(info.picture)av.innerHTML=`<img src="${info.picture}" alt="">`;
+      else av.textContent=(info.name||gCalAccountEmail||'?')[0].toUpperCase();
     }
+    document.getElementById('cal-account-mismatch').style.display='none';
   }catch{}
 
   document.getElementById('cal-notcon').style.display='none';
   document.getElementById('cal-con').style.display='block';
-  loadCalList();
+  await startCalendarViewer();
 }
 // アカウント一致確認（メール取得不能の場合も停止）
 function checkCalAccountMatch(){
@@ -838,10 +935,336 @@ function requestCalendarAccess(){
   }
   tokenClient.requestAccessToken({prompt:''});
 }
+async function startCalendarViewer(){
+  WORKSPACE={id:'local',name:'Googleカレンダービュー'};
+  MY_ROLE='admin';
+  const wsNameEl=document.getElementById('hdr-ws-name');
+  if(wsNameEl)wsNameEl.textContent=WORKSPACE.name;
+  showApp();
+  setupListeners();
+  await loadCalList();
+  const stored=LocalStore.getSelectedCalendarIds();
+  if(stored.length){
+    selectedCalIds=new Set(stored);
+    renderAll();
+    if(BackupStore.dirHandle){
+      await syncSelectedCalendars();
+    }else{
+      openSync();
+      showSyncErr('起動時はキャッシュを表示しています。バックアップ保存先を選択してから同期してください。');
+    }
+    return;
+  }
+  openSync();
+  showSyncErr('表示するカレンダーを選択してください。');
+}
+
+const LocalStore={
+  getSelectedCalendarIds(){
+    return (localStorage.getItem('pm_selected_cal_ids')||'').split(',').map(v=>v.trim()).filter(Boolean);
+  },
+  setSelectedCalendarIds(ids){
+    localStorage.setItem('pm_selected_cal_ids',ids.join(','));
+  },
+  saveTaskCache(tasks){
+    localStorage.setItem('pm_task_cache',JSON.stringify({updated_at:now$(),tasks}));
+  },
+  loadTaskCache(){
+    try{return JSON.parse(localStorage.getItem('pm_task_cache')||'{}').tasks||[];}catch{return [];}
+  },
+  saveFixCache(fixes){
+    localStorage.setItem('pm_fix_cache',JSON.stringify({updated_at:now$(),fixes}));
+  },
+  loadFixCache(){
+    try{return JSON.parse(localStorage.getItem('pm_fix_cache')||'{}').fixes||[];}catch{return [];}
+  },
+  savePeople(people){
+    localStorage.setItem('pm_people',JSON.stringify(people||[]));
+  },
+  loadPeople(){
+    try{return JSON.parse(localStorage.getItem('pm_people')||'[]');}catch{return [];}
+  },
+  saveProjects(proj){
+    localStorage.setItem('pm_projects',JSON.stringify(proj||{}));
+  },
+  loadProjects(){
+    try{return JSON.parse(localStorage.getItem('pm_projects')||'{}');}catch{return {};}
+  },
+  appendOpLog(log){
+    const arr=this.loadOpLogs();
+    arr.push(log);
+    localStorage.setItem('pm_op_logs',JSON.stringify(arr.slice(-300)));
+  },
+  loadOpLogs(){
+    try{return JSON.parse(localStorage.getItem('pm_op_logs')||'[]');}catch{return [];}
+  }
+};
+const BackupStore={
+  dirHandle:null,
+  getMeta(){
+    try{return JSON.parse(localStorage.getItem('pm_backup_meta')||'{}');}catch{return {};}
+  },
+  setMeta(meta){
+    localStorage.setItem('pm_backup_meta',JSON.stringify(meta||{}));
+  },
+  getSettingsSnapshot(extra={}){
+    return {
+      selected_calendar_ids:[...selectedCalIds],
+      sync_range_preset:document.getElementById('sync-range-preset')?.value||'past30_future180',
+      ...extra,
+    };
+  },
+  async selectBackupDirectory(){
+    if(!window.showDirectoryPicker)throw new Error('このブラウザはバックアップ保存に未対応です');
+    this.dirHandle=await window.showDirectoryPicker({mode:'readwrite'});
+    this.setMeta({selected_at:now$(),name:this.dirHandle.name||'backup',requires_reselect_after_reload:true});
+    await this.ensureStructure();
+    return this.dirHandle;
+  },
+  async ensureBackupPermission(){
+    const h=this.dirHandle;
+    if(!h)return false;
+    if((await h.queryPermission({mode:'readwrite'}))==='granted')return true;
+    return (await h.requestPermission({mode:'readwrite'}))==='granted';
+  },
+  async ensureStructure(){
+    if(!this.dirHandle)throw new Error('バックアップ保存先が未選択です（再読み込み後は再選択が必要です）');
+    const root=await this.dirHandle.getDirectoryHandle('pm-backups',{create:true});
+    await Promise.all([
+      root.getDirectoryHandle('read',{create:true}),
+      root.getDirectoryHandle('write',{create:true}),
+      root.getDirectoryHandle('app-state',{create:true}),
+      root.getDirectoryHandle('manifest',{create:true}),
+    ]);
+    return root;
+  },
+  async writeJsonFile(type,name,payload){
+    if(!this.dirHandle)throw new Error('バックアップ保存先が未選択です（再読み込み後は再選択が必要です）');
+    const ok=await this.ensureBackupPermission();
+    if(!ok)throw new Error('バックアップ保存先への書き込み権限がありません');
+    const root=await this.ensureStructure();
+    const dir=await root.getDirectoryHandle(type,{create:true});
+    const fh=await dir.getFileHandle(name,{create:true});
+    const w=await fh.createWritable();
+    await w.write(JSON.stringify(payload,null,2));
+    await w.close();
+    return `pm-backups/${type}/${name}`;
+  },
+  async readManifest(){
+    const ok=await this.ensureBackupPermission();
+    if(!ok)throw new Error('バックアップ保存先への読み取り権限がありません');
+    const root=await this.ensureStructure();
+    const mdir=await root.getDirectoryHandle('manifest',{create:true});
+    try{
+      const fh=await mdir.getFileHandle('backup-manifest.json',{create:false});
+      const file=await fh.getFile();
+      return JSON.parse(await file.text());
+    }catch{
+      return {version:'1',updatedAt:null,items:[]};
+    }
+  },
+  async updateManifest(entry){
+    const manifest=await this.readManifest();
+    if(entry)manifest.items=[entry,...(manifest.items||[])].slice(0,500);
+    manifest.version='1';
+    manifest.updatedAt=now$();
+    await this.writeJsonFile('manifest','backup-manifest.json',manifest);
+    return manifest;
+  },
+  async writeReadBackup(payload={}){
+    const backupId='read-'+Date.now()+'-'+Math.random().toString(36).slice(2,6);
+    const ts=new Date().toISOString().replace(/[:.]/g,'-');
+    const body={
+      backupId,
+      backupType:'read',
+      createdAt:now$(),
+      calendars:payload.calendars||[],
+      range:payload.range||{},
+      rawEvents:payload.rawEvents||[],
+      convertedTasks:payload.convertedTasks||[],
+      settingsSnapshot:payload.settingsSnapshot||this.getSettingsSnapshot(),
+    };
+    const filePath=await this.writeJsonFile('read',`read-backup-${ts}.json`,body);
+    await this.updateManifest({
+      backupId,
+      backupType:'read',
+      createdAt:body.createdAt,
+      filePath,
+      calendarNames:(payload.calendars||[]).map(c=>c.name||c.id||''),
+      rangeStart:body.range?.start||null,
+      rangeEnd:body.range?.end||null,
+      eventCount:body.rawEvents.length,
+      taskCount:body.convertedTasks.length,
+    });
+    this.setMeta({...this.getMeta(),last_read_backup_at:now$()});
+    return body;
+  },
+  async writeWriteBackup(payload={}){
+    const backupId='write-'+Date.now()+'-'+Math.random().toString(36).slice(2,6);
+    const ts=new Date().toISOString().replace(/[:.]/g,'-');
+    const body={backupId,backupType:'write',createdAt:now$(),...payload};
+    const filePath=await this.writeJsonFile('write',`write-backup-${ts}.json`,body);
+    await this.updateManifest({
+      backupId,backupType:'write',createdAt:body.createdAt,filePath,
+      calendarNames:(payload.calendars||[]).map(c=>c.name||c.id||''),
+      rangeStart:payload.range?.start||null,rangeEnd:payload.range?.end||null,
+      eventCount:(payload.rawEvents||[]).length,taskCount:(payload.tasks||[]).length,
+    });
+    this.setMeta({...this.getMeta(),last_write_backup_at:now$()});
+    return body;
+  },
+  async writeAppState(payload={}){
+    // TODO(next): people/projects も app-state に含める
+    const backupId='app-'+Date.now()+'-'+Math.random().toString(36).slice(2,6);
+    const ts=new Date().toISOString().replace(/[:.]/g,'-');
+    const body={
+      backupId,
+      backupType:'app-state',
+      createdAt:now$(),
+      tasks:payload.tasks||TASKS,
+      fixes:payload.fixes||FIXES,
+      calendar_sources:payload.calendar_sources||CAL_SRCS,
+      settingsSnapshot:payload.settingsSnapshot||this.getSettingsSnapshot(),
+    };
+    const filePath=await this.writeJsonFile('app-state',`app-state-${ts}.json`,body);
+    await this.updateManifest({
+      backupId,backupType:'app-state',createdAt:body.createdAt,filePath,
+      calendarNames:[],rangeStart:null,rangeEnd:null,eventCount:0,taskCount:(body.tasks||[]).length,
+    });
+    return body;
+  }
+};
+const TaskMapper={
+  dateOnly(v){
+    if(!v)return TODAY_STR;
+    return v.includes('T')?v.slice(0,10):v;
+  },
+  eventToTask(event,calendar){
+    const sp=event.extendedProperties?.shared||{};
+    const isAllDay=!!event.start?.date;
+    const start=this.dateOnly(event.start?.dateTime||event.start?.date);
+    const endBase=this.dateOnly(event.end?.dateTime||event.end?.date||start);
+    const endRaw=isAllDay?addDays(endBase,-1):endBase; // all-dayのend.dateは排他的
+    const end=endRaw<start?start:endRaw;
+    const summary=(event.summary||'').trim();
+    const segs=summary.split('/').map(v=>v.trim());
+    const validFmt=segs.length===3&&segs.every(Boolean);
+    const owner=validFmt?segs[0]:'unset';
+    const name=validFmt?segs[1]:(summary||'(無題)');
+    const proj=validFmt?segs[2]:(calendar.name||calendar.summary||'unset');
+    return {
+      id:`gcal-${calendar.id}-${event.id}`,
+      eventId:event.id,calendarId:calendar.id,
+      name,
+      start,end,
+      owner:sp.owner||owner,
+      proj:sp.project||proj,
+      prog:Math.max(0,Math.min(100,parseInt(sp.progress||'0',10)||0)),
+      status:sp.status||'todo',
+      memo:event.description||'',
+      sync_status:'synced',
+      google_event_id:event.id,google_calendar_id:calendar.id,
+      visible:true,archived:false,merged:false,updated:now$()
+    };
+  }
+};
+function onRangePresetChange(v){
+  const el=document.getElementById('sync-range-custom');
+  if(el)el.style.display=v==='custom'?'grid':'none';
+}
+function getSyncRange(){
+  const preset=document.getElementById('sync-range-preset')?.value||'past30_future180';
+  const now=new Date();
+  const s=new Date(now), e=new Date(now);
+  if(preset==='this_month'){
+    s.setDate(1);e.setMonth(e.getMonth()+1,0);
+  }else if(preset==='next_month'){
+    s.setMonth(s.getMonth()+1,1);e.setMonth(e.getMonth()+2,0);
+  }else if(preset==='past30_future90'){
+    s.setDate(s.getDate()-30);e.setDate(e.getDate()+90);
+  }else if(preset==='future180'){
+    e.setDate(e.getDate()+180);
+  }else if(preset==='custom'){
+    const cs=document.getElementById('sync-range-start')?.value;
+    const ce=document.getElementById('sync-range-end')?.value;
+    if(cs)s.setTime(pd(cs).getTime());
+    if(ce)e.setTime(pd(ce).getTime());
+  }else{
+    s.setDate(s.getDate()-30);e.setDate(e.getDate()+180);
+  }
+  s.setHours(0,0,0,0);e.setHours(23,59,59,999);
+  return{timeMin:s.toISOString(),timeMax:e.toISOString()};
+}
+
+function validateNoSlash(value,label){
+  if(!String(value||'').includes('/'))return true;
+  alert(`${label}に「/」は使用できません。`);
+  return false;
+}
+async function syncSelectedCalendars(){
+  // TODO(next): ローカル編集の上書き方針を決定する（dirty温存/マージ/一時編集扱い）
+  if(!gapiReady||!hasTok())return;
+  const ids=[...selectedCalIds];
+  if(!ids.length){
+    TASKS=LocalStore.loadTaskCache();
+    renderAll();
+    return;
+  }
+  const byCal=Object.fromEntries(calList.map(c=>[c.id,c]));
+  const all=[];
+  const rawEvents=[];
+  const convertedTasks=[];
+  const {timeMin,timeMax}=getSyncRange();
+  for(const cid of ids){
+    const calendar=byCal[cid]||{id:cid,name:cid};
+    const res=await gapi.client.calendar.events.list({
+      calendarId:cid,maxResults:2500,singleEvents:true,showDeleted:false,orderBy:'startTime',timeMin,timeMax
+    });
+    const events=res.result?.items||[];
+    rawEvents.push(...events);
+    events.forEach(ev=>{const t=TaskMapper.eventToTask(ev,calendar);convertedTasks.push(t);all.push(t);});
+  }
+  try{
+    await BackupStore.writeReadBackup({
+      calendars:ids.map(cid=>({id:cid,name:byCal[cid]?.name||cid})),
+      range:{start:timeMin,end:timeMax},
+      rawEvents,
+      convertedTasks,
+      settingsSnapshot:BackupStore.getSettingsSnapshot({sync:'auto',timeMin,timeMax}),
+    });
+  }catch(be){
+    showAppInlineError('同期前バックアップ保存に失敗したため、自動同期を中止しました: '+be.message);
+    return;
+  }
+  TASKS=all;
+  syncMastersFromTasks();
+  CAL_SRCS=ids.map(cid=>({id:`local-${cid}`,calendar_id:cid,calendar_name:byCal[cid]?.name||cid,enabled:true}));
+  LocalStore.saveTaskCache(all);
+  localStorage.setItem('pm_calendar_sources',JSON.stringify(CAL_SRCS));
+  renderCalSrcList();
+  try{
+    await BackupStore.writeAppState({tasks:TASKS,fixes:FIXES,calendar_sources:CAL_SRCS,settingsSnapshot:BackupStore.getSettingsSnapshot({sync:'auto_success'})});
+    await BackupStore.updateManifest();
+  }catch(e){
+    console.warn('syncSelectedCalendars app-state backup skipped',e);
+  }
+  renderAll();
+}
 
 // ═══════════════════════════════════════════
 // GAPI
 // ═══════════════════════════════════════════
+function setupGoogleApiLoadHandlers(){
+  const gsiEl=document.getElementById('gsi-script');
+  const gapiEl=document.getElementById('gapi-script');
+  if(gsiEl)gsiEl.addEventListener('load',onGsiLoad,{once:true});
+  if(gapiEl)gapiEl.addEventListener('load',onGapiLoad,{once:true});
+  const scriptLoadErr='Google認証ライブラリの読み込みに失敗しました。ネットワークまたはブラウザの保護機能により外部スクリプトがブロックされている可能性があります。';
+  if(gsiEl)gsiEl.addEventListener('error',()=>{showError(scriptLoadErr);showAppInlineError(scriptLoadErr);},{once:true});
+  if(gapiEl)gapiEl.addEventListener('error',()=>{showError(scriptLoadErr);showAppInlineError(scriptLoadErr);},{once:true});
+  if(window.google?.accounts?.oauth2&&!gsiReady)onGsiLoad();
+  if(window.gapi?.load&&!gapiReady)onGapiLoad();
+}
 function onGapiLoad(){
   gapi.load('client',async()=>{
     try{await gapi.client.load('https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest');gapiReady=true;if(hasTok())gapi.client.setToken({access_token:gCalToken});}
@@ -853,31 +1276,16 @@ function onGapiLoad(){
 // FIREBASE
 // ═══════════════════════════════════════════
 function initFB(cfg){
-  showLoading('Firebase を初期化中...');
-  try{
-    // 既存appを再利用し、未初期化時のみ初期化する
-    const app=firebase.apps.length===0
-      ? firebase.initializeApp(cfg.firebase)
-      : firebase.app();
-    db=app.firestore();auth=app.auth();
-    auth.onAuthStateChanged(u=>{
-      if(u) onSignedIn(u);
-      else showLogin();
-    });
-    if(cfg.oauthClientId&&gsiReady)initTokenClient(cfg.oauthClientId);
-  }catch(e){
-    console.error('initFB error:',e);
-    showError('Firebase の初期化に失敗しました。設定を確認してください。\n\n'+e.message);
-  }
+  console.warn('initFB is deprecated in local calendar viewer mode.');
 }
 async function signIn(){
-  try{await auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());}
-  catch(e){if(e.code!=='auth/popup-closed-by-user')alert('ログインに失敗しました: '+e.message);}
+  showLoading('Googleカレンダー接続を開始しています...');
+  requestCalendarAccess();
 }
 function confirmSignOut(){
-  if(!confirm('ログアウトしますか？'))return;
+  if(!confirm('接続を解除しますか？'))return;
   resetAllState();
-  auth.signOut();
+  showLogin();
 }
 function resetAllState(){
   // Firestoreの購読を解除
@@ -911,85 +1319,72 @@ function resetAllState(){
   const mb=document.getElementById('hdr-member-btn');if(mb)mb.style.display='none';
 }
 function onSignedIn(user){
-  console.log('[v0.10.2] onSignedIn:', user.email);
-  const av=document.getElementById('user-av');
-  if(av){
-    if(user.photoURL)av.innerHTML=`<img src="${user.photoURL}" alt="">`;
-    else av.textContent=(user.displayName||'?')[0].toUpperCase();
-  }
-  // まずワークスペースを解決してからアプリを表示
-  resolveWorkspace(user);
+  showLogin();
 }
 
 // ═══════════════════════════════════════════
-// FIRESTORE
+// LOCAL DATA
 // ═══════════════════════════════════════════
 function setupListeners(){
-  if(!WORKSPACE){console.error('setupListeners: workspace not set');return;}
-  if(unsubT)unsubT();if(unsubF)unsubF();if(unsubCS)unsubCS();
-  if(unsubPeople)unsubPeople();if(unsubProjects)unsubProjects();
-
-  // 担当者を動的購読
-  unsubPeople=wsCol('assignees').orderBy('display_order').onSnapshot(snap=>{
-    const assignees=snap.docs.map(d=>({...d.data(),id:d.id})).filter(a=>a.status!=='archived');
-    const newPeople=[
-      ...assignees.map(a=>({id:a.id,name:a.name,color:a.color||'#9ca3af',status:a.status})),
-      {id:'unset',name:'未設定',color:'#9ca3af',status:'active'},
-    ];
-    // フィルター状態を保持（初回のみ全件ON、2回目以降は既存状態を維持）
-    const isFirstLoad=PEOPLE.length<=1; // unsetだけの初期状態
-    newPeople.forEach(p=>{
-      if(isFirstLoad) visPeople.add(p.id);
-      else if(p.status==='archived') visPeople.delete(p.id); // アーカイブは除去
-      else if(!PEOPLE.find(x=>x.id===p.id)) visPeople.add(p.id); // 新規追加はON
-    });
-    PEOPLE=newPeople;
-    initPBar();renderAll();
-  },e=>console.error('assignees',e));
-
-  // プロジェクトを動的購読
-  unsubProjects=wsCol('projects').onSnapshot(snap=>{
-    PROJ={unset:{name:'未設定',color:'#9ca3af',ms:[],status:'active'}};
-    snap.docs.forEach(d=>{
-      const p=d.data();
-      if(p.status!=='archived') PROJ[d.id]={name:p.name,color:p.color||'#1a73e8',ms:p.milestones||[],status:p.status||'active'};
-    });
-    // フィルター状態を保持（初回のみ全件ON）
-    const isFirstProjLoad=Object.keys(PROJ).filter(k=>k!=='unset').length<=0;
-    Object.entries(PROJ).forEach(([k,v])=>{
-      if(k==='unset')return;
-      if(isFirstProjLoad) visProjects.add(k);
-      else if(v.status==='archived') visProjects.delete(k);
-      else if(!visProjects.has(k)) visProjects.add(k); // 新規追加はON
-    });
-    renderAll();
-  },e=>console.error('projects',e));
-
-  // ワークスペース配下のコレクションのみ購読（他ワークスペースのデータは取得しない）
-  unsubT=wsCol('tasks').onSnapshot(snap=>{TASKS=snap.docs.map(d=>({...d.data(),id:d.id}));updateFxSel();renderAll();},e=>console.error('tasks',e));
-  unsubF=wsCol('fixes').onSnapshot(snap=>{FIXES=snap.docs.map(d=>({...d.data(),id:d.id}));rFixList();rStatus();},e=>console.error('fixes',e));
-  unsubCS=wsCol('calendar_sources').onSnapshot(snap=>{CAL_SRCS=snap.docs.map(d=>({...d.data(),id:d.id}));renderCalSrcList();},e=>console.error('cal_src',e));
+  TASKS=LocalStore.loadTaskCache();
+  FIXES=LocalStore.loadFixCache();
+  try{CAL_SRCS=JSON.parse(localStorage.getItem('pm_calendar_sources')||'[]');}catch{CAL_SRCS=[];}
+  const lp=LocalStore.loadPeople();
+  if(Array.isArray(lp)&&lp.length)PEOPLE=lp;
+  const lproj=LocalStore.loadProjects();
+  if(lproj&&Object.keys(lproj).length)PROJ=lproj;
+  syncMastersFromTasks();
+  initPBar();
+  renderCalSrcList();
+  renderAll();
 }
 
 const updT=(id,p)=>{
-  if(!canEdit()){console.warn('閲覧者は編集できません');return Promise.resolve();}
+  const idx=TASKS.findIndex(x=>x.id===id);
+  if(idx<0)return Promise.resolve();
   const patch={...p,updated:now$()};
   const skip=['sync_status','updated','google_event_id','google_calendar_id'];
-  const t=TASKS.find(x=>x.id===id);
-  if(t&&t.google_event_id&&Object.keys(p).some(k=>!skip.includes(k)))patch.sync_status='dirty';
-  return wsCol('tasks').doc(id).update(patch);
+  if(TASKS[idx].google_event_id&&Object.keys(patch).some(k=>!skip.includes(k)))patch.sync_status='dirty';
+  TASKS[idx]={...TASKS[idx],...patch};
+  LocalStore.saveTaskCache(TASKS);
+  renderAll();
+  return Promise.resolve();
 };
-const addFx=f=>wsCol('fixes').add({...f,created:now$()});
-const updFx=(id,p)=>wsCol('fixes').doc(id).update(p);
+const addFx=f=>{
+  FIXES.push({...f,id:`fx-${Date.now()}-${Math.random().toString(36).slice(2,6)}`,created:now$()});
+  LocalStore.saveFixCache(FIXES);
+  rFixList();rStatus();
+  return Promise.resolve();
+};
+const updFx=(id,p)=>{
+  const idx=FIXES.findIndex(x=>x.id===id);
+  if(idx<0)return Promise.resolve();
+  FIXES[idx]={...FIXES[idx],...p,updated:now$()};
+  LocalStore.saveFixCache(FIXES);
+  rFixList();rStatus();
+  return Promise.resolve();
+};
 
 async function deleteTask(id,name){
   // 個別削除は削除モードのチェックボックス経由に誘導
   // 直接呼び出しの場合のみ（内部呼び出し等）論理削除を実行
   if(!confirm(`「${name}」を削除しますか？\nアーカイブとして記録されます。操作ログから確認できます。`))return;
-  await wsCol('tasks').doc(id).update({archived:true,visible:false,archived_at:now$(),archived_reason:'user_delete',updated:now$()});
+  if(!await ensureAppStateBackupOrAbort('タスク削除'))return;
+  const idx=TASKS.findIndex(t=>t.id===id);
+  if(idx<0)return;
+  TASKS[idx]={...TASKS[idx],archived:true,visible:false,archived_at:now$(),archived_reason:'user_delete',updated:now$()};
+  syncMastersFromTasks();
+  LocalStore.saveTaskCache(TASKS);
   await logOp('delete_task',{name,gcal_note:'Googleカレンダー上の予定は削除されていません'});
   showUndo(`「${name}」を削除しました`,async()=>{
-    await wsCol('tasks').doc(id).update({archived:false,visible:true,updated:now$()});
+    const i=TASKS.findIndex(t=>t.id===id);
+    if(i>=0){
+      TASKS[i]={...TASKS[i],archived:false,visible:true,updated:now$()};
+      syncMastersFromTasks();
+      LocalStore.saveTaskCache(TASKS);
+      initPBar();
+      renderAll();
+    }
     showUndo('削除を取り消しました',null);
   });
 }
@@ -998,7 +1393,7 @@ async function setTaskField(id,field,value){
 }
 
 async function logOp(type,detail){
-  try{await wsCol('op_logs').add({type,detail,created:now$()});}catch{}
+  LocalStore.appendOpLog({type,detail,created:now$()});
 }
 
 // ═══════════════════════════════════════════
@@ -1332,8 +1727,9 @@ function progRow(t,person,isDone=false){
 }
 async function createTaskFromForm(){
   const name=document.getElementById('at-name').value.trim();if(!name){return;}
+  if(!validateNoSlash(name,'タスク名'))return;
   const id='manual-'+Date.now();
-  await wsCol('tasks').doc(id).set({id,name,
+  const task={id,name,
     owner:document.getElementById('at-owner').value,
     proj:document.getElementById('at-proj').value,
     start:document.getElementById('at-start').value||TODAY_STR,
@@ -1343,8 +1739,13 @@ async function createTaskFromForm(){
     visible:true,archived:false,merged:false,
     google_event_id:null,sync_status:'unsynced',
     source_type:'manual',created:now$(),updated:now$(),
-  });
+  };
+  TASKS.push(task);
+  syncMastersFromTasks();
+  LocalStore.saveTaskCache(TASKS);
   showAddTask=false;
+  initPBar();
+  renderAll();
 }
 
 // ═══════════════════════════════════════════
@@ -1848,8 +2249,7 @@ async function loadOpLogs(){
   const el=document.getElementById('panel-oplog');if(!el||!el.classList.contains('active'))return;
   el.innerHTML='<div class="notice" style="display:flex;align-items:center;gap:8px"><div class="spinner"></div>読み込み中...</div>';
   try{
-    const snap=await wsCol('op_logs').orderBy('created','desc').limit(100).get();
-    const logs=snap.docs.map(d=>({...d.data(),id:d.id}));
+    const logs=LocalStore.loadOpLogs().slice().reverse().slice(0,100).map((d,i)=>({...d,id:d.id||`local-${i}`}));
     if(!logs.length){el.innerHTML='<div class="notice">操作ログはまだありません</div>';return;}
     const LM={import:{l:'カレンダー取込',c:'#059669'},writeback:{l:'書き戻し',c:'#1a73e8'},merge:{l:'タスク統合',c:'#4f46e5'},unmerge:{l:'統合解除',c:'#059669'},postpone:{l:'終了日延長',c:'#d97706'},send_to_fix:{l:'修正リスト送り',c:'#1a73e8'},delete_task:{l:'タスク削除',c:'#ea4335'},delete_fix:{l:'修正リスト削除',c:'#ea4335'},cal_stop:{l:'カレンダー停止',c:'#ea4335'},cal_del_tasks:{l:'取込タスク削除',c:'#ea4335'},cal_restart:{l:'カレンダー再開',c:'#059669'}};
     el.innerHTML='<div class="card"><div class="card-t">操作ログ（最新100件）</div>'+
@@ -1864,6 +2264,16 @@ async function loadOpLogs(){
 // ═══════════════════════════════════════════
 // SYNC MODAL — Calendar import + writeback
 // ═══════════════════════════════════════════
+
+async function pickBackupDir(){
+  try{
+    await BackupStore.selectBackupDirectory();
+    await BackupStore.updateManifest();
+    showSyncOk('バックアップ保存先を設定しました');
+  }catch(e){
+    alert('バックアップ保存先の設定に失敗しました: '+e.message);
+  }
+}
 async function openSync(){
   document.getElementById('sync-modal').classList.add('open');
   if(hasTok()){
@@ -1961,37 +2371,39 @@ function renderWritebackSettings(){
 function toggleImportCal(calId,checked){
   if(checked)selectedCalIds.add(calId);
   else selectedCalIds.delete(calId);
-  // calendar_sourcesに即時反映（upsert）
-  const existing=CAL_SRCS.find(s=>s.calendar_id===calId);
-  const calName=calList.find(c=>c.id===calId)?.name||calId;
-  if(existing){
-    wsCol('calendar_sources').doc(existing.id).update({enabled:checked});
-  } else if(checked){
-    wsCol('calendar_sources').add({
-      calendar_id:calId,calendar_name:calName,enabled:true,
-      default_proj:'unset',default_owner:'unset',
-      imported_task_count:0,last_imported_at:null,
-    });
-  }
+  LocalStore.setSelectedCalendarIds([...selectedCalIds]);
 }
 async function saveCalMapping(calId,field,value){
   if(!calId)return;
   const existing=CAL_SRCS.find(s=>s.calendar_id===calId);
-  const calName=calList.find(c=>c.id===calId)?.name||calId;
   if(existing){
-    await wsCol('calendar_sources').doc(existing.id).update({[field]:value});
+    Object.assign(existing,{[field]:value,updated_at:now$()});
   } else {
-    // ドキュメントがまだない場合は作成してからフィールドをセット
-    await wsCol('calendar_sources').add({
-      calendar_id:calId,calendar_name:calName,enabled:selectedCalIds.has(calId),
+    CAL_SRCS.push({
+      id:`local-${calId}`,
+      calendar_id:calId,calendar_name:calList.find(c=>c.id===calId)?.name||calId,enabled:selectedCalIds.has(calId),
       default_proj:'unset',default_owner:'unset',
       imported_task_count:0,last_imported_at:null,
       [field]:value,
     });
   }
+  localStorage.setItem('pm_calendar_sources',JSON.stringify(CAL_SRCS));
+  renderCalSrcList();
 }
-async function stopCalSrc(srcId){await wsCol('calendar_sources').doc(srcId).update({enabled:false});await logOp('cal_stop',{src_id:srcId});}
-async function restartCalSrc(srcId,calId){selectedCalIds.add(calId);await wsCol('calendar_sources').doc(srcId).update({enabled:true});await logOp('cal_restart',{src_id:srcId});}
+async function stopCalSrc(srcId){
+  const s=CAL_SRCS.find(x=>x.id===srcId);if(s)s.enabled=false;
+  localStorage.setItem('pm_calendar_sources',JSON.stringify(CAL_SRCS));
+  await logOp('cal_stop',{src_id:srcId});
+  renderCalSrcList();
+}
+async function restartCalSrc(srcId,calId){
+  selectedCalIds.add(calId);
+  LocalStore.setSelectedCalendarIds([...selectedCalIds]);
+  const s=CAL_SRCS.find(x=>x.id===srcId);if(s)s.enabled=true;
+  localStorage.setItem('pm_calendar_sources',JSON.stringify(CAL_SRCS));
+  await logOp('cal_restart',{src_id:srcId});
+  renderCalSrcList();
+}
 async function deleteCalSrcTasks(srcId,calId,calName){
   const affected=sortByDate(TASKS.filter(t=>t.source_calendar_id===calId&&!t.archived));
   if(!affected.length){alert(`「${calName}」から取り込んだタスクはありません。`);return;}
@@ -2057,8 +2469,7 @@ async function doImport(){
   window._importPreviewMode=true;
   window._importPreviewOps=[];
 
-  const tmin=new Date(Date.now()-30*86400000).toISOString();
-  const tmax=new Date(Date.now()+300*86400000).toISOString();
+  const {timeMin:tmin,timeMax:tmax}=getSyncRange();
   let nc=0,uc=0;
   // プレビュー用カウント
   let previewNew=0,previewUpd=0,previewSkip=0,previewUnset=0;
@@ -2071,11 +2482,32 @@ async function doImport(){
   });
   const calNameMap=Object.fromEntries(calList.map(c=>[c.id,c.name]));
   const countPerCal={};
+  const rawEvents=[];
+  const convertedTasks=[];
 
   try{
     // 全カレンダーを並列で処理
-  const results = await Promise.all(calIds.map(cid => importOneCalendar(cid, calNameMap, byId, byGcalKey, countPerCal)));
-  results.forEach(r => { nc += r.nc; uc += r.uc; });
+  const results = await Promise.all(calIds.map(cid => importOneCalendar(cid, calNameMap, byId, byGcalKey, countPerCal,{timeMin:tmin,timeMax:tmax})));
+  results.forEach(r => {
+    nc += r.nc; uc += r.uc;
+    rawEvents.push(...(r.rawEvents||[]));
+    convertedTasks.push(...(r.convertedTasks||[]));
+  });
+
+  try{
+    await BackupStore.writeReadBackup({
+      calendars:calIds.map(cid=>({id:cid,name:calNameMap[cid]||cid})),
+      range:{start:tmin,end:tmax},
+      rawEvents,
+      convertedTasks,
+      settingsSnapshot:BackupStore.getSettingsSnapshot({timeMin:tmin,timeMax:tmax}),
+    });
+  }catch(be){
+    window._importPreviewMode=false;
+    window._importPreviewOps=[];
+    showSyncErr('読み取り時バックアップ保存に失敗したため、取り込みを中止しました: '+be.message);
+    return;
+  }
 
   // calendar_sources を更新（並列）
   await Promise.all(calIds.map(async cid => {
@@ -2089,12 +2521,14 @@ async function doImport(){
       last_imported_at: now$(), imported_task_count: countPerCal[cid] || 0,
       default_proj: defaultProj, default_owner: defaultOwner,
     };
-    if (existing) await wsCol('calendar_sources').doc(existing.id).update(srcUpdate);
-    else await wsCol('calendar_sources').add(srcUpdate);
+    if (existing) Object.assign(existing,srcUpdate,{updated_at:now$()});
+    else CAL_SRCS.push({...srcUpdate,id:`local-${cid}`});
   }));
 
   // プレビューモーダルを開く（まだFirestoreへは書いていない）
   window._importPreviewMode=false;
+  localStorage.setItem('pm_calendar_sources',JSON.stringify(CAL_SRCS));
+  renderCalSrcList();
   showImportPreviewModal({nc,uc,previewUnset,calIds});
   await logOp('import', {new: nc, updated: uc, calendars: calIds});
 
@@ -2105,19 +2539,18 @@ async function doImport(){
 }
 
 // 1カレンダー分の取込処理（並列呼び出し用）
-async function importOneCalendar(cid, calNameMap, byId, byGcalKey, countPerCal){
+async function importOneCalendar(cid, calNameMap, byId, byGcalKey, countPerCal,range){
   const calName = calNameMap[cid] || cid;
   const srcData = CAL_SRCS.find(s => s.calendar_id === cid) || {};
   const defaultProj = srcData.default_proj && srcData.default_proj !== 'unset' ? srcData.default_proj : 'unset';
   const defaultOwner = srcData.default_owner && srcData.default_owner !== 'unset' ? srcData.default_owner : 'unset';
-  const tmin = new Date(Date.now()-30*86400000).toISOString();
-  const tmax = new Date(Date.now()+300*86400000).toISOString();
+  const tmin=range?.timeMin, tmax=range?.timeMax;
   let nc=0, uc=0;
 
   const allEvents = [];
   let pageToken = undefined;
   do {
-    const params = {calendarId:cid, timeMin:tmin, timeMax:tmax, maxResults:250, singleEvents:true, orderBy:'startTime'};
+    const params = {calendarId:cid, timeMin:tmin, timeMax:tmax, maxResults:250, singleEvents:true, showDeleted:false, orderBy:'startTime'};
     if(pageToken) params.pageToken = pageToken;
     const r = await gapi.client.calendar.events.list(params);
     allEvents.push(...(r.result.items||[]));
@@ -2125,7 +2558,10 @@ async function importOneCalendar(cid, calNameMap, byId, byGcalKey, countPerCal){
   } while(pageToken);
 
   const ops = [];
+  const convertedTasks=[];
   for(const ev of allEvents){
+    const mapped=TaskMapper.eventToTask(ev,{id:cid,name:calName,summary:calName});
+    convertedTasks.push(mapped);
     const dedupKey = cid+'::'+ev.id;
     const pmId = ev.extendedProperties?.private?.pm_id;
 
@@ -2146,17 +2582,14 @@ async function importOneCalendar(cid, calNameMap, byId, byGcalKey, countPerCal){
       uc++; countPerCal[cid]=(countPerCal[cid]||0)+1; continue;
     }
 
-    const start = ev.start?.date || ev.start?.dateTime?.slice(0,10) || '';
-    let end = ev.end?.date || ev.end?.dateTime?.slice(0,10) || '';
-    // GCal終日イベントのend.dateは排他的（4/1-4/3の予定はend=4/4）→ -1日する
-    if(end && ev.end?.date) end = addDays(end, -1);
-    if(start && end && start > end) end = start; // 安全チェック
-    if(!start) continue;
+    if(!mapped.start) continue;
 
-    const taskId = 'gcal-'+ev.id.replace(/[^a-zA-Z0-9]/g,'').slice(-20);
+    const taskId = mapped.id;
     const newTask = {
-      id:taskId, name:ev.summary||'（タイトルなし）', start, end,
-      owner:defaultOwner, proj:defaultProj, prog:0, cond:'',
+      ...mapped,
+      owner:mapped.owner==='unset'?defaultOwner:mapped.owner,
+      proj:mapped.proj==='unset'?defaultProj:mapped.proj,
+      cond:mapped.cond||'',
       google_event_id:ev.id, google_calendar_id:cid,
       source_type:'google_calendar', source_calendar_id:cid, source_calendar_name:calName,
       imported_at:now$(), visible:true, archived:false, merged:false, sync_status:'synced',
@@ -2168,7 +2601,7 @@ async function importOneCalendar(cid, calNameMap, byId, byGcalKey, countPerCal){
   // プレビューモードならopsを返すだけ（Firestoreへは書かない）
   if(window._importPreviewMode){
     window._importPreviewOps=[...(window._importPreviewOps||[]),...ops];
-    return {nc, uc, ops};
+    return {nc, uc, ops, rawEvents:allEvents, convertedTasks};
   }
   // 499件ずつバッチコミット
   for(let i=0; i<ops.length; i+=499){
@@ -2180,26 +2613,17 @@ async function importOneCalendar(cid, calNameMap, byId, byGcalKey, countPerCal){
     await batch.commit();
   }
 
-  return {nc, uc};
+  return {nc, uc, rawEvents:allEvents, convertedTasks};
 }
 
 // ═══════════════════════════════════════════
 // WRITEBACK — App → GCal
 // ═══════════════════════════════════════════
 async function doWriteback(){
-  if(!checkCalAccountMatch())return;
-  if(!hasTok()){showSyncErr('Calendarへのアクセスがありません。');return;}
-  if(!gapiReady){showSyncErr('Calendar APIの読み込みが未完了です。');return;}
-  gapi.client.setToken({access_token:gCalToken});
-
-  // 書き戻し対象: dirty または unsynced かつ google_event_id あり、またはisMg
-  const toCreate=TASKS.filter(t=>!t.archived&&!t.merged&&t.visible!==false&&!t.google_event_id);
-  const toUpdate=TASKS.filter(t=>!t.archived&&!t.merged&&t.visible!==false&&t.google_event_id&&(t.sync_status==='dirty'||t.sync_status==='failed'));
-  const toSkip=TASKS.filter(t=>!t.archived&&!t.merged&&t.visible!==false&&t.google_event_id&&t.sync_status==='synced');
-
-  pushPlan={toCreate,toUpdate,toSkip,pcm:getWritebackPCM()};
-  renderPushPreview();
-  document.getElementById('push-preview-modal').classList.add('open');
+  if(!WRITEBACK_ENABLED){
+    showSyncErr('書き戻しは現在停止中です（書き込み時バックアップ機能の実装後に再開します）。');
+    return;
+  }
 }
 
 function getWritebackPCM(){
@@ -2237,42 +2661,49 @@ function closePushPreview(){document.getElementById('push-preview-modal').classL
 function t2ev(t){
   // GCalの終日イベントはend.dateが排他的なので常に+1日する
   const end=addDays(t.end,1);
+  const ownerName=getP(t.owner).name||'未設定';
+  const projName=getProjectName(t.proj);
   return{
-    summary:t.name,
+    summary:`${ownerName}/${t.name}/${projName}`,
     start:{date:t.start},end:{date:end},
-    description:`進捗: ${t.prog||0}%\n担当: ${getP(t.owner).name}\nPJ: ${PROJ[t.proj]?.name||t.proj}\n通過条件: ${t.cond||''}`,
-    colorId:OC[t.owner]||'9',
-    extendedProperties:{private:{pm_id:t.id,pm_owner:t.owner||'',pm_proj:t.proj||'',pm_prog:String(t.prog||0),pm_cond:t.cond||'',pm_source:'waterfall-pm',pm_updated:t.updated||now$()}},
+    description:`進捗: ${t.prog||0}%\n担当: ${ownerName}\nPJ: ${projName}\n通過条件: ${t.cond||''}`,
+    extendedProperties:{shared:{owner:t.owner||'unset',project:t.proj||'unset',progress:String(t.prog||0),status:t.status||'todo'}},
   };
 }
 
 async function executePush(){
+  if(!WRITEBACK_ENABLED){
+    const res=document.getElementById('push-res');
+    if(res){res.className='sync-res err';res.textContent='書き戻しは現在停止中です。';res.style.display='block';}
+    return;
+  }
   if(!pushPlan)return;
   const btn=document.getElementById('push-confirm-btn');
   btn.disabled=true;btn.textContent='書き戻し中…';
   const res=document.getElementById('push-res');res.style.display='none';
-  let cc=0,uc=0,ec=0,ecList=[];
-  const {toCreate,toUpdate,pcm}=pushPlan;
+  let pc=0,ec=0;const ecList=[];
+  const {toUpdate}=pushPlan;
 
-  for(const t of [...toCreate,...toUpdate]){
-    const isUpd=!!t.google_event_id;
-    // 書き戻し先優先順位: 元カレンダー → sourceカレンダー → プロジェクトデフォルト → 最後のみprimary
-    const projDefaultCal=CAL_SRCS.find(s=>s.default_proj===t.proj&&s.enabled)?.calendar_id;
-    const cid=t.google_calendar_id||t.source_calendar_id||projDefaultCal||pcm[t.proj]||'primary';
-    const ev=t2ev(t);
+  for(const t of toUpdate){
+    const cid=t.google_calendar_id||t.source_calendar_id;
+    if(!cid||!t.google_event_id){ec++;ecList.push(t.name);continue;}
     try{
-      if(isUpd){
-        try{await gapi.client.calendar.events.update({calendarId:t.google_calendar_id||cid,eventId:t.google_event_id,resource:ev});await wsCol('tasks').doc(t.id).update({sync_status:'synced',updated:now$()});uc++;}
-        catch{const r=await gapi.client.calendar.events.insert({calendarId:cid,resource:ev});await wsCol('tasks').doc(t.id).update({google_event_id:r.result.id,google_calendar_id:cid,sync_status:'synced',updated:now$()});cc++;}
-      }else{
-        const r=await gapi.client.calendar.events.insert({calendarId:cid,resource:ev});
-        await wsCol('tasks').doc(t.id).update({google_event_id:r.result.id,google_calendar_id:cid,sync_status:'synced',updated:now$()});cc++;
-      }
-    }catch(e2){ec++;ecList.push(t.name);await wsCol('tasks').doc(t.id).update({sync_status:'failed',updated:now$()});console.error('push',t.id,e2);}
+      await gapi.client.calendar.events.patch({
+        calendarId:cid,
+        eventId:t.google_event_id,
+        resource:t2ev(t),
+      });
+      await wsCol('tasks').doc(t.id).update({sync_status:'synced',updated:now$()});
+      pc++;
+    }catch(e2){
+      ec++;ecList.push(t.name);
+      await wsCol('tasks').doc(t.id).update({sync_status:'failed',updated:now$()});
+      console.error('push',t.id,e2);
+    }
   }
-  await logOp('writeback',{created:cc,updated:uc,failed:ec});
+  await logOp('writeback',{patched:pc,failed:ec});
   btn.disabled=false;btn.textContent='書き戻しを実行する';
-  const msg=`書き戻し完了 — 作成 ${cc}件・更新 ${uc}件${ec?` ・失敗 ${ec}件（${ecList.join('、')}）`:''}`;
+  const msg=`書き戻し完了 — patch ${pc}件${ec?` ・失敗 ${ec}件（${ecList.join('、')}）`:''}`;
   res.className='sync-res '+(ec>0?'err':'ok');res.textContent='✓ '+msg;res.style.display='block';
   const orig=document.getElementById('sync-res');
   if(orig){orig.className='sync-res '+(ec>0?'err':'ok');orig.textContent='✓ '+msg;orig.style.display='block';}
@@ -2328,10 +2759,12 @@ function closeDelConfirm(){
 async function confirmDelete(){
   // ══ モード分岐 ══
   if(_delConfirmMode?.type==='fix_items'){
+    if(!await ensureAppStateBackupOrAbort('修正リスト削除'))return;
     const {fixes}=_delConfirmMode;
-    const batch=db.batch();
-    fixes.forEach(f=>batch.update(wsCol('fixes').doc(f.id),{deleted:true}));
-    await batch.commit();
+    const ids=new Set(fixes.map(f=>f.id));
+    FIXES=FIXES.filter(f=>!ids.has(f.id));
+    syncMastersFromTasks();
+    LocalStore.saveFixCache(FIXES);
     await logOp('delete_fix_items',{count:fixes.length});
     closeDelConfirm();
     deleteMode=false;selectedForDelete.clear();rFixList();
@@ -2340,20 +2773,23 @@ async function confirmDelete(){
   }
 
   if(_delConfirmMode?.type==='cal_src'){
+    if(!await ensureAppStateBackupOrAbort('カレンダー由来タスク削除'))return;
     // カレンダー由来タスクの一括削除
-    const {srcId,calId,calName,affected}=_delConfirmMode;
+    const {srcId,calId,calName,affected}=(_delConfirmMode||{});
     try{
-      const batch=db.batch();
-      affected.forEach(t=>batch.update(wsCol('tasks').doc(t.id),{
-        archived:true,visible:false,archived_at:now$(),archived_reason:'cal_src_delete',updated:now$()
-      }));
-      batch.update(wsCol('calendar_sources').doc(srcId),{imported_task_count:0});
-      await batch.commit();
+      const idSet=new Set(affected.map(t=>t.id));
+      TASKS=TASKS.map(t=>idSet.has(t.id)?{...t,archived:true,visible:false,archived_at:now$(),archived_reason:'cal_src_delete',updated:now$()}:t);
+      syncMastersFromTasks();
+      LocalStore.saveTaskCache(TASKS);
+      const src=CAL_SRCS.find(s=>s.id===srcId);
+      if(src)src.imported_task_count=0;
+      localStorage.setItem('pm_calendar_sources',JSON.stringify(CAL_SRCS));
+      renderCalSrcList();
       await logOp('cal_del_tasks',{
         calendar_name:calName,calendar_id:calId,count:affected.length,
         gcal_note:'Googleカレンダー上の予定は削除されていません'
       });
-      closeDelConfirm();renderAll();
+      closeDelConfirm();initPBar();renderAll();
       showUndo(`${affected.length}件をアプリ内から削除しました`,null);
     }catch(e){
       const res=document.getElementById('push-res')||document.getElementById('del-confirm-list');
@@ -2364,28 +2800,29 @@ async function confirmDelete(){
 
   // 通常タスク削除
   const ids=[...selectedForDelete];if(!ids.length)return;
+  if(!await ensureAppStateBackupOrAbort('一括タスク削除'))return;
   const tasks=TASKS.filter(t=>ids.includes(t.id));
   const gcalCount=tasks.filter(t=>t.source_type==='google_calendar').length;
-  const batch=db.batch();
-  tasks.forEach(t=>batch.update(wsCol('tasks').doc(t.id),{
-    archived:true,visible:false,
-    archived_at:now$(),archived_reason:'user_delete',updated:now$()
-  }));
-  await batch.commit();
+  const deletedTasks=tasks.map(t=>({...t}));
+  TASKS=TASKS.map(t=>ids.includes(t.id)?{...t,archived:true,visible:false,archived_at:now$(),archived_reason:'user_delete',updated:now$()}:t);
+  syncMastersFromTasks();
+  LocalStore.saveTaskCache(TASKS);
   await logOp('delete_tasks',{
     count:ids.length,gcal_count:gcalCount,
     task_names:tasks.map(t=>t.name),
     gcal_note:'Googleカレンダー上の予定は削除されていません'
   });
   closeDelConfirm();
-  const deletedTasks=[...tasks];
-  deleteMode=false;selectedForDelete.clear();renderAll();
+  deleteMode=false;selectedForDelete.clear();initPBar();renderAll();
   showUndo(
     `${ids.length}件のタスクを削除しました`,
     async()=>{
-      const b=db.batch();
-      deletedTasks.forEach(t=>b.update(wsCol('tasks').doc(t.id),{archived:false,visible:true,updated:now$()}));
-      await b.commit();
+      const map=new Map(deletedTasks.map(t=>[t.id,t]));
+      TASKS=TASKS.map(t=>map.has(t.id)?{...map.get(t.id),updated:now$()}:t);
+      syncMastersFromTasks();
+      LocalStore.saveTaskCache(TASKS);
+      initPBar();
+      renderAll();
       showUndo(`${ids.length}件の削除を取り消しました`,null);
     }
   );
@@ -2540,8 +2977,8 @@ const canAdmin=()=>MY_ROLE==='admin';
 async function initDefaultMasters(wsId){
   const ref=db.collection('workspaces').doc(wsId);
   const [assigneeSnap,projectSnap]=await Promise.all([
-    ref.collection('assignees').limit(1).get(),
-    ref.collection('projects').limit(1).get()
+    fsRun(ref.collection('assignees').limit(1).get(),'担当者初期データ確認'),
+    fsRun(ref.collection('projects').limit(1).get(),'プロジェクト初期データ確認')
   ]);
   const batch=db.batch();
   let hasBatchWrite=false;
@@ -2556,423 +2993,40 @@ async function initDefaultMasters(wsId){
     // 初期プロジェクトは作成しない（画面側の未設定フォールバックを利用）
   }
   if(!hasBatchWrite)return;
-  await batch.commit();
-}
-
-// ── ワークスペース画面の表示 ──
-// 「確認中」状態を表示（フォームは出さない）
-function showWorkspaceChecking(msg='ワークスペースを確認中...'){
-  showWorkspaceScreen();
-  const ld=document.getElementById('ws-loading');
-  const frm=document.getElementById('ws-forms');
-  const wsErr=document.getElementById('ws-err');
-  const msgEl=document.getElementById('ws-loading-message');
-  const progressEl=document.getElementById('ws-loading-progress');
-  const slowEl=document.getElementById('ws-loading-slow');
-  const recoverEl=document.getElementById('ws-loading-recover');
-  if(ld)ld.style.display='block';
-  if(frm)frm.style.display='none';
-  if(wsErr)wsErr.style.display='none';
-  if(msgEl)msgEl.textContent=msg;
-  if(progressEl){progressEl.style.display='none';progressEl.textContent='';}
-  if(slowEl)slowEl.style.display='none';
-  if(recoverEl)recoverEl.style.display='none';
-}
-
-// 作成／参加フォームを表示（タイムアウトをキャンセル）
-function showWorkspaceForm(msg=''){
-  resolveWorkspaceRunId++;
-  clearResolveWorkspaceTimeout();
-  showWorkspaceScreen();
-  const ld=document.getElementById('ws-loading');
-  const frm=document.getElementById('ws-forms');
-  if(ld)ld.style.display='none';
-  if(frm)frm.style.display='block';
-  // エラーメッセージが渡された場合は表示
-  if(msg){
-    const err=document.getElementById('ws-err');
-    if(err){err.textContent=msg;err.style.display='block';}
-  } else {
-    const err=document.getElementById('ws-err');
-    if(err)err.style.display='none';
-  }
-  console.log('[v0.10.2] showWorkspaceForm called');
-}
-
-// 後方互換
-function showWorkspace(){showWorkspaceChecking();}
-
-let creatingWorkspace=false;
-let joiningWorkspace=false;
-let wsSlowTimer=null;
-let wsRecoverTimer=null;
-let resolveWorkspaceRunId=0;
-let resolveWorkspaceTimeoutTimer=null;
-
-function setWorkspaceSubmitState(loading){
-  const createBtn=document.getElementById('ws-create-btn');
-  const joinBtn=document.getElementById('ws-join-btn');
-  if(createBtn){
-    createBtn.disabled=loading;
-    createBtn.textContent=loading?'作成中...':'ワークスペースを作成';
-  }
-  if(joinBtn)joinBtn.disabled=loading;
-}
-function setWorkspaceProgress(msg){
-  const progressEl=document.getElementById('ws-loading-progress');
-  if(progressEl){
-    progressEl.style.display='block';
-    progressEl.textContent=msg;
-  }
-}
-function clearWorkspaceLoadingTimers(){
-  if(wsSlowTimer){clearTimeout(wsSlowTimer);wsSlowTimer=null;}
-  if(wsRecoverTimer){clearTimeout(wsRecoverTimer);wsRecoverTimer=null;}
-}
-function clearResolveWorkspaceTimeout(){
-  if(resolveWorkspaceTimeoutTimer){
-    clearTimeout(resolveWorkspaceTimeoutTimer);
-    resolveWorkspaceTimeoutTimer=null;
-  }
-}
-function startWorkspaceLoadingTimers(){
-  clearWorkspaceLoadingTimers();
-  const slowEl=document.getElementById('ws-loading-slow');
-  const recoverEl=document.getElementById('ws-loading-recover');
-  if(slowEl)slowEl.style.display='none';
-  if(recoverEl)recoverEl.style.display='none';
-  wsSlowTimer=setTimeout(()=>{if(slowEl)slowEl.style.display='block';},10000);
-  wsRecoverTimer=setTimeout(()=>{if(recoverEl)recoverEl.style.display='block';},30000);
-}
-
-
-// ── ワークスペース作成 ──
-async function createWorkspace(){
-  if(creatingWorkspace||joiningWorkspace)return;
-  creatingWorkspace=true;
-  const name=document.getElementById('ws-name').value.trim();
-  const err=document.getElementById('ws-err');
-  if(!name){
-    err.textContent='チーム名を入力してください';
-    err.style.display='block';
-    creatingWorkspace=false;
-    return;
-  }
-  err.style.display='none';
-  showWorkspaceChecking('ワークスペースを作成しています...');
-  setWorkspaceSubmitState(true);
-  setWorkspaceProgress('1/4 ワークスペース作成中');
-  startWorkspaceLoadingTimers();
-  try{
-    const user=auth.currentUser;
-    const wsId='ws-'+Date.now();
-    const inviteCode=Math.random().toString(36).slice(2,8).toUpperCase();
-    const wsData={id:wsId,name,created_by:user.uid,invite_code:inviteCode,created_at:now$()};
-    // workspaces / workspace_invites / members / user_workspaces を1つのbatchで作成
-    const batch=db.batch();
-    batch.set(db.collection('workspaces').doc(wsId),wsData);
-    batch.set(db.collection('workspace_invites').doc(inviteCode),{workspace_id:wsId,enabled:true,created_at:now$()});
-    batch.set(db.collection('workspaces').doc(wsId).collection('members').doc(user.uid),{
-      uid:user.uid,email:user.email||'',
-      display_name:user.displayName||user.email||'管理者',
-      photo_url:user.photoURL||'',role:'admin',joined_at:now$()
-    });
-    setWorkspaceProgress('2/4 管理者登録中');
-    batch.set(db.collection('user_workspaces').doc(user.uid),{workspace_id:wsId,updated:now$()});
-    await batch.commit();
-    setWorkspaceProgress('3/4 初期データ準備中');
-    setWorkspaceProgress('4/4 ホーム読み込み中');
-    await enterWorkspace(wsId,wsData,'admin');
-  }catch(e){
-    showWorkspaceForm();
-    err.textContent='ワークスペースの作成に失敗しました: '+e.message;
-    err.style.display='block';
-    console.error('createWorkspace error:',e);
-  }finally{
-    clearWorkspaceLoadingTimers();
-    const slowEl=document.getElementById('ws-loading-slow');
-    const recoverEl=document.getElementById('ws-loading-recover');
-    if(slowEl)slowEl.style.display='none';
-    if(recoverEl)recoverEl.style.display='none';
-    setWorkspaceSubmitState(false);
-    creatingWorkspace=false;
-  }
-}
-
-// ── 招待コードで参加 (workspace_invites経由 → Firestoreルールと矛盾しない) ──
-async function joinWorkspace(){
-  if(creatingWorkspace||joiningWorkspace)return;
-  joiningWorkspace=true;
-  const code=document.getElementById('ws-invite').value.trim().toUpperCase();
-  const err=document.getElementById('ws-err');
-  if(!code){
-    err.textContent='招待コードを入力してください';
-    err.style.display='block';
-    joiningWorkspace=false;
-    return;
-  }
-  err.style.display='none';
-  setWorkspaceSubmitState(true);
-  try{
-    // workspace_invites は認証済みユーザー全員が読める公開コレクション
-    const inviteDoc=await db.collection('workspace_invites').doc(code).get();
-    if(!inviteDoc.exists||!inviteDoc.data().enabled){
-      err.textContent='招待コードが正しくないか、無効になっています';err.style.display='block';return;
-    }
-    const wsId=inviteDoc.data().workspace_id;
-    const user=auth.currentUser;
-    // members を先に読まず set({merge:true}) で参加（Firestoreルール上、未参加者が自分のmemberを先に読めない問題を回避）
-    // role は editor で固定（Firestoreルールで本人がroleをadminに変更できないよう制限する）
-    const batch=db.batch();
-    batch.set(db.collection('workspaces').doc(wsId).collection('members').doc(user.uid),{
-      uid:user.uid,email:user.email||'',
-      display_name:user.displayName||user.email||'メンバー',
-      photo_url:user.photoURL||'',role:'editor',joined_at:now$()
-    },{merge:true}); // 既存メンバーの場合は joined_at 以外は上書きしない
-    batch.set(db.collection('user_workspaces').doc(user.uid),{workspace_id:wsId,updated:now$()});
-    await batch.commit();
-    // ワークスペース情報を取得してアプリへ（参加後に読む）
-    const wsDoc=await db.collection('workspaces').doc(wsId).get();
-    const memberDoc=await db.collection('workspaces').doc(wsId).collection('members').doc(user.uid).get();
-    const role=memberDoc.exists?memberDoc.data().role:'editor';
-    await enterWorkspace(wsId,{id:wsId,...wsDoc.data()},role);
-  }catch(e){
-    err.textContent='参加に失敗しました: '+e.message;err.style.display='block';
-  }finally{
-    setWorkspaceSubmitState(false);
-    joiningWorkspace=false;
-  }
-}
-
-// ── ワークスペースに入る ──
-async function enterWorkspace(wsId,wsData,role){
-  WORKSPACE=wsData;
-  MY_ROLE=role;
-  // 初回: assignees/projects が空ならデフォルトデータを投入
-  await initDefaultMasters(wsId);
-  // ヘッダー更新
-  const wsNameEl=document.getElementById('hdr-ws-name');
-  if(wsNameEl)wsNameEl.textContent=wsData.name||'制作進行管理';
-  // 管理者のみメンバーボタン表示
-  const memberBtn=document.getElementById('hdr-member-btn');
-  if(memberBtn)memberBtn.style.display=canAdmin()?'':'none';
-  // 権限に応じてUIを調整
-  applyRoleUI();
-  // アプリ画面を表示してデータを購読
-  showApp();
-  setupListeners();
-}
-
-async function recheckWorkspace(){
-  const user=auth.currentUser;
-  if(!user){
-    showLogin();
-    return;
-  }
-  showWorkspaceChecking('状態を再確認しています...');
-  await resolveWorkspace(user);
-}
-
-// ── 権限に応じてUIを調整 ──
-function applyRoleUI(){
-  // 閲覧者は進捗変更・削除・遅延対応ボタンを無効化
-  if(MY_ROLE==='viewer'){
-    document.querySelectorAll('.btn.pr,.del-mode-btn,.sync-act.pr').forEach(el=>{
-      if(!el.id?.includes('close')&&!el.onclick?.toString().includes('sw('))
-        el.style.pointerEvents='none',el.style.opacity='.4',el.title='閲覧者は操作できません';
-    });
-  }
-}
-
-// ── ログイン後にワークスペースを解決 ──
-async function resolveWorkspace(user){
-  const runId=++resolveWorkspaceRunId;
-  console.log('[v0.10.2] resolveWorkspace start:', user.email);
-
-  // ステップ1: user_workspaces/{uid} を確認
-  // 存在しない場合は即フォーム表示（確認中画面を続けない）
-  let uwDoc;
-  try{
-    uwDoc=await db.collection('user_workspaces').doc(user.uid).get();
-  }catch(e){
-    console.warn('[v0.10.2] user_workspaces read failed:', e.message);
-    // 権限エラー等 → フォームへ（エラー画面で止めない）
-    showWorkspaceForm();
-    const el=document.getElementById('ws-err');
-    if(el){el.textContent='ワークスペース情報の読み込みに失敗しました（'+e.message+'）。新しく作成するか、招待コードで参加してください。';el.style.display='block';}
-    return;
-  }
-
-  if(!uwDoc.exists){
-    // 初回ユーザー → 確認中画面を出さず即フォーム
-    console.log('[v0.10.2] user_workspaces not found → show workspace form');
-    showWorkspaceForm();
-    return;
-  }
-
-  // ステップ2: 既存ワークスペースがある場合のみ確認中画面を表示
-  const wsId=uwDoc.data().workspace_id;
-  console.log('[v0.10.2] workspace_id found:', wsId, '→ loading workspace');
-  showWorkspaceChecking('ワークスペースを読み込み中...');
-  clearResolveWorkspaceTimeout();
-  resolveWorkspaceTimeoutTimer=setTimeout(()=>{
-    if(runId!==resolveWorkspaceRunId)return;
-    const recoverEl=document.getElementById('ws-loading-recover');
-    if(recoverEl){
-      recoverEl.style.display='block';
-      recoverEl.innerHTML=`<div style="font-size:12px;line-height:1.6;margin-bottom:8px">
-        ワークスペースの読み込みに時間がかかっています。<br>
-        状態を確認するか、作成／参加画面へ戻ってください。
-      </div>
-      <div style="display:flex;flex-direction:column;gap:8px;max-width:220px;margin:0 auto">
-        <button class="btn sm" onclick="recheckWorkspace()">状態を再確認する</button>
-        <button class="btn sm" onclick="showWorkspaceForm()">ワークスペース作成／参加画面へ戻る</button>
-        <button class="btn sm" onclick="confirmSignOut()">ログアウトしてやり直す</button>
-      </div>`;
-    }
-  },5000);
-
-  try{
-    const [wsDoc,memberDoc]=await Promise.all([
-      db.collection('workspaces').doc(wsId).get(),
-      db.collection('workspaces').doc(wsId).collection('members').doc(user.uid).get()
-    ]);
-    if(runId!==resolveWorkspaceRunId)return;
-    clearResolveWorkspaceTimeout();
-
-    if(!wsDoc.exists){
-      // ワークスペース本体が存在しない（壊れた参照）
-      console.warn('[v0.10.2] workspace doc not found for wsId:', wsId);
-      try{await db.collection('user_workspaces').doc(user.uid).delete();}catch{}
-      showWorkspaceForm();
-      const el=document.getElementById('ws-err');
-      if(el){el.textContent='以前のワークスペース情報が見つかりません。新しく作成するか、招待コードで参加してください。';el.style.display='block';}
-      return;
-    }
-
-    if(!memberDoc.exists){
-      // メンバー情報が存在しない（所属情報が壊れている）
-      console.warn('[v0.10.2] member doc not found for uid:', user.uid, 'in workspace:', wsId);
-      try{await db.collection('user_workspaces').doc(user.uid).delete();}catch{}
-      showWorkspaceForm();
-      const el=document.getElementById('ws-err');
-      if(el){el.textContent='ワークスペースへの参加情報が見つかりません。招待コードで再参加してください。';el.style.display='block';}
-      return;
-    }
-
-    // 正常：ワークスペースに入る
-    console.log('[v0.10.2] workspace loaded OK, entering as role:', memberDoc.data().role);
-    await enterWorkspace(wsId,{id:wsId,...wsDoc.data()},memberDoc.data().role);
-
-  }catch(e){
-    if(runId!==resolveWorkspaceRunId)return;
-    clearResolveWorkspaceTimeout();
-    console.error('[v0.10.2] workspace load error:', e);
-    // 取得失敗でも真っ白にしない → フォームへ
-    showWorkspaceForm();
-    const el=document.getElementById('ws-err');
-    if(el){el.textContent='ワークスペースの読み込みに失敗しました（'+e.message+'）。再試行するか、新しく作成してください。';el.style.display='block';}
-  }
+  await fsRun(batch.commit(),'初期データ保存');
 }
 
 // ── メンバー管理モーダル ──
 function closeMemberModal(){document.getElementById('member-modal').classList.remove('open');}
 
 async function changeMemberRole(uid,role){
-  await db.collection('workspaces').doc(WORKSPACE.id).collection('members').doc(uid).update({role});
-  await logOp('change_role',{uid,role});
+  alert('メンバー管理は現在の運用方針では使用しません。');
 }
 async function removeMember(uid,name){
-  if(!confirm(`「${name}」をワークスペースから削除しますか？`))return;
-  await db.collection('workspaces').doc(WORKSPACE.id).collection('members').doc(uid).delete();
-  await db.collection('user_workspaces').doc(uid).delete();
-  await logOp('remove_member',{uid,name});
-  openMemberModal();
+  alert('メンバー管理は現在の運用方針では使用しません。');
 }
 async function renameWorkspace(){
-  const newName=document.getElementById('ws-rename-input')?.value.trim();
-  if(!newName){alert('チーム名を入力してください');return;}
-  await db.collection('workspaces').doc(WORKSPACE.id).update({name:newName});
-  WORKSPACE.name=newName;
-  const el=document.getElementById('hdr-ws-name');if(el)el.textContent=newName;
-  document.getElementById('member-ws-name').textContent=`チーム: ${newName}`;
-  await logOp('rename_workspace',{name:newName});
+  alert('ワークスペース名変更はローカルPMビューア運用では無効です。');
 }
 async function regenerateInviteCode(){
-  if(!confirm('招待コードを更新しますか？\n古いコードは使えなくなります。'))return;
-  const newCode=Math.random().toString(36).slice(2,8).toUpperCase();
-  const batch=db.batch();
-  // 古いコードを無効化
-  if(WORKSPACE.invite_code)batch.update(db.collection('workspace_invites').doc(WORKSPACE.invite_code),{enabled:false});
-  // 新しいコードを登録
-  batch.set(db.collection('workspace_invites').doc(newCode),{workspace_id:WORKSPACE.id,enabled:true,created_at:now$()});
-  batch.update(db.collection('workspaces').doc(WORKSPACE.id),{invite_code:newCode});
-  await batch.commit();
-  WORKSPACE.invite_code=newCode;
-  const el=document.getElementById('member-invite-code');if(el)el.textContent=newCode;
+  alert('招待コード機能は現在の運用方針では使用しません。');
 }
 
 
-/*
- * ═══════════════════════════════════════════
- * Firestore セキュリティルール（Firebase Console → Firestore → ルール に設定してください）
- * ═══════════════════════════════════════════
- *
- * rules_version = '2';
- * service cloud.firestore {
- *   match /databases/{database}/documents {
- *
- *     // ワークスペース情報：メンバーのみ読み取り、作成は認証済みユーザー
- *     match /workspaces/{wsId} {
- *       allow read: if request.auth != null &&
- *         exists(/databases/$(database)/documents/workspaces/$(wsId)/members/$(request.auth.uid));
- *       allow create: if request.auth != null;
- *       allow update: if request.auth != null &&
- *         get(/databases/$(database)/documents/workspaces/$(wsId)/members/$(request.auth.uid)).data.role == 'admin';
- *
- *       // メンバー：メンバー自身と管理者が読み書き
- *       match /members/{uid} {
- *         allow read: if request.auth != null &&
- *           exists(/databases/$(database)/documents/workspaces/$(wsId)/members/$(request.auth.uid));
- *         allow write: if request.auth != null && (
- *           request.auth.uid == uid ||
- *           get(/databases/$(database)/documents/workspaces/$(wsId)/members/$(request.auth.uid)).data.role == 'admin'
- *         );
- *       }
- *
- *       // タスク・修正リスト等：メンバーのみ読み書き
- *       match /tasks/{docId} {
- *         allow read: if request.auth != null &&
- *           exists(/databases/$(database)/documents/workspaces/$(wsId)/members/$(request.auth.uid));
- *         allow write: if request.auth != null &&
- *           get(/databases/$(database)/documents/workspaces/$(wsId)/members/$(request.auth.uid)).data.role in ['admin','editor'];
- *       }
- *       match /fixes/{docId} { allow read, write: if isMember(wsId); }
- *       match /calendar_sources/{docId} { allow read, write: if isMember(wsId); }
- *       match /op_logs/{docId} { allow read, write: if isMember(wsId); }
- *       match /merge_groups/{docId} { allow read, write: if isMember(wsId); }
- *     }
- *
- *     // ユーザーのワークスペース所属情報：本人のみ
- *     match /user_workspaces/{uid} {
- *       allow read, write: if request.auth != null && request.auth.uid == uid;
- *     }
- *
- *     function isMember(wsId) {
- *       return request.auth != null &&
- *         exists(/databases/$(database)/documents/workspaces/$(wsId)/members/$(request.auth.uid));
- *     }
- *   }
- * }
- */
+// Firestore Security Rules はこのローカルPMビューア方式では使用しません。
 
 
 // ── 管理モーダル タブ切替 ──
 function adminTabSwitch(tab){
-  ['member','assignee','project','workspace'].forEach(t=>{
+  ['assignee','project'].forEach(t=>{
     document.getElementById('atab-'+t)?.classList.toggle('active',t===tab);
     const pane=document.getElementById('apane-'+t);
     if(pane)pane.style.display=t===tab?'block':'none';
+  });
+  ['member','workspace'].forEach(t=>{
+    document.getElementById('atab-'+t)?.classList.remove('active');
+    const pane=document.getElementById('apane-'+t);
+    if(pane)pane.style.display='none';
   });
   if(tab==='assignee')renderAssigneeList();
   if(tab==='project')renderProjectList();
@@ -2980,25 +3034,7 @@ function adminTabSwitch(tab){
 
 // ── openMemberModal を管理モーダルに更新 ──
 async function openMemberModal(){
-  if(!WORKSPACE)return;
-  document.getElementById('member-modal').classList.add('open');
-  document.getElementById('member-ws-name').textContent=`${WORKSPACE.name||''}`;
-  document.getElementById('member-invite-code').textContent=WORKSPACE.invite_code||'---';
-  const rn=document.getElementById('ws-rename-input');if(rn)rn.value=WORKSPACE.name||'';
-  adminTabSwitch('member');
-  // メンバー一覧
-  document.getElementById('member-list').innerHTML='<div class="spinner"></div>';
-  const snap=await db.collection('workspaces').doc(WORKSPACE.id).collection('members').get();
-  const ROLE_LABELS={admin:'管理者',editor:'編集者',viewer:'閲覧者'};
-  document.getElementById('member-list').innerHTML=snap.docs.map(d=>{
-    const m=d.data(),isMe=m.uid===auth.currentUser?.uid;
-    return `<div class="tr">
-      <div style="width:32px;height:32px;border-radius:50%;background:#1a73e8;color:#fff;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;flex-shrink:0">${(m.display_name||'?')[0].toUpperCase()}</div>
-      <div style="flex:1"><div style="font-size:13px;font-weight:500">${m.display_name||'名前なし'}${isMe?' <span style="font-size:11px;color:#888">（あなた）</span>':''}</div><div style="font-size:12px;color:#888">${m.email||''}</div></div>
-      ${canAdmin()&&!isMe?`<select onchange="changeMemberRole('${m.uid}',this.value)" style="font-size:12px;width:90px"><option value="admin" ${m.role==='admin'?'selected':''}>管理者</option><option value="editor" ${m.role==='editor'?'selected':''}>編集者</option><option value="viewer" ${m.role==='viewer'?'selected':''}>閲覧者</option></select>`:`<span class="badge" style="background:#f1f3f4;color:#555">${ROLE_LABELS[m.role]||m.role}</span>`}
-      ${canAdmin()&&!isMe?`<button class="btn sm danger" onclick="removeMember('${m.uid}','${m.display_name||'このメンバー'}')">削除</button>`:''}
-    </div>`;
-  }).join('')||'<div style="font-size:13px;color:#888">メンバーがいません</div>';
+  alert('メンバー/招待コード/ワークスペース管理はローカルPMビューア運用では無効です。');
 }
 
 // ── 担当者一覧レンダリング ──
@@ -3027,8 +3063,10 @@ async function renderAssigneeList(){
 
 // ── 担当者追加 ──
 async function addAssignee(){
+  // TODO(next): wsCol 依存を外し、PEOPLE + LocalStore.savePeople() で直接更新する
   const name=document.getElementById('new-assignee-name').value.trim();
   if(!name){alert('名前を入力してください');return;}
+  if(!validateNoSlash(name,'担当者名'))return;
   const color=document.getElementById('new-assignee-color').value;
   const email=document.getElementById('new-assignee-email').value.trim();
   const memo=document.getElementById('new-assignee-memo').value.trim();
@@ -3043,11 +3081,15 @@ async function addAssignee(){
 
 // ── 担当者更新 ──
 async function updateAssignee(id,field,value){
+  // TODO(next): wsCol 依存を外し、PEOPLE + LocalStore.savePeople() で直接更新する
+  if(field==='name'&&!validateNoSlash(value,'担当者名')){await renderAssigneeList();return;}
   await wsCol('assignees').doc(id).update({[field]:value,updated_at:now$()});
 }
 
 // ── 担当者アーカイブ（未完了タスクの引き継ぎ確認） ──
 async function archiveAssignee(id,name){
+  // TODO(next): wsCol 依存を外し、PEOPLE + LocalStore.savePeople() で直接更新する
+  if(!await ensureAppStateBackupOrAbort('担当者アーカイブ'))return;
   const unfinished=TASKS.filter(t=>t.owner===id&&(t.prog||0)<100&&!t.archived);
   if(unfinished.length>0){
     const choice=prompt(`「${name}」には未完了タスクが${unfinished.length}件あります。
@@ -3090,8 +3132,10 @@ async function renderProjectList(){
 
 // ── プロジェクト追加 ──
 async function addProject(){
+  // TODO(next): wsCol 依存を外し、PROJ + LocalStore.saveProjects() で直接更新する
   const name=document.getElementById('new-proj-name').value.trim();
   if(!name){alert('プロジェクト名を入力してください');return;}
+  if(!validateNoSlash(name,'プロジェクト名'))return;
   const color=document.getElementById('new-proj-color').value;
   const snap=await wsCol('projects').orderBy('display_order','desc').limit(1).get();
   const maxOrder=snap.empty?0:snap.docs[0].data().display_order||0;
@@ -3102,11 +3146,15 @@ async function addProject(){
 
 // ── プロジェクト更新 ──
 async function updateProject(id,field,value){
+  // TODO(next): wsCol 依存を外し、PROJ + LocalStore.saveProjects() で直接更新する
+  if(field==='name'&&!validateNoSlash(value,'プロジェクト名')){await renderProjectList();return;}
   await wsCol('projects').doc(id).update({[field]:value,updated_at:now$()});
 }
 
 // ── プロジェクトアーカイブ（未完了タスクの移行確認） ──
 async function archiveProject(id,name){
+  // TODO(next): wsCol 依存を外し、PROJ + LocalStore.saveProjects() で直接更新する
+  if(!await ensureAppStateBackupOrAbort('プロジェクトアーカイブ'))return;
   const unfinished=TASKS.filter(t=>t.proj===id&&(t.prog||0)<100&&!t.archived);
   if(unfinished.length>0){
     const projOptions=Object.entries(PROJ).filter(([k])=>k!=='unset'&&k!==id).map(([k,v])=>k+': '+v.name).join('\n');
@@ -3187,6 +3235,9 @@ async function executeImport(){
       });
       await batch.commit();
     }
+    applyImportOpsToTasks(ops);
+    syncMastersFromTasks();
+    renderAll();
     // calendar_sources を更新
     const {calIds=[]}=window._pendingImport||{};
     const calNameMap=Object.fromEntries(calList.map(c=>[c.id,c.name]));
@@ -3194,9 +3245,13 @@ async function executeImport(){
       const srcData=CAL_SRCS.find(s=>s.calendar_id===cid)||{};
       const existing=CAL_SRCS.find(s=>s.calendar_id===cid);
       const srcUpdate={calendar_id:cid,calendar_name:calNameMap[cid]||cid,enabled:true,last_imported_at:now$()};
-      if(existing)await wsCol('calendar_sources').doc(existing.id).update(srcUpdate);
-      else await wsCol('calendar_sources').add(srcUpdate);
+      if(existing)Object.assign(existing,srcUpdate,{updated_at:now$()});
+      else CAL_SRCS.push({...srcUpdate,id:`local-${cid}`});
     }
+    localStorage.setItem('pm_calendar_sources',JSON.stringify(CAL_SRCS));
+    renderCalSrcList();
+    await BackupStore.writeAppState({tasks:TASKS,fixes:FIXES,calendar_sources:CAL_SRCS,settingsSnapshot:BackupStore.getSettingsSnapshot()});
+    await BackupStore.updateManifest();
     const {nc=0,uc=0}=window._pendingImport||{};
     await logOp('import',{new:nc,updated:uc,calendars:calIds});
     res.className='sync-res ok';res.textContent=`取込完了 — 新規 ${nc}件・更新 ${uc}件`;res.style.display='block';
@@ -3216,24 +3271,43 @@ async function executeImport(){
   console.log('['+APP_VERSION+'] App starting...');
   // 必ず最初にローディング画面を表示（真っ白画面を防ぐ）
   showLoading('起動中...');
+  window.addEventListener('unhandledrejection',ev=>{
+    const msg=toUserErrorMessage(ev.reason,'通信エラーが発生しました');
+    const wsErr=document.getElementById('ws-err');
+    if(document.getElementById('screen-workspace')?.classList.contains('active')&&wsErr){
+      wsErr.textContent=msg;wsErr.style.display='block';
+      return;
+    }
+    showError(msg);
+  });
+  window.addEventListener('offline',()=>{
+    const msg='オフラインを検出しました。ネットワーク接続を確認してください。';
+    const wsErr=document.getElementById('ws-err');
+    if(document.getElementById('screen-workspace')?.classList.contains('active')&&wsErr){
+      wsErr.textContent=msg;wsErr.style.display='block';
+      return;
+    }
+    showError(msg);
+  });
   // ヘッダー初期化（失敗しても続行）
   try{
     document.getElementById('hdr-today').textContent='今日: '+(TODAY.getMonth()+1)+'月'+TODAY.getDate()+'日（'+['日','月','火','水','木','金','土'][TODAY.getDay()]+'）';
   }catch{}
   try{initPBar();}catch{}
+  setupGoogleApiLoadHandlers();
   try{
     document.getElementById('sync-modal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeSync();});
     document.getElementById('push-preview-modal').addEventListener('click',e=>{if(e.target===e.currentTarget)closePushPreview();});
     document.getElementById('del-confirm-modal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeDelConfirm();});
     document.getElementById('member-modal')?.addEventListener('click',e=>{if(e.target===e.currentTarget)closeMemberModal();});
   }catch{}
-  // Firebase設定確認
+  // Google OAuth設定確認
   const stored=localStorage.getItem('pm_cfg');
   if(!stored){showSetup();return;}
   try{
     const cfg=JSON.parse(stored);
-    if(!cfg.firebase?.apiKey){showSetup();return;}
-    initFB(cfg);
+    if(!cfg.oauthClientId){showSetup();return;}
+    showLogin();
   }catch(e){
     console.error('boot error:',e);
     showSetup();
