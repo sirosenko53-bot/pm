@@ -1,8 +1,23 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { findWorkspaceByCode } from '../config/workspaceConfig';
+import { WORKSPACE } from '../config/workspaceConfig';
 import type { Task, TaskStatus, TaskViewModel } from '../domain/taskTypes';
 import type { Workspace } from '../domain/workspaceTypes';
 import type { AppRoute } from './routes';
+import { JoinedProjectsView } from '../features/access/JoinedProjectsView';
+import { ProjectCodeEntry } from '../features/access/ProjectCodeEntry';
+import type { JoinedProject, ProjectAccessMode } from '../features/access/projectAccessTypes';
+import {
+  addJoinedProjectsByAccessCode,
+  findProjectByAccessProjectId,
+  getAccessProjectId,
+  getVisibleProjectIds,
+  getVisibleProjects,
+  isAdminAccess,
+  loadJoinedProjects,
+  loadProjectAccessMode,
+  removeJoinedProject,
+  updateLastOpenedProject,
+} from '../features/access/projectAccessStore';
 import { mapCalendarEventToTask } from '../features/calendar/calendarMapper';
 import { fetchCalendarEvents, initializeGoogleClient } from '../features/calendar/googleCalendarClient';
 import { BackupPanel } from '../features/backup/BackupPanel';
@@ -26,15 +41,29 @@ import {
 } from '../features/tasks/taskOverlayStore';
 import { buildTaskViewModels } from '../features/tasks/taskViewModel';
 import { ProjectOverview } from '../features/workspace/ProjectOverview';
-import { WorkspaceCodeScreen } from '../features/workspace/WorkspaceCodeScreen';
 import { WorkspaceHome } from '../features/workspace/WorkspaceHome';
 import packageInfo from '../../package.json';
 
 const APP_VERSION = packageInfo.version;
 
+const createInitialRoute = (): AppRoute => {
+  const joinedProjects = loadJoinedProjects();
+  const accessMode = loadProjectAccessMode();
+  if (joinedProjects.length === 0) return { name: 'project-code' };
+
+  if (!isAdminAccess(accessMode) && joinedProjects.length === 1) {
+    const project = findProjectByAccessProjectId(WORKSPACE.projects, joinedProjects[0].projectId);
+    if (project) return { name: 'project-overview', projectId: project.projectId };
+  }
+
+  return { name: 'joined-projects' };
+};
+
 export const App = () => {
-  const [route, setRoute] = useState<AppRoute>({ name: 'workspace-code' });
-  const [workspace, setWorkspace] = useState<Workspace | null>(null);
+  const [route, setRoute] = useState<AppRoute>(createInitialRoute);
+  const [workspace] = useState<Workspace>(WORKSPACE);
+  const [joinedProjects, setJoinedProjects] = useState<JoinedProject[]>(loadJoinedProjects);
+  const [accessMode, setAccessMode] = useState<ProjectAccessMode>(loadProjectAccessMode);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [overlays, setOverlays] = useState(getAllTaskOverlays());
   const [calendarStatus, setCalendarStatus] = useState('モック表示中');
@@ -48,9 +77,31 @@ export const App = () => {
   const [lastProjectContextId, setLastProjectContextId] = useState<string | null>(null);
 
   const taskViewModels: TaskViewModel[] = useMemo(() => {
-    if (!workspace) return [];
     return buildTaskViewModels(tasks, overlays, workspace);
   }, [tasks, overlays, workspace]);
+
+  const visibleProjectIds = useMemo(
+    () => getVisibleProjectIds(workspace.projects, joinedProjects, accessMode),
+    [workspace.projects, joinedProjects, accessMode],
+  );
+
+  const visibleProjectIdSet = useMemo(() => new Set(visibleProjectIds), [visibleProjectIds]);
+
+  const visibleProjects = useMemo(
+    () => getVisibleProjects(workspace.projects, joinedProjects, accessMode),
+    [workspace.projects, joinedProjects, accessMode],
+  );
+
+  const visibleWorkspace = useMemo<Workspace>(() => ({
+    ...workspace,
+    projects: visibleProjects,
+    calendarSources: workspace.calendarSources.filter((source) => visibleProjectIdSet.has(source.projectId)),
+  }), [workspace, visibleProjects, visibleProjectIdSet]);
+
+  const visibleTaskViewModels = useMemo(
+    () => taskViewModels.filter((task) => visibleProjectIdSet.has(task.projectId)),
+    [taskViewModels, visibleProjectIdSet],
+  );
 
   useEffect(() => {
     void initializeGoogleClient({ useMock: true });
@@ -59,6 +110,7 @@ export const App = () => {
     if (sharedMetaResult.warning) {
       setStorageWarning(sharedMetaResult.warning);
     }
+    void loadTasks(workspace);
   }, []);
 
   const loadTasks = async (nextWorkspace: Workspace) => {
@@ -80,16 +132,51 @@ export const App = () => {
     }
   };
 
-  const handleWorkspaceCodeSubmit = (workspaceCode: string) => {
-    const nextWorkspace = findWorkspaceByCode(workspaceCode);
-    if (!nextWorkspace) return false;
-    setWorkspace(nextWorkspace);
-    setRoute({ name: 'workspace-home' });
-    void loadTasks(nextWorkspace);
-    return true;
+  const markProjectOpened = (projectId: string) => {
+    const project = workspace.projects.find((item) => item.projectId === projectId);
+    if (!project) return;
+    setJoinedProjects(updateLastOpenedProject(getAccessProjectId(project)));
+  };
+
+  const handleProjectCodeSubmit = (projectCode: string): { ok: true; message?: string } | { ok: false; error: string } => {
+    const result = addJoinedProjectsByAccessCode(projectCode);
+    if (!result.ok) return result;
+
+    setJoinedProjects(result.joinedProjects);
+    setAccessMode(result.accessMode);
+
+    const defaultProject = result.defaultProjectId
+      ? findProjectByAccessProjectId(workspace.projects, result.defaultProjectId)
+      : undefined;
+
+    if (defaultProject && !isAdminAccess(result.accessMode)) {
+      markProjectOpened(defaultProject.projectId);
+      setLastProjectContextId(defaultProject.projectId);
+      setRoute({ name: 'project-overview', projectId: defaultProject.projectId });
+      return { ok: true, message: 'プロジェクトに参加しました。' };
+    }
+
+    setRoute({ name: 'joined-projects' });
+    return { ok: true, message: 'プロジェクトコードを追加しました。' };
+  };
+
+  const handleRemoveJoinedProject = (projectId: string) => {
+    const next = removeJoinedProject(projectId);
+    setJoinedProjects(next);
+    setAccessMode(loadProjectAccessMode());
+    if (next.length === 0) {
+      setRoute({ name: 'project-code' });
+      return;
+    }
+    setRoute({ name: 'joined-projects' });
   };
 
   const openProjectOverview = (projectId: string) => {
+    if (!visibleProjectIdSet.has(projectId)) {
+      setRoute(joinedProjects.length === 0 ? { name: 'project-code' } : { name: 'joined-projects' });
+      return;
+    }
+    markProjectOpened(projectId);
     setLastProjectContextId(projectId);
     setRoute({ name: 'project-overview', projectId });
   };
@@ -156,7 +243,6 @@ export const App = () => {
   };
 
   useEffect(() => {
-    if (!workspace) return;
     if (autoReadAttemptedWorkspaceRef.current === workspace.workspaceId) return;
     autoReadAttemptedWorkspaceRef.current = workspace.workspaceId;
 
@@ -215,15 +301,28 @@ export const App = () => {
     workspace,
   ]);
 
-  if (!workspace || route.name === 'workspace-code') {
-    return <WorkspaceCodeScreen onSubmit={handleWorkspaceCodeSubmit} />;
+  if (joinedProjects.length === 0 || route.name === 'project-code') {
+    return <ProjectCodeEntry onSubmit={handleProjectCodeSubmit} />;
+  }
+
+  if (route.name === 'joined-projects') {
+    return (
+      <JoinedProjectsView
+        workspace={visibleWorkspace}
+        joinedProjects={joinedProjects}
+        onOpenProject={(project) => openProjectOverview(project.projectId)}
+        onRemoveProject={handleRemoveJoinedProject}
+        onSubmitCode={handleProjectCodeSubmit}
+        onOpenBackup={() => openBackup()}
+      />
+    );
   }
 
   if (route.name === 'task-board') {
     return (
       <TaskBoard
-        workspace={workspace}
-        tasks={taskViewModels}
+        workspace={visibleWorkspace}
+        tasks={visibleTaskViewModels}
         initialProjectId={route.projectId}
         projectContextId={route.projectId ?? route.fromProjectId}
         storageWarning={storageWarning}
@@ -246,13 +345,13 @@ export const App = () => {
   if (route.name === 'backup-settings') {
     return (
       <BackupPanel
-        workspace={workspace}
+        workspace={visibleWorkspace}
         appVersion={APP_VERSION}
         lastSyncedAt={lastSyncedAt}
         storageWarning={storageWarning}
         onBackHome={() => setRoute({ name: 'workspace-home' })}
         onBackProject={
-          route.projectId ? () => openProjectOverview(route.projectId!) : undefined
+          route.projectId && visibleProjectIdSet.has(route.projectId) ? () => openProjectOverview(route.projectId!) : undefined
         }
         onRestored={handleBackupRestored}
         sharedStateMetadata={sharedStateMetadata}
@@ -266,16 +365,25 @@ export const App = () => {
   }
 
   if (route.name === 'today') {
-    const project = workspace.projects.find((item) => item.projectId === route.projectId);
+    const project = visibleWorkspace.projects.find((item) => item.projectId === route.projectId);
     if (!project) {
-      return null;
+      return (
+        <JoinedProjectsView
+          workspace={visibleWorkspace}
+          joinedProjects={joinedProjects}
+          onOpenProject={(item) => openProjectOverview(item.projectId)}
+          onRemoveProject={handleRemoveJoinedProject}
+          onSubmitCode={handleProjectCodeSubmit}
+          onOpenBackup={() => openBackup()}
+        />
+      );
     }
 
     return (
       <TodayView
-        workspace={workspace}
+        workspace={visibleWorkspace}
         projectId={project.projectId}
-        tasks={taskViewModels.filter((task) => task.projectId === project.projectId)}
+        tasks={visibleTaskViewModels.filter((task) => task.projectId === project.projectId)}
         storageWarning={storageWarning}
         onBackHome={() => setRoute({ name: 'workspace-home' })}
         onBackProject={() => openProjectOverview(project.projectId)}
@@ -289,16 +397,25 @@ export const App = () => {
   }
 
   if (route.name === 'workflow') {
-    const project = workspace.projects.find((item) => item.projectId === route.projectId);
+    const project = visibleWorkspace.projects.find((item) => item.projectId === route.projectId);
     if (!project) {
-      return null;
+      return (
+        <JoinedProjectsView
+          workspace={visibleWorkspace}
+          joinedProjects={joinedProjects}
+          onOpenProject={(item) => openProjectOverview(item.projectId)}
+          onRemoveProject={handleRemoveJoinedProject}
+          onSubmitCode={handleProjectCodeSubmit}
+          onOpenBackup={() => openBackup()}
+        />
+      );
     }
 
     return (
       <WorkflowView
-        workspace={workspace}
+        workspace={visibleWorkspace}
         projectId={project.projectId}
-        tasks={taskViewModels.filter((task) => task.projectId === project.projectId)}
+        tasks={visibleTaskViewModels.filter((task) => task.projectId === project.projectId)}
         storageWarning={storageWarning}
         onBackHome={() => setRoute({ name: 'workspace-home' })}
         onBackProject={() => openProjectOverview(project.projectId)}
@@ -311,16 +428,25 @@ export const App = () => {
   }
 
   if (route.name === 'review-fix') {
-    const project = workspace.projects.find((item) => item.projectId === route.projectId);
+    const project = visibleWorkspace.projects.find((item) => item.projectId === route.projectId);
     if (!project) {
-      return null;
+      return (
+        <JoinedProjectsView
+          workspace={visibleWorkspace}
+          joinedProjects={joinedProjects}
+          onOpenProject={(item) => openProjectOverview(item.projectId)}
+          onRemoveProject={handleRemoveJoinedProject}
+          onSubmitCode={handleProjectCodeSubmit}
+          onOpenBackup={() => openBackup()}
+        />
+      );
     }
 
     return (
       <ReviewFixView
-        workspace={workspace}
+        workspace={visibleWorkspace}
         projectId={project.projectId}
-        tasks={taskViewModels.filter((task) => task.projectId === project.projectId)}
+        tasks={visibleTaskViewModels.filter((task) => task.projectId === project.projectId)}
         storageWarning={storageWarning}
         onBackHome={() => setRoute({ name: 'workspace-home' })}
         onBackProject={() => openProjectOverview(project.projectId)}
@@ -334,16 +460,25 @@ export const App = () => {
   }
 
   if (route.name === 'project-overview') {
-    const project = workspace.projects.find((item) => item.projectId === route.projectId);
+    const project = visibleWorkspace.projects.find((item) => item.projectId === route.projectId);
     if (!project) {
-      return null;
+      return (
+        <JoinedProjectsView
+          workspace={visibleWorkspace}
+          joinedProjects={joinedProjects}
+          onOpenProject={(item) => openProjectOverview(item.projectId)}
+          onRemoveProject={handleRemoveJoinedProject}
+          onSubmitCode={handleProjectCodeSubmit}
+          onOpenBackup={() => openBackup()}
+        />
+      );
     }
 
     return (
       <ProjectOverview
         workspaceName={workspace.workspaceName}
         project={project}
-        tasks={taskViewModels.filter((task) => task.projectId === project.projectId)}
+        tasks={visibleTaskViewModels.filter((task) => task.projectId === project.projectId)}
         storageWarning={storageWarning}
         onBack={() => setRoute({ name: 'workspace-home' })}
         onOpenBoard={() => openTaskBoard(project.projectId, project.projectId)}
@@ -357,14 +492,15 @@ export const App = () => {
 
   return (
     <WorkspaceHome
-      workspace={workspace}
-      tasks={taskViewModels}
+      workspace={visibleWorkspace}
+      tasks={visibleTaskViewModels}
       calendarStatus={calendarStatus}
       calendarError={calendarError}
       storageWarning={storageWarning}
       onSelectProject={openProjectOverview}
       onOpenBoard={() => openTaskBoard()}
       onOpenBackup={() => openBackup()}
+      onOpenJoinedProjects={() => setRoute({ name: 'joined-projects' })}
     />
   );
 };
