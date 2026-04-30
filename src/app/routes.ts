@@ -1,5 +1,6 @@
 export type AppRoute =
-  | { name: 'workspace-code' }
+  | { name: 'project-code' }
+  | { name: 'joined-projects' }
   | { name: 'workspace-home' }
   | { name: 'project-overview'; projectId: string }
   | { name: 'task-board'; projectId?: string; fromProjectId?: string }

@@ -11,6 +11,7 @@ type Props = {
   onSelectProject: (projectId: string) => void;
   onOpenBoard: () => void;
   onOpenBackup: () => void;
+  onOpenJoinedProjects: () => void;
 };
 
 export const WorkspaceHome = ({
@@ -22,6 +23,7 @@ export const WorkspaceHome = ({
   onSelectProject,
   onOpenBoard,
   onOpenBackup,
+  onOpenJoinedProjects,
 }: Props) => {
   const summary = calculateTaskSummary(tasks);
   const todayKey = new Date().toISOString().slice(0, 10);
@@ -55,6 +57,7 @@ export const WorkspaceHome = ({
         {calendarError ? <p className="error">{calendarError}</p> : null}
         {storageWarning ? <p className="warning-text">{storageWarning}</p> : null}
         <div className="overview-nav">
+          <button type="button" className="secondary" onClick={onOpenJoinedProjects}>参加中プロジェクト一覧</button>
           <button type="button" className="secondary" onClick={onOpenBoard}>全タスクボードを見る</button>
           <button type="button" className="secondary" onClick={onOpenBackup}>設定・バックアップ</button>
         </div>
