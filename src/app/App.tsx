@@ -8,14 +8,18 @@ import { ProjectCodeEntry } from '../features/access/ProjectCodeEntry';
 import type { JoinedProject, ProjectAccessMode } from '../features/access/projectAccessTypes';
 import {
   addJoinedProjectsByAccessCode,
+  clearLastView,
   findProjectByAccessProjectId,
   getAccessProjectId,
   getVisibleProjectIds,
   getVisibleProjects,
+  hasLastView,
   isAdminAccess,
+  loadLastView,
   loadJoinedProjects,
   loadProjectAccessMode,
   removeJoinedProject,
+  saveLastView,
   updateLastOpenedProject,
 } from '../features/access/projectAccessStore';
 import { mapCalendarEventToTask } from '../features/calendar/calendarMapper';
@@ -46,15 +50,64 @@ import packageInfo from '../../package.json';
 
 const APP_VERSION = packageInfo.version;
 
+const isProjectVisible = (projectId: string, joinedProjects: JoinedProject[], accessMode: ProjectAccessMode) => {
+  if (isAdminAccess(accessMode)) {
+    return WORKSPACE.projects.some((project) => project.projectId === projectId);
+  }
+  return getVisibleProjectIds(WORKSPACE.projects, joinedProjects, accessMode).includes(projectId);
+};
+
+const createFallbackRoute = (joinedProjects: JoinedProject[], accessMode: ProjectAccessMode): AppRoute => {
+  if (!isAdminAccess(accessMode) && joinedProjects.length === 1) {
+    const project = findProjectByAccessProjectId(WORKSPACE.projects, joinedProjects[0].projectId);
+    if (project) return { name: 'project-overview', projectId: project.projectId };
+  }
+  return { name: 'joined-projects' };
+};
+
 const createInitialRoute = (): AppRoute => {
   const joinedProjects = loadJoinedProjects();
   const accessMode = loadProjectAccessMode();
   if (joinedProjects.length === 0) return { name: 'project-code' };
 
-  if (!isAdminAccess(accessMode) && joinedProjects.length === 1) {
-    const project = findProjectByAccessProjectId(WORKSPACE.projects, joinedProjects[0].projectId);
-    if (project) return { name: 'project-overview', projectId: project.projectId };
+  const hasSavedLastView = hasLastView();
+  const lastView = loadLastView();
+  if (!lastView) {
+    if (hasSavedLastView) {
+      clearLastView();
+      return { name: 'joined-projects' };
+    }
+    return createFallbackRoute(joinedProjects, accessMode);
   }
+
+  if (lastView.route === 'joined-projects') return { name: 'joined-projects' };
+  if (lastView.route === 'workspace-home') return { name: 'workspace-home' };
+
+  if (lastView.route === 'task-board' && !lastView.projectId) {
+    return { name: 'task-board' };
+  }
+  if (lastView.route === 'backup-settings' && !lastView.projectId) {
+    return { name: 'backup-settings' };
+  }
+
+  if (!lastView.projectId) {
+    return { name: 'joined-projects' };
+  }
+
+  const project = findProjectByAccessProjectId(WORKSPACE.projects, lastView.projectId);
+  if (!project || !isProjectVisible(project.projectId, joinedProjects, accessMode)) {
+    clearLastView();
+    return { name: 'joined-projects' };
+  }
+
+  if (lastView.route === 'project-overview') return { name: 'project-overview', projectId: project.projectId };
+  if (lastView.route === 'today') return { name: 'today', projectId: project.projectId };
+  if (lastView.route === 'workflow') return { name: 'workflow', projectId: project.projectId };
+  if (lastView.route === 'review-fix') return { name: 'review-fix', projectId: project.projectId };
+  if (lastView.route === 'task-board') {
+    return { name: 'task-board', projectId: project.projectId, fromProjectId: project.projectId };
+  }
+  if (lastView.route === 'backup-settings') return { name: 'backup-settings', projectId: project.projectId };
 
   return { name: 'joined-projects' };
 };
@@ -102,6 +155,33 @@ export const App = () => {
     () => taskViewModels.filter((task) => visibleProjectIdSet.has(task.projectId)),
     [taskViewModels, visibleProjectIdSet],
   );
+
+  useEffect(() => {
+    if (joinedProjects.length === 0 || route.name === 'project-code') return;
+
+    if (route.name === 'joined-projects' || route.name === 'workspace-home') {
+      saveLastView(route.name);
+      return;
+    }
+
+    if (route.name === 'task-board') {
+      const projectId = route.projectId ?? route.fromProjectId;
+      if (!projectId || visibleProjectIdSet.has(projectId)) {
+        saveLastView('task-board', projectId);
+      }
+      return;
+    }
+
+    if (route.name === 'backup-settings' && !route.projectId) {
+      saveLastView('backup-settings');
+      return;
+    }
+
+    const projectId = route.projectId;
+    if (projectId && visibleProjectIdSet.has(projectId)) {
+      saveLastView(route.name, projectId);
+    }
+  }, [joinedProjects.length, route, visibleProjectIdSet]);
 
   useEffect(() => {
     void initializeGoogleClient({ useMock: true });
@@ -153,20 +233,45 @@ export const App = () => {
       markProjectOpened(defaultProject.projectId);
       setLastProjectContextId(defaultProject.projectId);
       setRoute({ name: 'project-overview', projectId: defaultProject.projectId });
-      return { ok: true, message: 'プロジェクトに参加しました。' };
+      return { ok: true, message: `${result.label}に参加しました。` };
     }
 
     setRoute({ name: 'joined-projects' });
-    return { ok: true, message: 'プロジェクトコードを追加しました。' };
+    return { ok: true, message: `${result.label}を参加中プロジェクトに追加しました。` };
+  };
+
+  const handleAdditionalProjectCodeSubmit = (projectCode: string): { ok: true; message?: string } | { ok: false; error: string } => {
+    const result = addJoinedProjectsByAccessCode(projectCode);
+    if (!result.ok) return result;
+
+    setJoinedProjects(result.joinedProjects);
+    setAccessMode(result.accessMode);
+    setRoute({ name: 'joined-projects' });
+
+    if (result.alreadyJoined) {
+      return { ok: true, message: 'このプロジェクトはすでに参加済みです。' };
+    }
+
+    return { ok: true, message: `${result.label}を参加中プロジェクトに追加しました。` };
   };
 
   const handleRemoveJoinedProject = (projectId: string) => {
+    const removedProject = findProjectByAccessProjectId(workspace.projects, projectId);
+    const lastView = loadLastView();
     const next = removeJoinedProject(projectId);
     setJoinedProjects(next);
     setAccessMode(loadProjectAccessMode());
     if (next.length === 0) {
+      clearLastView();
       setRoute({ name: 'project-code' });
       return;
+    }
+    if (
+      lastView?.projectId
+      && removedProject
+      && findProjectByAccessProjectId([removedProject], lastView.projectId)
+    ) {
+      saveLastView('joined-projects');
     }
     setRoute({ name: 'joined-projects' });
   };
@@ -312,7 +417,7 @@ export const App = () => {
         joinedProjects={joinedProjects}
         onOpenProject={(project) => openProjectOverview(project.projectId)}
         onRemoveProject={handleRemoveJoinedProject}
-        onSubmitCode={handleProjectCodeSubmit}
+        onSubmitCode={handleAdditionalProjectCodeSubmit}
         onOpenBackup={() => openBackup()}
       />
     );
@@ -373,7 +478,7 @@ export const App = () => {
           joinedProjects={joinedProjects}
           onOpenProject={(item) => openProjectOverview(item.projectId)}
           onRemoveProject={handleRemoveJoinedProject}
-          onSubmitCode={handleProjectCodeSubmit}
+          onSubmitCode={handleAdditionalProjectCodeSubmit}
           onOpenBackup={() => openBackup()}
         />
       );
@@ -405,7 +510,7 @@ export const App = () => {
           joinedProjects={joinedProjects}
           onOpenProject={(item) => openProjectOverview(item.projectId)}
           onRemoveProject={handleRemoveJoinedProject}
-          onSubmitCode={handleProjectCodeSubmit}
+          onSubmitCode={handleAdditionalProjectCodeSubmit}
           onOpenBackup={() => openBackup()}
         />
       );
@@ -436,7 +541,7 @@ export const App = () => {
           joinedProjects={joinedProjects}
           onOpenProject={(item) => openProjectOverview(item.projectId)}
           onRemoveProject={handleRemoveJoinedProject}
-          onSubmitCode={handleProjectCodeSubmit}
+          onSubmitCode={handleAdditionalProjectCodeSubmit}
           onOpenBackup={() => openBackup()}
         />
       );
@@ -468,7 +573,7 @@ export const App = () => {
           joinedProjects={joinedProjects}
           onOpenProject={(item) => openProjectOverview(item.projectId)}
           onRemoveProject={handleRemoveJoinedProject}
-          onSubmitCode={handleProjectCodeSubmit}
+          onSubmitCode={handleAdditionalProjectCodeSubmit}
           onOpenBackup={() => openBackup()}
         />
       );

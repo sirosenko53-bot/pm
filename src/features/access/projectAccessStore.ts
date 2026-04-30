@@ -1,9 +1,21 @@
 import type { Project } from '../../domain/workspaceTypes';
-import type { ProjectAccessMode, JoinedProject } from './projectAccessTypes';
+import type { JoinedProject, LastView, LastViewRoute, ProjectAccessMode } from './projectAccessTypes';
 import { resolveProjectAccessCode } from './projectAccessCodes';
 
 const JOINED_PROJECTS_KEY = 'seisaku-pm:joined-projects';
 const ACCESS_MODE_KEY = 'seisaku-pm:project-access-mode';
+const LAST_VIEW_KEY = 'seisaku-pm:last-view';
+
+const LAST_VIEW_ROUTES = new Set<LastViewRoute>([
+  'joined-projects',
+  'workspace-home',
+  'project-overview',
+  'today',
+  'workflow',
+  'task-board',
+  'review-fix',
+  'backup-settings',
+]);
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
@@ -81,6 +93,9 @@ export const addJoinedProjectsByAccessCode = (code: string): {
   joinedProjects: JoinedProject[];
   accessMode: ProjectAccessMode;
   defaultProjectId?: string;
+  label: string;
+  addedProjectIds: string[];
+  alreadyJoined: boolean;
 } | { ok: false; error: string } => {
   const accessCode = resolveProjectAccessCode(code);
   if (!accessCode) {
@@ -88,13 +103,18 @@ export const addJoinedProjectsByAccessCode = (code: string): {
   }
 
   const currentMode = loadProjectAccessMode();
+  const currentIds = new Set(loadJoinedProjects().map((item) => item.projectId));
   const nextMode = accessCode.mode === 'admin' ? 'admin' : currentMode;
+  const addedProjectIds = accessCode.projectIds.filter((projectId) => !currentIds.has(projectId));
   const joinedProjects = addJoinedProjects(accessCode.projectIds, nextMode);
   return {
     ok: true,
     joinedProjects,
     accessMode: nextMode,
     defaultProjectId: accessCode.defaultProjectId,
+    label: accessCode.label,
+    addedProjectIds,
+    alreadyJoined: addedProjectIds.length === 0,
   };
 };
 
@@ -142,3 +162,43 @@ export const getVisibleProjectIds = (
   joinedProjects: JoinedProject[],
   accessMode: ProjectAccessMode,
 ): string[] => getVisibleProjects(projects, joinedProjects, accessMode).map((project) => project.projectId);
+
+export const loadLastView = (): LastView | null => {
+  try {
+    const raw = localStorage.getItem(LAST_VIEW_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!isRecord(parsed)) return null;
+    const route = parsed.route;
+    if (typeof route !== 'string' || !LAST_VIEW_ROUTES.has(route as LastViewRoute)) return null;
+
+    return {
+      route: route as LastViewRoute,
+      projectId: typeof parsed.projectId === 'string' && parsed.projectId.trim() ? parsed.projectId : undefined,
+      updatedAt: typeof parsed.updatedAt === 'string' ? parsed.updatedAt : new Date().toISOString(),
+    };
+  } catch {
+    return null;
+  }
+};
+
+export const hasLastView = (): boolean => {
+  try {
+    return localStorage.getItem(LAST_VIEW_KEY) !== null;
+  } catch {
+    return false;
+  }
+};
+
+export const saveLastView = (route: LastViewRoute, projectId?: string) => {
+  const next: LastView = {
+    route,
+    projectId,
+    updatedAt: new Date().toISOString(),
+  };
+  localStorage.setItem(LAST_VIEW_KEY, JSON.stringify(next));
+};
+
+export const clearLastView = () => {
+  localStorage.removeItem(LAST_VIEW_KEY);
+};

@@ -12,7 +12,9 @@ export const mapCalendarEventToTask = (
   workspace: Workspace,
 ): Task => {
   const parsed = parseCalendarTitle(event.summary ?? '');
-  const project = workspace.projects.find((item) => item.projectName === parsed.projectName);
+  const projectByTitle = workspace.projects.find((item) => item.projectName === parsed.projectName);
+  const projectByCalendar = workspace.projects.find((item) => item.projectId === calendarSource.projectId);
+  const project = projectByTitle ?? projectByCalendar;
 
   const startDateTime = resolveDateValue(event.start);
   const endDateTime = resolveDateValue(event.end);
@@ -24,7 +26,7 @@ export const mapCalendarEventToTask = (
     titleRaw: event.summary ?? '',
     assignee: parsed.assignee,
     taskName: parsed.taskName,
-    projectName: parsed.projectName,
+    projectName: project?.projectName ?? parsed.projectName,
     projectId: project?.projectId ?? 'unclassified',
     stageId: project ? estimateStageId(project.projectType, parsed.taskName) : undefined,
     startDateTime,
