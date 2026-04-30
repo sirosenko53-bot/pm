@@ -396,9 +396,15 @@ export const BackupPanel = ({
   return (
     <main className="page">
       <section className="card board-header">
-        <div className="overview-nav">
-          <button className="secondary" onClick={onBackHome}>← ワークスペースホーム</button>
-          {onBackProject ? <button className="secondary" onClick={onBackProject}>← プロジェクト画面へ戻る</button> : null}
+        <div className="settings-topbar">
+          <div className="workspace-brand">
+            <span className="app-mark" aria-hidden="true" />
+            <strong>制作PM</strong>
+          </div>
+          <div className="common-nav-secondary">
+            <button className="common-nav-action" onClick={onBackHome}>ワークスペースホーム</button>
+            {onBackProject ? <button className="common-nav-action" onClick={onBackProject}>プロジェクト画面へ戻る</button> : null}
+          </div>
         </div>
         <div className="page-title-row">
           <h1>設定・バックアップ</h1>

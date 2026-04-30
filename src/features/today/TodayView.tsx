@@ -53,6 +53,8 @@ export const TodayView = ({
     <main className="page">
       <section className="card board-header">
         <CommonNav
+          workspaceName={workspace.workspaceName}
+          projectName={project?.projectName}
           primaryItems={[
             { label: '概要', onClick: onBackProject },
             { label: '今日', onClick: () => undefined, active: true },

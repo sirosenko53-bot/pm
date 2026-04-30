@@ -60,10 +60,11 @@ export const WorkspaceHome = ({
           </div>
         </div>
         <div className="workspace-home-title">
-          <h1>{workspace.workspaceName}</h1>
-          <p className="meta">ワークスペースホーム</p>
+          <h1>ワークスペースホーム</h1>
+          <p className="meta">{workspace.workspaceName}</p>
         </div>
-        <p>Googleカレンダー連携状態: {calendarStatus}</p>
+        <p>コードに紐づくプロジェクトを表示しています</p>
+        <p className="meta">Googleカレンダー連携状態: {calendarStatus}</p>
         <p className="meta">ローカル保存 / JSONバックアップ対応</p>
         {calendarError ? <p className="error">{calendarError}</p> : null}
         {storageWarning ? <p className="warning-text">{storageWarning}</p> : null}
@@ -74,23 +75,17 @@ export const WorkspaceHome = ({
         </div>
       </section>
 
-      <section className="summary-grid">
-        <article className="card summary-card"><h3>全タスク件数</h3><p>{summary.total}件</p></article>
-        <article className="card summary-card"><h3>今日の予定</h3><p>{summary.today}件</p></article>
-        <article className="card summary-card"><h3>遅延件数</h3><p>{summary.delayed}件</p></article>
-        <article className="card summary-card"><h3>確認待ち</h3><p>{summary.reviewWaiting}件</p></article>
-        <article className="card summary-card"><h3>修正待ち</h3><p>{summary.revisionWaiting}件</p></article>
-        <article className="card summary-card"><h3>解析エラー</h3><p>{summary.parseError}件</p></article>
-        <article className="card summary-card"><h3>未分類</h3><p>{summary.unclassified}件</p></article>
-      </section>
-
       <section className="workspace-main-grid">
         <article className="card project-panel">
-          <h2>プロジェクトカード</h2>
+          <h2>プロジェクト</h2>
           <div className="project-grid">
             {workspace.projects.map((project) => {
               const projectTasks = filterTasksByProject(tasks, project.projectId);
               const projectSummary = calculateTaskSummary(projectTasks);
+              const currentStageLabel =
+                projectTasks.find((task) => task.stageId === project.currentStageId)?.stageName ??
+                project.currentStageId ??
+                '未設定';
               return (
                 <button key={project.projectId} type="button" className="project-card" onClick={() => onSelectProject(project.projectId)}>
                   <div className="project-card-header">
@@ -107,7 +102,7 @@ export const WorkspaceHome = ({
                   <div className="project-card-lines">
                     <p>
                       <span>現在工程</span>
-                      <strong>{project.currentStageId ?? '未設定'}</strong>
+                      <strong>{currentStageLabel}</strong>
                     </p>
                     <p>
                       <span>次のマイルストーン</span>
@@ -148,6 +143,16 @@ export const WorkspaceHome = ({
             ))}
           </div>
         </article>
+      </section>
+
+      <section className="summary-grid workspace-summary-strip">
+        <article className="card summary-card"><h3>全タスク件数</h3><p>{summary.total}件</p></article>
+        <article className="card summary-card"><h3>今日の予定</h3><p>{summary.today}件</p></article>
+        <article className="card summary-card"><h3>遅延件数</h3><p>{summary.delayed}件</p></article>
+        <article className="card summary-card"><h3>確認待ち</h3><p>{summary.reviewWaiting}件</p></article>
+        <article className="card summary-card"><h3>修正待ち</h3><p>{summary.revisionWaiting}件</p></article>
+        <article className="card summary-card"><h3>解析エラー</h3><p>{summary.parseError}件</p></article>
+        <article className="card summary-card"><h3>未分類</h3><p>{summary.unclassified}件</p></article>
       </section>
     </main>
   );

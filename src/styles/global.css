@@ -1661,3 +1661,528 @@ button:hover {
     grid-template-columns: 1fr auto auto;
   }
 }
+
+/* Target UI structure pass */
+.page::after {
+  content: "データは安全に保存されています ・ JSONバックアップ対応 ・ ローカル保存対応";
+}
+
+.common-nav {
+  grid-template-columns: minmax(190px, 1fr) minmax(520px, auto) minmax(220px, 1fr);
+  padding: 0;
+  overflow: hidden;
+}
+
+.common-nav-brand {
+  padding: 18px 22px;
+}
+
+.common-nav-center {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0;
+  justify-items: center;
+}
+
+.common-nav-context-row {
+  min-height: 46px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  font-weight: 800;
+}
+
+.common-nav-primary {
+  min-height: 50px;
+  gap: 28px;
+  align-items: stretch;
+}
+
+.common-nav-item {
+  min-width: 58px;
+  padding: 14px 4px 13px;
+}
+
+.common-nav-secondary {
+  padding: 14px 22px;
+}
+
+.common-nav-action {
+  white-space: nowrap;
+}
+
+.workspace-home-header {
+  padding: 18px 26px 26px;
+}
+
+.workspace-home-title {
+  align-items: end;
+}
+
+.workspace-main-grid {
+  grid-template-columns: minmax(0, 2.15fr) minmax(360px, 0.85fr);
+  gap: 30px;
+}
+
+.project-panel {
+  min-height: 560px;
+}
+
+.project-panel > h2,
+.today-panel > h2 {
+  margin-bottom: 10px;
+}
+
+.project-grid {
+  grid-template-columns: repeat(2, minmax(260px, 1fr));
+  gap: 24px;
+}
+
+.project-card,
+.joined-project-card {
+  min-height: 228px;
+  padding: 24px;
+}
+
+.project-card-title strong {
+  overflow-wrap: anywhere;
+}
+
+.project-card-lines strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.today-panel {
+  position: sticky;
+  top: 96px;
+}
+
+.workspace-summary-strip {
+  grid-template-columns: repeat(7, minmax(120px, 1fr));
+  gap: 14px;
+}
+
+.workspace-summary-strip .summary-card {
+  min-height: 92px;
+  padding: 14px;
+}
+
+.workspace-summary-strip .summary-card p {
+  font-size: 28px;
+}
+
+.project-overview-header {
+  padding: 24px 28px;
+}
+
+.project-overview-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+
+.calendar-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #0f9f6e;
+  font-weight: 700;
+}
+
+.calendar-state::after {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #10b981;
+}
+
+.overview-feature-grid {
+  display: grid;
+  grid-template-columns: minmax(240px, 1fr) minmax(260px, 1.05fr) minmax(280px, 1.1fr) minmax(250px, 0.95fr);
+  grid-template-areas:
+    "current milestone today delayed"
+    "current milestone today review";
+  gap: 22px;
+  align-items: stretch;
+}
+
+.overview-feature-card {
+  display: grid;
+  align-content: start;
+  gap: 14px;
+  min-width: 0;
+  min-height: 218px;
+}
+
+.overview-current-card { grid-area: current; }
+.overview-feature-card:nth-child(2) { grid-area: milestone; }
+.overview-feature-card:nth-child(3) { grid-area: today; }
+.overview-feature-card:nth-child(4) { grid-area: delayed; }
+.overview-feature-card:nth-child(5) { grid-area: review; }
+
+.overview-card-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.overview-card-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  background: #eef4ff;
+  color: #315fae;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.overview-card-icon.warning-icon {
+  background: #fff1f2;
+  color: #e11d48;
+}
+
+.overview-current-stage-name {
+  color: #0f1f3d;
+  font-size: clamp(24px, 2.1vw, 32px);
+  font-weight: 900;
+  line-height: 1.24;
+  overflow-wrap: anywhere;
+}
+
+.compact-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 14px;
+}
+
+.compact-list li {
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  color: #334155;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.list-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-top: 0.55em;
+  background: #4f73c8;
+}
+
+.compact-task-list {
+  gap: 10px;
+}
+
+.compact-task-item {
+  padding: 10px 0;
+  border: 0;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.compact-task-item:last-child {
+  border-bottom: 0;
+}
+
+.overview-bottom-grid {
+  display: grid;
+  grid-template-columns: minmax(420px, 0.95fr) minmax(520px, 1.35fr);
+  gap: 28px;
+}
+
+.overview-status-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(110px, 1fr));
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.overview-status-box {
+  min-height: 106px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 4px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 14px;
+  background: #fbfdff;
+}
+
+.overview-status-box span {
+  color: #4f5f7a;
+  font-weight: 800;
+}
+
+.overview-status-box strong {
+  color: #10203f;
+  font-size: 34px;
+  line-height: 1;
+}
+
+.overview-status-box small {
+  color: #64748b;
+  font-weight: 700;
+}
+
+.overview-status-box.danger span,
+.overview-status-box.danger strong {
+  color: #dc2626;
+}
+
+.today-layout {
+  align-items: stretch;
+}
+
+.today-layout > .card:first-child {
+  min-height: 480px;
+}
+
+.today-layout > .card:first-child .today-list {
+  padding-left: 18px;
+}
+
+.today-layout > .card:first-child .today-list::before {
+  content: "";
+  position: absolute;
+  left: 112px;
+  top: 18px;
+  bottom: 20px;
+  width: 1px;
+  background: #d8e2f0;
+}
+
+.today-layout > .card:first-child .today-item {
+  position: relative;
+  grid-template-columns: 82px minmax(0, 1fr);
+  column-gap: 34px;
+  border: 0;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 0;
+  box-shadow: none;
+  padding: 14px 0 14px 20px;
+}
+
+.today-layout > .card:first-child .today-time::after {
+  content: "";
+  position: absolute;
+  right: -24px;
+  top: 0.55em;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #4f73c8;
+  box-shadow: 0 0 0 5px #eef4ff;
+}
+
+.today-side-grid .card {
+  min-height: 235px;
+}
+
+.summary-grid:not(.workspace-summary-strip) {
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+
+.workflow-layout {
+  grid-template-columns: minmax(320px, 0.82fr) minmax(520px, 1.38fr) minmax(270px, 0.78fr);
+  align-items: stretch;
+}
+
+.workflow-stage-item {
+  min-height: 66px;
+}
+
+.workflow-detail-card {
+  min-height: 560px;
+}
+
+.workflow-detail-grid {
+  grid-template-columns: 1fr;
+}
+
+.workflow-detail-row {
+  display: grid;
+  grid-template-columns: 128px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  margin: 0;
+  padding: 13px 16px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.16);
+  color: #64748b;
+  font-size: 13px;
+}
+
+.workflow-detail-row:last-child {
+  border-bottom: 0;
+}
+
+.workflow-detail-row span {
+  color: #4f6693;
+  font-weight: 800;
+}
+
+.workflow-detail-row p {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.milestone-card {
+  min-height: 300px;
+}
+
+.board-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.board-columns {
+  grid-template-columns: repeat(5, minmax(190px, 1fr));
+  min-width: 1120px;
+  gap: 14px;
+}
+
+.board-column {
+  padding: 14px;
+}
+
+.board-column-header h2 {
+  font-size: 19px;
+}
+
+.board-column-header .meta {
+  font-size: 12px;
+}
+
+.board-card {
+  padding: 14px;
+  gap: 7px;
+}
+
+.board-card h3 {
+  font-size: 16px;
+}
+
+.board-card .meta {
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.board-card .status-buttons {
+  gap: 5px;
+}
+
+.board-card .status-button {
+  padding: 4px 8px;
+  font-size: 11px;
+}
+
+.review-fix-dashboard {
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 320px);
+}
+
+.review-fix-column {
+  min-height: 0;
+}
+
+.review-fix-column .empty-state {
+  min-height: 120px;
+  display: grid;
+  place-items: center;
+  border: 1px dashed rgba(148, 163, 184, 0.28);
+  border-radius: 14px;
+  background: #fbfdff;
+}
+
+.review-fix-task-card .secondary {
+  justify-self: start;
+}
+
+.review-fix-insight-card {
+  min-height: 112px;
+}
+
+.settings-topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 18px;
+  padding: 2px 0 10px;
+}
+
+.backup-actions,
+.shared-state-card {
+  max-width: 100%;
+}
+
+.shared-state-grid {
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+}
+
+@media (max-width: 1320px) {
+  .common-nav {
+    grid-template-columns: 1fr;
+  }
+
+  .common-nav-brand,
+  .common-nav-secondary {
+    padding: 14px 18px;
+  }
+
+  .overview-feature-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-areas:
+      "current milestone"
+      "today delayed"
+      "today review";
+  }
+
+  .overview-bottom-grid,
+  .workflow-layout,
+  .review-fix-dashboard {
+    grid-template-columns: 1fr;
+  }
+
+  .today-panel {
+    position: static;
+  }
+
+  .workspace-summary-strip {
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  }
+}
+
+@media (max-width: 860px) {
+  .overview-feature-grid {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "current"
+      "milestone"
+      "today"
+      "delayed"
+      "review";
+  }
+
+  .overview-status-grid,
+  .project-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-topbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
