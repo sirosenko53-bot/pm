@@ -16,6 +16,15 @@ type Props = {
   onOpenReviewFix: () => void;
 };
 
+const formatOverviewDate = (value?: string) => {
+  if (!value) return '-';
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+
+  return date.toLocaleDateString('ja-JP');
+};
+
 export const ProjectOverview = ({
   workspaceName,
   project,
@@ -106,15 +115,17 @@ export const ProjectOverview = ({
         <article className="card">
           <h2>遅延・注意</h2>
           <p className="meta">遅延件数: {delayedTasks.length}件</p>
-          <div className="today-list">
+          <div className="overview-task-list">
             {delayedTasks.length === 0 ? <p className="empty-state">遅延タスクはありません。</p> : null}
             {delayedTasks.slice(0, 5).map((task) => (
-              <article key={task.taskId} className="today-item">
-                <p className="today-time">{task.dueDate ?? '-'}</p>
-                <div>
-                  <p className="today-title">{task.taskName}</p>
-                  <p><span className="warning">遅延</span> <span className="pill">{task.status}</span></p>
-                </div>
+              <article key={task.taskId} className="overview-task-item">
+                <p className="overview-task-title">{task.taskName}</p>
+                <p className="overview-task-meta">担当: {task.assignee}</p>
+                <p className="overview-task-tags">
+                  <span className="warning">遅延</span>
+                  <span className="pill">{task.status}</span>
+                </p>
+                <p className="overview-task-meta">期限: {formatOverviewDate(task.dueDate ?? task.endDateTime ?? task.startDateTime)}</p>
               </article>
             ))}
           </div>
@@ -153,16 +164,16 @@ export const ProjectOverview = ({
 
         <article className="card">
           <h2>今週の予定</h2>
-          <div className="today-list">
+          <div className="overview-task-list">
             {weeklyTasks.length === 0 ? <p className="empty-state">今週の予定はありません。</p> : null}
             {weeklyTasks.map((task) => (
-              <article key={task.taskId} className="today-item">
-                <p className="today-time">{task.dueDate ?? new Date(task.startDateTime).toLocaleDateString('ja-JP')}</p>
-                <div>
-                  <p className="today-title">{task.taskName}</p>
-                  <p className="meta">{task.projectName} / {task.assignee}</p>
-                  <p><span className="pill">{task.status}</span></p>
-                </div>
+              <article key={task.taskId} className="overview-task-item">
+                <p className="overview-task-title">{task.taskName}</p>
+                <p className="overview-task-meta">{task.projectName} / 担当: {task.assignee}</p>
+                <p className="overview-task-tags">
+                  <span className="pill">{task.status}</span>
+                </p>
+                <p className="overview-task-meta">予定日: {formatOverviewDate(task.dueDate ?? task.startDateTime ?? task.endDateTime)}</p>
               </article>
             ))}
           </div>
