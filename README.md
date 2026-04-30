@@ -16,6 +16,24 @@ npm install
 npm run dev
 ```
 
+## Googleカレンダーread-only設定
+
+実運用のGoogleカレンダーIDは `.env.local` に設定します。`.env.local` はGit管理しません。
+
+```bash
+VITE_GOOGLE_OAUTH_CLIENT_ID=your-client-id.apps.googleusercontent.com
+VITE_USE_MOCK_CALENDAR=false
+
+VITE_CALENDAR_ID_POETRY=your-poetry-calendar-id
+VITE_CALENDAR_ID_EXHIBITION=your-exhibition-calendar-id
+VITE_CALENDAR_ID_AUDIO=your-audio-calendar-id
+VITE_CALENDAR_ID_NOVEL=your-novel-calendar-id
+```
+
+GoogleカレンダーIDは、Googleカレンダーの「設定と共有」→「カレンダーの統合」→「カレンダーID」から取得します。
+
+`VITE_USE_MOCK_CALENDAR=false` のときは実カレンダー読取を行います。カレンダーIDが未設定の場合、`workspaceConfig.ts` の仮IDにfallbackしますが、実読取では取得に失敗する可能性があります。
+
 ## ワークスペースコード
 - `tokigire`
 

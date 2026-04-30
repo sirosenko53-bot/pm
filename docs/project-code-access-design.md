@@ -64,7 +64,21 @@
 
 Googleカレンダーはプロジェクトごとに分けて運用します。たとえば、詩集制作カレンダー、展示制作カレンダー、音声作品カレンダー、小説執筆カレンダーを別々に用意します。
 
-`workspaceConfig.ts` の `calendarSources` では、`calendarSource.calendarId` に実際のGoogleカレンダーIDを設定し、`calendarSource.projectId` に対応する制作PM側の `projectId` を設定します。
+実運用のGoogleカレンダーIDは `.env.local` に設定します。`.env.local` はGit管理しません。
+
+```bash
+VITE_GOOGLE_OAUTH_CLIENT_ID=your-client-id.apps.googleusercontent.com
+VITE_USE_MOCK_CALENDAR=false
+
+VITE_CALENDAR_ID_POETRY=your-poetry-calendar-id
+VITE_CALENDAR_ID_EXHIBITION=your-exhibition-calendar-id
+VITE_CALENDAR_ID_AUDIO=your-audio-calendar-id
+VITE_CALENDAR_ID_NOVEL=your-novel-calendar-id
+```
+
+GoogleカレンダーIDは、Googleカレンダーの「設定と共有」→「カレンダーの統合」→「カレンダーID」から取得します。
+
+`workspaceConfig.ts` の `calendarSources` では、`calendarSource.calendarId` を上記の `VITE_CALENDAR_ID_*` から読み、`calendarSource.projectId` に対応する制作PM側の `projectId` を設定します。環境変数が未設定の場合は仮IDにfallbackしますが、`VITE_USE_MOCK_CALENDAR=false` の実読取では取得に失敗する可能性があります。
 
 予定名は原則として `担当者/予定名/プロジェクト名` の形式にします。予定名から解析したプロジェクト名が `workspace.projects.projectName` と一致する場合は、そのプロジェクトを優先します。一致しない場合、または予定名が命名規則どおりに解析できない場合は、予定を取得した `calendarSource.projectId` をプロジェクト判定のfallbackとして使います。
 
