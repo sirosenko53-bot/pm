@@ -104,27 +104,37 @@ export const WorkflowView = ({
               const summary = calculateStageSummary(tasksInStage);
               const isSelected = stage.stageId === selectedStage.stageId;
               const isCurrent = stage.stageId === currentStage?.stageId;
+              const isComplete = summary.total > 0
+                ? summary.todo === 0
+                : Boolean(currentStage && stage.order < currentStage.order);
+              const stageState = isComplete ? '完了' : isCurrent ? '現在工程' : '未着手';
               return (
                 <button
                   type="button"
                   key={stage.stageId}
-                  className={`workflow-stage-item ${isSelected ? 'active' : ''}`}
+                  className={`workflow-stage-item ${isSelected ? 'active' : ''} ${isComplete ? 'complete' : ''} ${isCurrent ? 'current' : ''}`}
                   onClick={() => setSelectedStageId(stage.stageId)}
                 >
-                  <div>
-                    <strong>{stage.order}. {stage.stageName}</strong>
+                  <span
+                    className={`workflow-step-marker ${isComplete ? 'complete' : isCurrent ? 'current' : ''}`}
+                    aria-hidden="true"
+                  >
+                    {isComplete ? '✓' : stage.order}
+                  </span>
+                  <div className="workflow-stage-copy">
+                    <strong>{stage.stageName}</strong>
                     <p className="meta">
                       関連 {summary.total}件 / 完了 {summary.done}件 / 未完了 {summary.todo}件 / 遅延 {summary.delayed}件
                     </p>
                   </div>
-                  <span className="pill">{isCurrent ? '現在工程' : '工程'}</span>
+                  <span className="pill">{stageState}</span>
                 </button>
               );
             })}
           </div>
         </article>
 
-        <article className="card">
+        <article className="card workflow-detail-card">
           <h2>工程の詳細</h2>
           <div className="workflow-detail-hero">
             <span className="workflow-stage-number">{selectedStage.order}</span>

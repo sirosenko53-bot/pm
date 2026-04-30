@@ -117,7 +117,7 @@ export const TodayView = ({
                 </article>
               ))}
             </div>
-            <button className="secondary" onClick={onOpenBoard}>タスクボードで対応する</button>
+            <button type="button" className="card-link-button" onClick={onOpenBoard}>すべて見る</button>
           </article>
 
           <article className="card">
@@ -135,7 +135,7 @@ export const TodayView = ({
                 </article>
               ))}
             </div>
-            <button className="secondary" onClick={onOpenBoard}>タスクボードで確認する</button>
+            <button type="button" className="card-link-button" onClick={onOpenBoard}>すべて見る</button>
           </article>
         </div>
       </section>
