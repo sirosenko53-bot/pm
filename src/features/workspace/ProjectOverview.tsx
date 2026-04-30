@@ -2,6 +2,7 @@ import type { TaskViewModel } from '../../domain/taskTypes';
 import type { Project } from '../../domain/workspaceTypes';
 import { CommonNav } from '../navigation/CommonNav';
 import { calculateTaskSummary } from '../tasks/taskMetrics';
+import { getWorkflowTemplateForProject } from '../workflow/workflowUtils';
 
 type Props = {
   workspaceName: string;
@@ -23,6 +24,15 @@ const formatOverviewDate = (value?: string) => {
   if (Number.isNaN(date.getTime())) return value;
 
   return date.toLocaleDateString('ja-JP');
+};
+
+const formatOverviewTime = (value?: string) => {
+  if (!value) return '-';
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+
+  return date.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
 };
 
 export const ProjectOverview = ({
@@ -51,6 +61,14 @@ export const ProjectOverview = ({
 
   const delayedTasks = tasks.filter((task) => task.isDelayed);
   const checkAndRevisionTasks = tasks.filter((task) => task.status === '確認待ち' || task.status === '修正待ち');
+  const workflowTemplate = getWorkflowTemplateForProject(project);
+  const currentStage = workflowTemplate?.stages.find((stage) => stage.stageId === project.currentStageId);
+  const currentStageLabel =
+    currentStage?.stageName ??
+    tasks.find((task) => task.stageId === project.currentStageId)?.stageName ??
+    project.currentStageId ??
+    '未設定';
+  const progress = summary.total ? Math.round((summary.statusCounts['完了'] / summary.total) * 100) : 0;
   const weeklyTasks = tasks
     .filter((task) => {
       const base = new Date(task.startDateTime || task.dueDate || task.endDateTime || 0);
@@ -63,6 +81,8 @@ export const ProjectOverview = ({
   return (
     <main className="page">
       <CommonNav
+        workspaceName={workspaceName}
+        projectName={project.projectName}
         primaryItems={[
           { label: '概要', onClick: () => undefined, active: true },
           { label: '今日', onClick: onOpenToday },
@@ -75,36 +95,61 @@ export const ProjectOverview = ({
           { label: '設定・バックアップ', onClick: onOpenBackup },
         ]}
       />
+
       <section className="card project-overview-header">
         <p className="meta breadcrumb">ワークスペースホーム 〉 {project.projectName} 〉 概要</p>
         <div className="page-title-row">
           <h1>{project.projectName}</h1>
           <span className="pill">概要</span>
         </div>
-        <p className="meta">ワークスペース: {workspaceName} / 種別: {project.projectType}</p>
-        <p>現在工程: {project.currentStageId ?? '未設定'} <span className="meta">（仮算出を含む）</span></p>
-        <p>次のマイルストーン: {project.milestones[0] ?? '未設定'}</p>
-        <p className="meta">Googleカレンダー正本 / ローカル保存 / JSONバックアップ対応</p>
+        <div className="project-overview-meta-row">
+          <span>{workspaceName} / {project.projectName}</span>
+          <span className="calendar-state">Googleカレンダー正本</span>
+        </div>
+        <p className="meta">ローカル保存 / JSONバックアップ対応</p>
         {storageWarning ? <p className="warning-text">{storageWarning}</p> : null}
       </section>
 
-      <section className="summary-grid">
-        <article className="card summary-card"><h3>現在工程</h3><p>{project.currentStageId ?? '未設定'}</p></article>
-        <article className="card summary-card"><h3>次のマイルストーン</h3><p>{project.milestones[0] ?? '未設定'}</p></article>
-        <article className="card summary-card"><h3>今日やること</h3><p>{todayTasks.length}件</p></article>
-        <article className="card summary-card"><h3>遅延・注意</h3><p>{summary.delayed}件</p></article>
-        <article className="card summary-card"><h3>確認待ち</h3><p>{summary.reviewWaiting}件</p></article>
-        <article className="card summary-card"><h3>修正待ち</h3><p>{summary.revisionWaiting}件</p></article>
-      </section>
+      <section className="overview-feature-grid">
+        <article className="card overview-feature-card overview-current-card">
+          <div className="overview-card-heading">
+            <span className="overview-card-icon" aria-hidden="true">工</span>
+            <h2>現在の工程</h2>
+          </div>
+          <p className="overview-current-stage-name">{currentStageLabel}</p>
+          {project.currentStageId ? <p className="meta">工程ID: {project.currentStageId}</p> : null}
+          <div className="progress-block">
+            <div className="progress-label">
+              <span>工程の進捗</span>
+              <strong>{progress}%</strong>
+            </div>
+            <div className="progress-track"><span style={{ width: `${progress}%` }} /></div>
+          </div>
+        </article>
 
-      <section className="overview-main-grid">
-        <article className="card">
-          <h2>今日やること</h2>
-          <div className="today-list">
+        <article className="card overview-feature-card">
+          <div className="overview-card-heading">
+            <span className="overview-card-icon" aria-hidden="true">旗</span>
+            <h2>次のマイルストーン</h2>
+          </div>
+          <ul className="compact-list">
+            {project.milestones.slice(0, 4).map((milestone) => (
+              <li key={milestone}><span className="list-dot" aria-hidden="true" />{milestone}</li>
+            ))}
+            {project.milestones.length === 0 ? <li className="empty-state">未設定</li> : null}
+          </ul>
+        </article>
+
+        <article className="card overview-feature-card">
+          <div className="overview-card-heading">
+            <span className="overview-card-icon" aria-hidden="true">今</span>
+            <h2>今日やること</h2>
+          </div>
+          <div className="today-list compact-task-list">
             {todayTasks.length === 0 ? <p className="empty-state">今日の予定はありません。</p> : null}
-            {todayTasks.map((task) => (
-              <article key={task.taskId} className="today-item">
-                <p className="today-time">{new Date(task.startDateTime || task.dueDate || task.endDateTime || '').toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}</p>
+            {todayTasks.slice(0, 4).map((task) => (
+              <article key={task.taskId} className="today-item compact-task-item">
+                <p className="today-time">{formatOverviewTime(task.startDateTime || task.dueDate || task.endDateTime)}</p>
                 <div>
                   <p className="today-title">{task.taskName}</p>
                   <p className="meta">担当: {task.assignee}</p>
@@ -115,12 +160,15 @@ export const ProjectOverview = ({
           </div>
         </article>
 
-        <article className="card">
-          <h2>遅延・注意</h2>
+        <article className="card overview-feature-card">
+          <div className="overview-card-heading">
+            <span className="overview-card-icon warning-icon" aria-hidden="true">!</span>
+            <h2>遅延・注意</h2>
+          </div>
           <p className="meta">遅延件数: {delayedTasks.length}件</p>
           <div className="overview-task-list">
             {delayedTasks.length === 0 ? <p className="empty-state">遅延タスクはありません。</p> : null}
-            {delayedTasks.slice(0, 5).map((task) => (
+            {delayedTasks.slice(0, 4).map((task) => (
               <article key={task.taskId} className="overview-task-item">
                 <p className="overview-task-title">{task.taskName}</p>
                 <p className="overview-task-meta">担当: {task.assignee}</p>
@@ -134,13 +182,16 @@ export const ProjectOverview = ({
           </div>
         </article>
 
-        <article className="card">
-          <h2>確認・修正</h2>
+        <article className="card overview-feature-card">
+          <div className="overview-card-heading">
+            <span className="overview-card-icon" aria-hidden="true">確</span>
+            <h2>確認・修正</h2>
+          </div>
           <p className="meta">確認待ち {summary.reviewWaiting}件 / 修正待ち {summary.revisionWaiting}件</p>
-          <div className="today-list">
+          <div className="today-list compact-task-list">
             {checkAndRevisionTasks.length === 0 ? <p className="empty-state">対象タスクはありません。</p> : null}
-            {checkAndRevisionTasks.slice(0, 5).map((task) => (
-              <article key={task.taskId} className="today-item">
+            {checkAndRevisionTasks.slice(0, 4).map((task) => (
+              <article key={task.taskId} className="today-item compact-task-item">
                 <p className="today-time">-</p>
                 <div>
                   <p className="today-title">{task.taskName}</p>
@@ -151,21 +202,30 @@ export const ProjectOverview = ({
           </div>
           <div className="overview-nav">
             <button type="button" className="secondary" onClick={onOpenReviewFix}>確認・修正画面へ</button>
-            <button type="button" className="secondary" onClick={onOpenBoard}>タスクボードで確認する</button>
           </div>
         </article>
+      </section>
 
-        <article className="card">
-          <h2>状況サマリー</h2>
-          <div className="project-meta-grid">
+      <section className="overview-bottom-grid">
+        <article className="card overview-status-card">
+          <h2>プロジェクト状況サマリー</h2>
+          <div className="overview-status-grid">
             {Object.entries(summary.statusCounts).map(([status, count]) => (
-              <span key={status}>{status}: {count}件</span>
+              <div key={status} className="overview-status-box">
+                <span>{status}</span>
+                <strong>{count}</strong>
+                <small>件</small>
+              </div>
             ))}
-            <span className={summary.delayed > 0 ? 'warning-inline' : ''}>遅延: {summary.delayed}件</span>
+            <div className={`overview-status-box ${summary.delayed > 0 ? 'danger' : ''}`}>
+              <span>遅延</span>
+              <strong>{summary.delayed}</strong>
+              <small>件</small>
+            </div>
           </div>
         </article>
 
-        <article className="card">
+        <article className="card overview-week-card">
           <h2>今週の予定</h2>
           <div className="overview-task-list">
             {weeklyTasks.length === 0 ? <p className="empty-state">今週の予定はありません。</p> : null}
@@ -181,15 +241,6 @@ export const ProjectOverview = ({
             ))}
           </div>
         </article>
-      </section>
-
-      <section className="card">
-        <h2>状態サマリー（ピル表示）</h2>
-        <div className="status-row">
-          {Object.entries(summary.statusCounts).map(([status, count]) => (
-            <span className="pill" key={status}>{status}: {count}</span>
-          ))}
-        </div>
       </section>
     </main>
   );

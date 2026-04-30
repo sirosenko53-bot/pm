@@ -7,17 +7,31 @@ export type CommonNavItem = {
 type CommonNavProps = {
   primaryItems: CommonNavItem[];
   secondaryItems?: CommonNavItem[];
+  workspaceName?: string;
+  projectName?: string;
 };
 
-export const CommonNav = ({ primaryItems, secondaryItems = [] }: CommonNavProps) => (
+export const CommonNav = ({
+  primaryItems,
+  secondaryItems = [],
+  workspaceName = '途切れ制作管理',
+  projectName,
+}: CommonNavProps) => (
   <nav className="common-nav" aria-label="プロジェクト内ナビゲーション">
     <div className="common-nav-brand">
       <span className="app-mark" aria-hidden="true" />
       <strong>制作PM</strong>
     </div>
     <div className="common-nav-center">
-      <span className="common-nav-context">途切れ制作管理</span>
-      <span className="common-nav-separator" aria-hidden="true">/</span>
+      <div className="common-nav-context-row">
+        <span className="common-nav-context">{workspaceName}</span>
+        {projectName ? (
+          <>
+            <span className="common-nav-separator" aria-hidden="true">/</span>
+            <span className="common-nav-context">{projectName}</span>
+          </>
+        ) : null}
+      </div>
       <div className="common-nav-primary">
         {primaryItems.map((item) => (
           <button

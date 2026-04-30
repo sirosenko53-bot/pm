@@ -20,10 +20,20 @@ type Props = {
   onChangeStatus: (task: TaskViewModel, status: TaskStatus) => void;
 };
 
+const formatCompactDateTime = (value?: string): string => {
+  if (!value) return '未設定';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  const hasTime = value.includes('T') || /\d{1,2}:\d{2}/.test(value);
+  return hasTime
+    ? date.toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+    : date.toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' });
+};
+
 const formatDueLabel = (task: TaskViewModel): string => {
-  if (task.dueDate) return task.dueDate;
-  if (task.endDateTime) return new Date(task.endDateTime).toLocaleString('ja-JP');
-  if (task.startDateTime) return new Date(task.startDateTime).toLocaleString('ja-JP');
+  if (task.dueDate) return formatCompactDateTime(task.dueDate);
+  if (task.endDateTime) return formatCompactDateTime(task.endDateTime);
+  if (task.startDateTime) return formatCompactDateTime(task.startDateTime);
   return '未設定';
 };
 
@@ -90,6 +100,8 @@ export const ReviewFixView = ({
     <main className="page review-fix-page">
       <section className="card board-header">
         <CommonNav
+          workspaceName={workspace.workspaceName}
+          projectName={project.projectName}
           primaryItems={[
             { label: '概要', onClick: onBackProject },
             { label: '今日', onClick: onOpenToday },

@@ -25,6 +25,16 @@ type Props = {
   onOpenBackup: () => void;
 };
 
+const formatCompactDateTime = (value?: string): string => {
+  if (!value) return '-';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  const hasTime = value.includes('T') || /\d{1,2}:\d{2}/.test(value);
+  return hasTime
+    ? date.toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+    : date.toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' });
+};
+
 export const WorkflowView = ({
   workspace,
   projectId,
@@ -73,6 +83,8 @@ export const WorkflowView = ({
     <main className="page">
       <section className="card board-header">
         <CommonNav
+          workspaceName={workspace.workspaceName}
+          projectName={project.projectName}
           primaryItems={[
             { label: '概要', onClick: onBackProject },
             { label: '今日', onClick: onOpenToday },
@@ -144,10 +156,22 @@ export const WorkflowView = ({
             </div>
           </div>
           <div className="workflow-detail-grid">
-            <p className="meta">目的: この工程の目的はまだ設定されていません。</p>
-            <p className="meta">完了条件: 完了条件は後続フェーズで編集可能にします。</p>
-            <p className="meta">次の工程: {nextStage?.stageName ?? 'なし'}</p>
-            <p className="meta">関連マイルストーン: {project.milestones[0] ?? '未設定'}</p>
+            <div className="workflow-detail-row">
+              <span>目的</span>
+              <p>この工程の目的はまだ設定されていません。</p>
+            </div>
+            <div className="workflow-detail-row">
+              <span>完了条件</span>
+              <p>完了条件は後続フェーズで編集可能にします。</p>
+            </div>
+            <div className="workflow-detail-row">
+              <span>次の工程</span>
+              <p>{nextStage?.stageName ?? 'なし'}</p>
+            </div>
+            <div className="workflow-detail-row">
+              <span>関連マイルストーン</span>
+              <p>{project.milestones[0] ?? '未設定'}</p>
+            </div>
           </div>
           <div className="progress-block">
             <div className="progress-label">
@@ -169,7 +193,7 @@ export const WorkflowView = ({
             {stageTasks.length === 0 ? <p className="empty-state">関連タスクがありません。</p> : null}
             {stageTasks.map((task) => (
               <article className="today-item" key={task.taskId}>
-                <p className="today-time">{task.dueDate || task.endDateTime || '-'}</p>
+                <p className="today-time">{formatCompactDateTime(task.dueDate || task.endDateTime)}</p>
                 <div>
                   <p className="today-title">{task.taskName}</p>
                   <p className="meta">担当: {task.assignee} / 工程: {task.stageName}</p>

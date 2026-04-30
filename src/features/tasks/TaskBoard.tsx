@@ -21,7 +21,17 @@ type Props = {
   ) => void;
 };
 
-const resolveDueText = (task: TaskViewModel) => task.dueDate || task.endDateTime || '-';
+const formatCompactDateTime = (value?: string): string => {
+  if (!value) return '-';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  const hasTime = value.includes('T') || /\d{1,2}:\d{2}/.test(value);
+  return hasTime
+    ? date.toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+    : date.toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' });
+};
+
+const resolveDueText = (task: TaskViewModel) => formatCompactDateTime(task.dueDate || task.endDateTime);
 
 const toSortableTime = (value?: string) => {
   const time = value ? new Date(value).getTime() : Number.NaN;
@@ -99,6 +109,10 @@ export const TaskBoard = ({
   }, [visibleTasks]);
 
   const taskById = useMemo(() => new Map(visibleTasks.map((task) => [task.taskId, task])), [visibleTasks]);
+  const selectedProject = workspace.projects.find((project) => project.projectId === selectedProjectId);
+  const boardTitle = projectContextId
+    ? workspace.projects.find((project) => project.projectId === projectContextId)?.projectName ?? 'タスクボード'
+    : 'タスクボード';
 
   const recalcOrders = (status: TaskStatus, statusTasks: TaskViewModel[]) =>
     statusTasks.map((task, index) => ({
@@ -147,6 +161,8 @@ export const TaskBoard = ({
     <main className="page">
       <section className="card board-header">
         <CommonNav
+          workspaceName={workspace.workspaceName}
+          projectName={projectContextId ? boardTitle : undefined}
           primaryItems={primaryNavItems}
           secondaryItems={[
             { label: 'ワークスペースホームへ戻る', onClick: onBackHome },
@@ -154,12 +170,12 @@ export const TaskBoard = ({
           ]}
         />
         <div className="page-title-row">
-          <h1>タスクボード</h1>
+          <h1>{projectContextId ? boardTitle : 'タスクボード'}</h1>
           <span className="pill">タスク</span>
         </div>
         <p>{workspace.workspaceName}</p>
         <p className="meta board-caption">
-          表示中: {selectedProjectId === 'all' ? '全プロジェクト' : workspace.projects.find((project) => project.projectId === selectedProjectId)?.projectName ?? '不明'}
+          表示中: {selectedProjectId === 'all' ? '全プロジェクト' : selectedProject?.projectName ?? '不明'}
         </p>
         <p className="meta board-caption">Googleカレンダー正本 / ローカル保存 / JSONバックアップ対応</p>
         {storageWarning ? <p className="warning-text">{storageWarning}</p> : null}
