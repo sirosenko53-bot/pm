@@ -55,7 +55,10 @@ export const TodayView = ({
             { label: '設定・バックアップ', onClick: onOpenBackup },
           ]}
         />
-        <h1>今日画面</h1>
+        <div className="page-title-row">
+          <h1>{project?.projectName ?? 'プロジェクト未選択'}</h1>
+          <span className="pill">今日</span>
+        </div>
         <p>{workspace.workspaceName} / {project?.projectName ?? 'プロジェクト未選択'}</p>
         <p className="meta">{today.toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' })}</p>
         <p className="meta">Googleカレンダー正本 / ローカル保存 / JSONバックアップ対応</p>
@@ -114,7 +117,7 @@ export const TodayView = ({
                 </article>
               ))}
             </div>
-            <button className="secondary" onClick={onOpenBoard}>タスクボードで対応する</button>
+            <button type="button" className="card-link-button" onClick={onOpenBoard}>すべて見る</button>
           </article>
 
           <article className="card">
@@ -132,7 +135,7 @@ export const TodayView = ({
                 </article>
               ))}
             </div>
-            <button className="secondary" onClick={onOpenBoard}>タスクボードで確認する</button>
+            <button type="button" className="card-link-button" onClick={onOpenBoard}>すべて見る</button>
           </article>
         </div>
       </section>

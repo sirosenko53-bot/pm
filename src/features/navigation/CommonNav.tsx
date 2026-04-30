@@ -11,18 +11,26 @@ type CommonNavProps = {
 
 export const CommonNav = ({ primaryItems, secondaryItems = [] }: CommonNavProps) => (
   <nav className="common-nav" aria-label="プロジェクト内ナビゲーション">
-    <div className="common-nav-primary">
-      {primaryItems.map((item) => (
-        <button
-          key={item.label}
-          type="button"
-          className={`common-nav-item ${item.active ? 'active' : ''}`}
-          aria-current={item.active ? 'page' : undefined}
-          onClick={item.onClick}
-        >
-          {item.label}
-        </button>
-      ))}
+    <div className="common-nav-brand">
+      <span className="app-mark" aria-hidden="true" />
+      <strong>制作PM</strong>
+    </div>
+    <div className="common-nav-center">
+      <span className="common-nav-context">途切れ制作管理</span>
+      <span className="common-nav-separator" aria-hidden="true">/</span>
+      <div className="common-nav-primary">
+        {primaryItems.map((item) => (
+          <button
+            key={item.label}
+            type="button"
+            className={`common-nav-item ${item.active ? 'active' : ''}`}
+            aria-current={item.active ? 'page' : undefined}
+            onClick={item.onClick}
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
     </div>
     {secondaryItems.length > 0 ? (
       <div className="common-nav-secondary">

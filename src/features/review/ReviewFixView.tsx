@@ -102,58 +102,75 @@ export const ReviewFixView = ({
             { label: '設定・バックアップ', onClick: onOpenBackup },
           ]}
         />
-        <h1>確認・修正画面</h1>
+        <div className="page-title-row">
+          <h1>{project.projectName}</h1>
+          <span className="pill">確認・修正</span>
+        </div>
         <p>{workspace.workspaceName} / {project.projectName}（{project.projectType}）</p>
         <p className="meta">Googleカレンダー正本 / ローカル保存 / JSONバックアップ / Drive共有JSON対応</p>
         {storageWarning ? <p className="warning-text">{storageWarning}</p> : null}
       </section>
 
-      <section className="summary-grid">
-        <article className="card summary-card"><h3>確認待ち</h3><p>{summary.reviewWaiting.length}件</p></article>
-        <article className="card summary-card"><h3>修正待ち</h3><p>{summary.fixWaiting.length}件</p></article>
-        <article className="card summary-card"><h3>遅延中</h3><p>{summary.delayedCount}件</p></article>
-        <article className="card summary-card"><h3>今日対応</h3><p>{summary.todayCount}件</p></article>
+      <section className="review-fix-dashboard">
+        <div className="review-fix-main-grid">
+          <article className="card review-fix-column review-fix-column-review">
+            <div className="review-fix-column-heading">
+              <h2>確認待ち</h2>
+              <span className="pill">{summary.reviewWaiting.length}件</span>
+            </div>
+            <p className="meta">status = 確認待ち のタスク一覧</p>
+            <div className="review-fix-task-list">
+              {summary.reviewWaiting.length === 0 ? <p className="empty-state">該当タスクなし</p> : null}
+              {summary.reviewWaiting.map((task) => renderTaskCard(task, onOpenBoard, onChangeStatus))}
+            </div>
+          </article>
+
+          <article className="card review-fix-column review-fix-column-fix">
+            <div className="review-fix-column-heading">
+              <h2>修正待ち</h2>
+              <span className="pill">{summary.fixWaiting.length}件</span>
+            </div>
+            <p className="meta">status = 修正待ち のタスク一覧</p>
+            <div className="review-fix-task-list">
+              {summary.fixWaiting.length === 0 ? <p className="empty-state">該当タスクなし</p> : null}
+              {summary.fixWaiting.map((task) => renderTaskCard(task, onOpenBoard, onChangeStatus))}
+            </div>
+          </article>
+        </div>
+
+        <aside className="card review-fix-sidebar">
+          <h2>状況サマリー</h2>
+          <div className="review-fix-stat-list">
+            <div className="review-fix-stat"><span>確認待ち</span><strong>{summary.reviewWaiting.length}</strong><small>件</small></div>
+            <div className="review-fix-stat"><span>修正待ち</span><strong>{summary.fixWaiting.length}</strong><small>件</small></div>
+            <div className="review-fix-stat"><span>期限超過</span><strong>{summary.delayedCount}</strong><small>件</small></div>
+            <div className="review-fix-stat"><span>今日対応</span><strong>{summary.todayCount}</strong><small>件</small></div>
+          </div>
+        </aside>
       </section>
 
-      <section className="review-fix-summary-grid">
-        <article className="card">
-          <h2>担当者別件数</h2>
-          <div className="status-row">
-            {summary.assigneeGroups.length === 0 ? <p className="empty-state">該当タスクなし</p> : null}
-            {summary.assigneeGroups.map((item) => (
-              <span key={item.assignee} className="pill">{item.assignee}: {item.count}件</span>
-            ))}
-          </div>
-        </article>
-        <article className="card">
-          <h2>工程別件数</h2>
-          <div className="status-row">
-            {summary.stageGroups.length === 0 ? <p className="empty-state">該当タスクなし</p> : null}
-            {summary.stageGroups.map((item) => (
-              <span key={item.stageName} className="pill">{item.stageName}: {item.count}件</span>
-            ))}
-          </div>
-        </article>
-      </section>
-
-      <section className="review-fix-main-grid">
-        <article className="card review-fix-column">
-          <h2>確認待ち</h2>
-          <p className="meta">status = 確認待ち のタスク一覧</p>
-          <div className="review-fix-task-list">
-            {summary.reviewWaiting.length === 0 ? <p className="empty-state">該当タスクなし</p> : null}
-            {summary.reviewWaiting.map((task) => renderTaskCard(task, onOpenBoard, onChangeStatus))}
-          </div>
-        </article>
-
-        <article className="card review-fix-column">
-          <h2>修正待ち</h2>
-          <p className="meta">status = 修正待ち のタスク一覧</p>
-          <div className="review-fix-task-list">
-            {summary.fixWaiting.length === 0 ? <p className="empty-state">該当タスクなし</p> : null}
-            {summary.fixWaiting.map((task) => renderTaskCard(task, onOpenBoard, onChangeStatus))}
-          </div>
-        </article>
+      <section className="card review-fix-insight-card">
+        <h2>集計</h2>
+        <div className="review-fix-insight-grid">
+          <article>
+            <h3>担当者別件数</h3>
+            <div className="status-row">
+              {summary.assigneeGroups.length === 0 ? <p className="empty-state">該当タスクなし</p> : null}
+              {summary.assigneeGroups.map((item) => (
+                <span key={item.assignee} className="pill">{item.assignee}: {item.count}件</span>
+              ))}
+            </div>
+          </article>
+          <article>
+            <h3>工程別件数</h3>
+            <div className="status-row">
+              {summary.stageGroups.length === 0 ? <p className="empty-state">該当タスクなし</p> : null}
+              {summary.stageGroups.map((item) => (
+                <span key={item.stageName} className="pill">{item.stageName}: {item.count}件</span>
+              ))}
+            </div>
+          </article>
+        </div>
       </section>
     </main>
   );

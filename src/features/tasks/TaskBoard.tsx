@@ -153,7 +153,10 @@ export const TaskBoard = ({
             ...(onOpenBackup ? [{ label: '設定・バックアップ', onClick: onOpenBackup }] : []),
           ]}
         />
-        <h1>タスクボード</h1>
+        <div className="page-title-row">
+          <h1>タスクボード</h1>
+          <span className="pill">タスク</span>
+        </div>
         <p>{workspace.workspaceName}</p>
         <p className="meta board-caption">
           表示中: {selectedProjectId === 'all' ? '全プロジェクト' : workspace.projects.find((project) => project.projectId === selectedProjectId)?.projectName ?? '不明'}
