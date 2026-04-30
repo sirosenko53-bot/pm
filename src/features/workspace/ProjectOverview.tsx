@@ -1,7 +1,7 @@
-import type { TaskStatus, TaskViewModel } from '../../domain/taskTypes';
+import type { TaskViewModel } from '../../domain/taskTypes';
 import type { Project } from '../../domain/workspaceTypes';
+import { CommonNav } from '../navigation/CommonNav';
 import { calculateTaskSummary } from '../tasks/taskMetrics';
-import { TaskDebugList } from '../tasks/TaskDebugList';
 
 type Props = {
   workspaceName: string;
@@ -14,7 +14,6 @@ type Props = {
   onOpenToday: () => void;
   onOpenWorkflow: () => void;
   onOpenReviewFix: () => void;
-  onChangeStatus: (task: TaskViewModel, status: TaskStatus) => void;
 };
 
 export const ProjectOverview = ({
@@ -28,7 +27,6 @@ export const ProjectOverview = ({
   onOpenToday,
   onOpenWorkflow,
   onOpenReviewFix,
-  onChangeStatus,
 }: Props) => {
   const summary = calculateTaskSummary(tasks);
   const today = new Date();
@@ -55,15 +53,19 @@ export const ProjectOverview = ({
 
   return (
     <main className="page">
-      <div className="overview-nav">
-        <button className="secondary" onClick={onBack}>← ワークスペースホームに戻る</button>
-        <button className="secondary" onClick={onOpenToday}>今日画面へ</button>
-        <button className="secondary" onClick={onOpenWorkflow}>工程画面へ</button>
-        <button className="secondary" onClick={onOpenReviewFix}>確認・修正画面へ</button>
-        <button className="secondary" onClick={onOpenBoard}>タスクボードを見る</button>
-        <button className="secondary" onClick={onOpenBackup}>設定・バックアップ</button>
-        <a href="#project-task-list" className="secondary-link">タスク一覧を見る</a>
-      </div>
+      <CommonNav
+        primaryItems={[
+          { label: '概要', onClick: () => undefined, active: true },
+          { label: '今日', onClick: onOpenToday },
+          { label: '工程', onClick: onOpenWorkflow },
+          { label: 'タスク', onClick: onOpenBoard },
+          { label: '確認・修正', onClick: onOpenReviewFix },
+        ]}
+        secondaryItems={[
+          { label: 'ワークスペースホームへ戻る', onClick: onBack },
+          { label: '設定・バックアップ', onClick: onOpenBackup },
+        ]}
+      />
       <section className="card project-overview-header">
         <p className="meta">ワークスペース: {workspaceName}</p>
         <h1>{project.projectName}</h1>
@@ -174,11 +176,6 @@ export const ProjectOverview = ({
             <span className="pill" key={status}>{status}: {count}</span>
           ))}
         </div>
-      </section>
-
-      <section className="card" id="project-task-list">
-        <h2>プロジェクト内タスク</h2>
-        <TaskDebugList tasks={tasks} onChangeStatus={onChangeStatus} />
       </section>
     </main>
   );

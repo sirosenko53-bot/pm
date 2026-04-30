@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { TASK_STATUSES, type TaskStatus, type TaskViewModel } from '../../domain/taskTypes';
 import type { Workspace } from '../../domain/workspaceTypes';
+import { CommonNav, type CommonNavItem } from '../navigation/CommonNav';
 
 type Props = {
   workspace: Workspace;
@@ -70,6 +71,17 @@ export const TaskBoard = ({
   const [selectedProjectId, setSelectedProjectId] = useState(initialProjectId ?? 'all');
   const [draggingTaskId, setDraggingTaskId] = useState<string | null>(null);
   const [dragOverStatus, setDragOverStatus] = useState<TaskStatus | null>(null);
+  const hasProjectContext = Boolean(projectContextId && onBackProject);
+
+  const primaryNavItems: CommonNavItem[] = hasProjectContext
+    ? [
+        { label: '概要', onClick: onBackProject! },
+        ...(onOpenToday ? [{ label: '今日', onClick: onOpenToday }] : []),
+        ...(onOpenWorkflow ? [{ label: '工程', onClick: onOpenWorkflow }] : []),
+        { label: 'タスク', onClick: () => undefined, active: true },
+        ...(onOpenReviewFix ? [{ label: '確認・修正', onClick: onOpenReviewFix }] : []),
+      ]
+    : [{ label: 'タスク', onClick: () => undefined, active: true }];
 
   const visibleTasks = useMemo(() => {
     if (selectedProjectId === 'all') return tasks;
@@ -134,14 +146,13 @@ export const TaskBoard = ({
   return (
     <main className="page">
       <section className="card board-header">
-        <div className="overview-nav">
-          <button className="secondary" onClick={onBackHome}>← ワークスペースホーム</button>
-          {onBackProject ? <button className="secondary" onClick={onBackProject}>← プロジェクト概要</button> : null}
-          {projectContextId && onOpenToday ? <button className="secondary" onClick={onOpenToday}>今日画面へ</button> : null}
-          {projectContextId && onOpenWorkflow ? <button className="secondary" onClick={onOpenWorkflow}>工程画面へ</button> : null}
-          {projectContextId && onOpenReviewFix ? <button className="secondary" onClick={onOpenReviewFix}>確認・修正画面へ</button> : null}
-          {onOpenBackup ? <button className="secondary" onClick={onOpenBackup}>設定・バックアップ</button> : null}
-        </div>
+        <CommonNav
+          primaryItems={primaryNavItems}
+          secondaryItems={[
+            { label: 'ワークスペースホームへ戻る', onClick: onBackHome },
+            ...(onOpenBackup ? [{ label: '設定・バックアップ', onClick: onOpenBackup }] : []),
+          ]}
+        />
         <h1>タスクボード</h1>
         <p>{workspace.workspaceName}</p>
         <p className="meta board-caption">

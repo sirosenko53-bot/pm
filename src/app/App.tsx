@@ -351,7 +351,6 @@ export const App = () => {
         onOpenToday={() => openToday(project.projectId)}
         onOpenWorkflow={() => openWorkflow(project.projectId)}
         onOpenReviewFix={() => openReviewFix(project.projectId)}
-        onChangeStatus={handleChangeStatus}
       />
     );
   }
@@ -366,7 +365,6 @@ export const App = () => {
       onSelectProject={openProjectOverview}
       onOpenBoard={() => openTaskBoard()}
       onOpenBackup={() => openBackup()}
-      onChangeStatus={handleChangeStatus}
     />
   );
 };

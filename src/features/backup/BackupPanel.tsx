@@ -85,6 +85,7 @@ export const BackupPanel = ({
   const [conflictState, setConflictState] = useState<ConflictState | null>(null);
 
   const overlayCount = useMemo(() => getAllTaskOverlays().length, [lastBackupAt, panelMessage]);
+  const hasSharedFileId = Boolean(sharedStateMetadata.sharedFileId);
 
   const handleExport = () => {
     setPanelMessage(undefined);
@@ -413,7 +414,7 @@ export const BackupPanel = ({
 
       <section className="card shared-state-card">
         <h2>共有状態</h2>
-        <p className="note">Google Drive共有JSONの読取・保存は後続フェーズで実装予定です。</p>
+        <p className="note">Google Drive共有JSONの手動読取・手動保存に対応しています。自動保存、ポーリング同期、Driveファイル作成は未実装です。OAuthトークンは保存しません。</p>
         <div className="shared-state-grid">
           <p>状態ソース: <strong>{sourceLabelMap[sharedStateMetadata.source]}</strong></p>
           <p>同期状態: <strong>{sharedStateMetadata.syncStatus}</strong></p>
@@ -434,6 +435,9 @@ export const BackupPanel = ({
         {!sharedStateMetadata.sharedFileId ? (
           <p className="note">現在はローカル保存された状態を表示しています。</p>
         ) : null}
+        {!hasSharedFileId ? (
+          <p className="note">DriveファイルIDを設定すると、共有JSONの読取・保存ができます。</p>
+        ) : null}
 
         {sharedStateMetadata.hasLocalChangesAfterShare ? (
           <p className="warning-text shared-state-warning">
@@ -447,7 +451,7 @@ export const BackupPanel = ({
         <button
           type="button"
           className="secondary"
-          disabled={!sharedStateMetadata.sharedFileId || sharedStateMetadata.syncStatus === 'saving'}
+          disabled={!hasSharedFileId || sharedStateMetadata.syncStatus === 'saving'}
           onClick={() => void handleManualSaveSharedState()}
         >
           共有JSONへ保存
@@ -513,7 +517,7 @@ export const BackupPanel = ({
       <section className="card shared-state-card">
         <h2>Drive共有JSON設定</h2>
         <p className="note">Google Drive上の shared-state.json / workspace-state.json のファイルIDを登録します。</p>
-        <p className="note">この段階ではDrive API接続はまだ行いません。</p>
+        <p className="note">登録したファイルIDを使って、手動読取・手動保存を実行します。</p>
         <div className="shared-settings-form">
           <label>
             DriveファイルID
@@ -544,7 +548,17 @@ export const BackupPanel = ({
         <h2>Drive共有JSONの手動読取</h2>
         <p className="note">Google Drive上の通常JSONファイルを指定してください。Googleドキュメントやスプレッドシートはこの段階では対象外です。</p>
         <p className="note">通常はGoogle認証経由でDrive読取トークンを取得して読み込みます。トークンは保存しません。</p>
-        <button type="button" className="secondary" onClick={() => void handleManualReadWithOAuth()}>共有JSONを読み込む（Google認証）</button>
+        {!hasSharedFileId ? (
+          <p className="note">共有JSONを読み込むには、先にDriveファイルIDを設定してください。</p>
+        ) : null}
+        <button
+          type="button"
+          className="secondary"
+          disabled={!hasSharedFileId || sharedStateMetadata.syncStatus === 'loading'}
+          onClick={() => void handleManualReadWithOAuth()}
+        >
+          共有JSONを読み込む（Google認証）
+        </button>
 
         <details className="shared-debug">
           <summary>開発用：アクセストークン手入力で読む</summary>
@@ -557,7 +571,14 @@ export const BackupPanel = ({
               placeholder="ya29..."
             />
           </label>
-          <button type="button" className="secondary" onClick={() => void handleManualReadWithDebugToken()}>開発用トークンで読み込む</button>
+          <button
+            type="button"
+            className="secondary"
+            disabled={!hasSharedFileId || sharedStateMetadata.syncStatus === 'loading'}
+            onClick={() => void handleManualReadWithDebugToken()}
+          >
+            開発用トークンで読み込む
+          </button>
         </details>
       </section>
 
