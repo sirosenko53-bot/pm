@@ -64,13 +64,31 @@
 
 Googleカレンダーはプロジェクトごとに分けて運用します。たとえば、詩集制作カレンダー、展示制作カレンダー、音声作品カレンダー、小説執筆カレンダーを別々に用意します。
 
-`workspaceConfig.ts` の `calendarSources` では、`calendarSource.calendarId` に実際のGoogleカレンダーIDを設定し、`calendarSource.projectId` に対応する制作PM側の `projectId` を設定します。
+`workspaceConfig.ts` の `calendarSources` では、`calendarSource.calendarId` を `.env.local` の環境変数から読み取り、`calendarSource.projectId` に対応する制作PM側の `projectId` を設定します。実際のGoogleカレンダーIDはGit管理するファイルへ直書きしません。
 
 予定名は原則として `担当者/予定名/プロジェクト名` の形式にします。予定名から解析したプロジェクト名が `workspace.projects.projectName` と一致する場合は、そのプロジェクトを優先します。一致しない場合、または予定名が命名規則どおりに解析できない場合は、予定を取得した `calendarSource.projectId` をプロジェクト判定のfallbackとして使います。
 
 このfallbackにより、プロジェクト別カレンダーに入っている予定は、予定名が多少崩れていても対象プロジェクトへ分類できます。ただし、命名規則違反の `parseError` は警告として残します。
 
 Googleカレンダーはread-onlyで読み取ります。Googleカレンダーへの書き戻し、予定作成、予定更新、予定削除は未実装です。
+
+### 7.1 GoogleカレンダーIDの設定
+
+実運用のGoogleカレンダーIDは `.env.local` に設定します。`.env.local` はGit管理しません。
+
+```env
+VITE_GOOGLE_OAUTH_CLIENT_ID=your-client-id.apps.googleusercontent.com
+VITE_USE_MOCK_CALENDAR=false
+
+VITE_CALENDAR_ID_POETRY=dummy-poetry-calendar-id
+VITE_CALENDAR_ID_EXHIBITION=dummy-exhibition-calendar-id
+VITE_CALENDAR_ID_AUDIO=dummy-audio-calendar-id
+VITE_CALENDAR_ID_NOVEL=dummy-novel-calendar-id
+```
+
+GoogleカレンダーIDは、Googleカレンダーの「設定と共有」から対象カレンダーを開き、「カレンダーの統合」内の「カレンダーID」で確認します。
+
+`VITE_USE_MOCK_CALENDAR=false` のときは実カレンダー読取を行います。`VITE_CALENDAR_ID_POETRY`、`VITE_CALENDAR_ID_EXHIBITION`、`VITE_CALENDAR_ID_AUDIO`、`VITE_CALENDAR_ID_NOVEL` が未設定の場合、`workspaceConfig.ts` の仮IDが使われるため、実読取は失敗する可能性があります。
 
 ## 8. 注意点
 
