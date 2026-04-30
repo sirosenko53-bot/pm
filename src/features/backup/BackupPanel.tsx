@@ -400,7 +400,10 @@ export const BackupPanel = ({
           <button className="secondary" onClick={onBackHome}>← ワークスペースホーム</button>
           {onBackProject ? <button className="secondary" onClick={onBackProject}>← プロジェクト画面へ戻る</button> : null}
         </div>
-        <h1>設定・バックアップ</h1>
+        <div className="page-title-row">
+          <h1>設定・バックアップ</h1>
+          <span className="pill">設定</span>
+        </div>
         <p>ローカル保存された状態をJSONとして書き出し・復元します。</p>
         <p>現在のワークスペース: {workspace.workspaceName}</p>
         <p>保存済みTaskOverlay件数: {overlayCount}件</p>

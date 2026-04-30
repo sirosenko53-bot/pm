@@ -32,6 +32,10 @@ export const ProjectCodeEntry = ({ onSubmit }: Props) => {
 
   return (
     <main className="center">
+      <div className="entry-brand">
+        <span className="app-mark" aria-hidden="true" />
+        <strong>制作PM</strong>
+      </div>
       <section className="card entry project-code-card">
         <p className="app-title">制作PM</p>
         <h1>プロジェクトに参加する</h1>

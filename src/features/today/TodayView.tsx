@@ -55,7 +55,10 @@ export const TodayView = ({
             { label: '設定・バックアップ', onClick: onOpenBackup },
           ]}
         />
-        <h1>今日画面</h1>
+        <div className="page-title-row">
+          <h1>{project?.projectName ?? 'プロジェクト未選択'}</h1>
+          <span className="pill">今日</span>
+        </div>
         <p>{workspace.workspaceName} / {project?.projectName ?? 'プロジェクト未選択'}</p>
         <p className="meta">{today.toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' })}</p>
         <p className="meta">Googleカレンダー正本 / ローカル保存 / JSONバックアップ対応</p>

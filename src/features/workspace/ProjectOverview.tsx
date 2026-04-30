@@ -76,9 +76,12 @@ export const ProjectOverview = ({
         ]}
       />
       <section className="card project-overview-header">
-        <p className="meta">ワークスペース: {workspaceName}</p>
-        <h1>{project.projectName}</h1>
-        <p className="meta">種別: {project.projectType}</p>
+        <p className="meta breadcrumb">ワークスペースホーム 〉 {project.projectName} 〉 概要</p>
+        <div className="page-title-row">
+          <h1>{project.projectName}</h1>
+          <span className="pill">概要</span>
+        </div>
+        <p className="meta">ワークスペース: {workspaceName} / 種別: {project.projectType}</p>
         <p>現在工程: {project.currentStageId ?? '未設定'} <span className="meta">（仮算出を含む）</span></p>
         <p>次のマイルストーン: {project.milestones[0] ?? '未設定'}</p>
         <p className="meta">Googleカレンダー正本 / ローカル保存 / JSONバックアップ対応</p>

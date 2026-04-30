@@ -58,7 +58,10 @@ export const JoinedProjectsView = ({
     <main className="page">
       <section className="card joined-projects-header">
         <div>
-          <p className="app-title">制作PM</p>
+          <div className="workspace-brand">
+            <span className="app-mark" aria-hidden="true" />
+            <strong>制作PM</strong>
+          </div>
           <h1>参加中プロジェクト</h1>
           <p className="meta">この端末で参加済みのプロジェクトです。</p>
         </div>
@@ -74,11 +77,22 @@ export const JoinedProjectsView = ({
         {joinedProjectCards.map(({ joinedProject, project }) => (
           <article key={joinedProject.projectId} className="card joined-project-card">
             <div className="project-card-header">
-              <strong>{project.projectName}</strong>
+              <div className="project-card-title">
+                <span className="project-icon" aria-hidden="true">{project.projectName.slice(0, 1)}</span>
+                <strong>{project.projectName}</strong>
+              </div>
               <span className="pill">種別: {project.projectType}</span>
             </div>
-            <p className="meta">現在工程: {project.currentStageId ?? '未設定'}</p>
-            <p className="meta">次のマイルストーン: {project.milestones[0] ?? '未設定'}</p>
+            <div className="project-card-lines">
+              <p>
+                <span>現在工程</span>
+                <strong>{project.currentStageId ?? '未設定'}</strong>
+              </p>
+              <p>
+                <span>次のマイルストーン</span>
+                <strong>{project.milestones[0] ?? '未設定'}</strong>
+              </p>
+            </div>
             <p className="meta">最終閲覧日時: {formatDateTime(joinedProject.lastOpenedAt)}</p>
             <div className="joined-project-actions">
               <button type="button" className="secondary" onClick={() => onOpenProject(project)}>

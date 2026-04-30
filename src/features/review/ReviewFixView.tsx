@@ -102,7 +102,10 @@ export const ReviewFixView = ({
             { label: '設定・バックアップ', onClick: onOpenBackup },
           ]}
         />
-        <h1>確認・修正画面</h1>
+        <div className="page-title-row">
+          <h1>{project.projectName}</h1>
+          <span className="pill">確認・修正</span>
+        </div>
         <p>{workspace.workspaceName} / {project.projectName}（{project.projectType}）</p>
         <p className="meta">Googleカレンダー正本 / ローカル保存 / JSONバックアップ / Drive共有JSON対応</p>
         {storageWarning ? <p className="warning-text">{storageWarning}</p> : null}
