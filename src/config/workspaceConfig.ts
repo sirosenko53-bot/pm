@@ -1,5 +1,16 @@
 import type { Workspace } from '../domain/workspaceTypes';
 
+const readCalendarId = (value: unknown, fallback: string): string =>
+  typeof value === 'string' && value.trim() ? value.trim() : fallback;
+
+const CALENDAR_ID_POETRY = readCalendarId(import.meta.env.VITE_CALENDAR_ID_POETRY, 'cal-poetry@example.com');
+const CALENDAR_ID_EXHIBITION = readCalendarId(
+  import.meta.env.VITE_CALENDAR_ID_EXHIBITION,
+  'cal-exhibition@example.com',
+);
+const CALENDAR_ID_AUDIO = readCalendarId(import.meta.env.VITE_CALENDAR_ID_AUDIO, 'cal-audio@example.com');
+const CALENDAR_ID_NOVEL = readCalendarId(import.meta.env.VITE_CALENDAR_ID_NOVEL, 'cal-novel@example.com');
+
 export const WORKSPACE: Workspace = {
   workspaceId: 'ws-tokigire',
   workspaceCode: 'tokigire',
@@ -9,7 +20,7 @@ export const WORKSPACE: Workspace = {
       projectId: 'project-poetry',
       projectName: '詩集制作',
       projectType: 'poetry',
-      calendarId: 'cal-poetry@example.com',
+      calendarId: CALENDAR_ID_POETRY,
       workflowTemplateId: 'workflow-poetry',
       currentStageId: 'poetry-creation',
       milestones: ['本文確定'],
@@ -19,7 +30,7 @@ export const WORKSPACE: Workspace = {
       projectId: 'project-exhibition',
       projectName: '展示制作',
       projectType: 'exhibition',
-      calendarId: 'cal-exhibition@example.com',
+      calendarId: CALENDAR_ID_EXHIBITION,
       workflowTemplateId: 'workflow-exhibition',
       currentStageId: 'exhibition-impl',
       milestones: ['公開準備'],
@@ -29,7 +40,7 @@ export const WORKSPACE: Workspace = {
       projectId: 'project-audio',
       projectName: '音声作品',
       projectType: 'audio',
-      calendarId: 'cal-audio@example.com',
+      calendarId: CALENDAR_ID_AUDIO,
       workflowTemplateId: 'workflow-audio',
       currentStageId: 'audio-recording',
       milestones: ['収録完了'],
@@ -39,7 +50,7 @@ export const WORKSPACE: Workspace = {
       projectId: 'project-novel',
       projectName: '小説執筆',
       projectType: 'novel',
-      calendarId: 'cal-novel@example.com',
+      calendarId: CALENDAR_ID_NOVEL,
       workflowTemplateId: 'workflow-novel',
       currentStageId: 'novel-body',
       milestones: ['本文初稿'],
@@ -55,7 +66,7 @@ export const WORKSPACE: Workspace = {
   calendarSources: [
     {
       calendarSourceId: 'source-poetry',
-      calendarId: 'cal-poetry@example.com',
+      calendarId: CALENDAR_ID_POETRY,
       projectId: 'project-poetry',
       displayName: '詩集制作カレンダー',
       color: '#3b82f6',
@@ -63,7 +74,7 @@ export const WORKSPACE: Workspace = {
     },
     {
       calendarSourceId: 'source-exhibition',
-      calendarId: 'cal-exhibition@example.com',
+      calendarId: CALENDAR_ID_EXHIBITION,
       projectId: 'project-exhibition',
       displayName: '展示制作カレンダー',
       color: '#14b8a6',
@@ -71,7 +82,7 @@ export const WORKSPACE: Workspace = {
     },
     {
       calendarSourceId: 'source-audio',
-      calendarId: 'cal-audio@example.com',
+      calendarId: CALENDAR_ID_AUDIO,
       projectId: 'project-audio',
       displayName: '音声作品カレンダー',
       color: '#f97316',
@@ -79,7 +90,7 @@ export const WORKSPACE: Workspace = {
     },
     {
       calendarSourceId: 'source-novel',
-      calendarId: 'cal-novel@example.com',
+      calendarId: CALENDAR_ID_NOVEL,
       projectId: 'project-novel',
       displayName: '小説執筆カレンダー',
       color: '#a855f7',
