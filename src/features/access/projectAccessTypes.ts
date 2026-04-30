@@ -13,3 +13,19 @@ export type JoinedProject = {
   joinedAt: string;
   lastOpenedAt?: string;
 };
+
+export type LastViewRoute =
+  | 'joined-projects'
+  | 'workspace-home'
+  | 'project-overview'
+  | 'today'
+  | 'workflow'
+  | 'task-board'
+  | 'review-fix'
+  | 'backup-settings';
+
+export type LastView = {
+  route: LastViewRoute;
+  projectId?: string;
+  updatedAt: string;
+};

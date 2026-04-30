@@ -60,7 +60,19 @@
 - Firebase / Firestore / Supabase / 独自サーバー
 - Googleカレンダー書き戻し
 
-## 7. 注意点
+## 7. Googleカレンダーのプロジェクト別運用
+
+Googleカレンダーはプロジェクトごとに分けて運用します。たとえば、詩集制作カレンダー、展示制作カレンダー、音声作品カレンダー、小説執筆カレンダーを別々に用意します。
+
+`workspaceConfig.ts` の `calendarSources` では、`calendarSource.calendarId` に実際のGoogleカレンダーIDを設定し、`calendarSource.projectId` に対応する制作PM側の `projectId` を設定します。
+
+予定名は原則として `担当者/予定名/プロジェクト名` の形式にします。予定名から解析したプロジェクト名が `workspace.projects.projectName` と一致する場合は、そのプロジェクトを優先します。一致しない場合、または予定名が命名規則どおりに解析できない場合は、予定を取得した `calendarSource.projectId` をプロジェクト判定のfallbackとして使います。
+
+このfallbackにより、プロジェクト別カレンダーに入っている予定は、予定名が多少崩れていても対象プロジェクトへ分類できます。ただし、命名規則違反の `parseError` は警告として残します。
+
+Googleカレンダーはread-onlyで読み取ります。Googleカレンダーへの書き戻し、予定作成、予定更新、予定削除は未実装です。
+
+## 8. 注意点
 
 `joined projects` は端末ごとの表示設定です。チーム全体で共有する状態ではないため、Drive共有JSONには含めません。
 
