@@ -1,5 +1,6 @@
 import { TASK_STATUSES, type TaskStatus, type TaskViewModel } from '../../domain/taskTypes';
 import type { Workspace } from '../../domain/workspaceTypes';
+import { CommonNav } from '../navigation/CommonNav';
 import {
   calculateReviewFixSummary,
   getTodayReviewFixTasks,
@@ -88,14 +89,19 @@ export const ReviewFixView = ({
   return (
     <main className="page review-fix-page">
       <section className="card board-header">
-        <div className="overview-nav">
-          <button className="secondary" onClick={onBackHome}>← ワークスペースホーム</button>
-          <button className="secondary" onClick={onBackProject}>← プロジェクト概要</button>
-          <button className="secondary" onClick={onOpenToday}>今日画面へ</button>
-          <button className="secondary" onClick={onOpenWorkflow}>工程画面へ</button>
-          <button className="secondary" onClick={onOpenBoard}>タスクボードへ</button>
-          <button className="secondary" onClick={onOpenBackup}>設定・バックアップ</button>
-        </div>
+        <CommonNav
+          primaryItems={[
+            { label: '概要', onClick: onBackProject },
+            { label: '今日', onClick: onOpenToday },
+            { label: '工程', onClick: onOpenWorkflow },
+            { label: 'タスク', onClick: onOpenBoard },
+            { label: '確認・修正', onClick: () => undefined, active: true },
+          ]}
+          secondaryItems={[
+            { label: 'ワークスペースホームへ戻る', onClick: onBackHome },
+            { label: '設定・バックアップ', onClick: onOpenBackup },
+          ]}
+        />
         <h1>確認・修正画面</h1>
         <p>{workspace.workspaceName} / {project.projectName}（{project.projectType}）</p>
         <p className="meta">Googleカレンダー正本 / ローカル保存 / JSONバックアップ / Drive共有JSON対応</p>

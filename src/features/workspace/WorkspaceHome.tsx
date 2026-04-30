@@ -1,6 +1,5 @@
-import type { TaskStatus, TaskViewModel } from '../../domain/taskTypes';
+import type { TaskViewModel } from '../../domain/taskTypes';
 import type { Workspace } from '../../domain/workspaceTypes';
-import { TaskDebugList } from '../tasks/TaskDebugList';
 import { calculateTaskSummary, filterTasksByProject } from '../tasks/taskMetrics';
 
 type Props = {
@@ -12,7 +11,6 @@ type Props = {
   onSelectProject: (projectId: string) => void;
   onOpenBoard: () => void;
   onOpenBackup: () => void;
-  onChangeStatus: (task: TaskViewModel, status: TaskStatus) => void;
 };
 
 export const WorkspaceHome = ({
@@ -24,7 +22,6 @@ export const WorkspaceHome = ({
   onSelectProject,
   onOpenBoard,
   onOpenBackup,
-  onChangeStatus,
 }: Props) => {
   const summary = calculateTaskSummary(tasks);
   const todayKey = new Date().toISOString().slice(0, 10);
@@ -81,11 +78,15 @@ export const WorkspaceHome = ({
               const projectTasks = filterTasksByProject(tasks, project.projectId);
               const projectSummary = calculateTaskSummary(projectTasks);
               return (
-                <button key={project.projectId} className="project-card" onClick={() => onSelectProject(project.projectId)}>
+                <button key={project.projectId} type="button" className="project-card" onClick={() => onSelectProject(project.projectId)}>
                   <div className="project-card-header">
-                    <strong>{project.projectName}</strong>
+                    <div>
+                      <strong>{project.projectName}</strong>
+                      <p className="meta">プロジェクト概要を開く</p>
+                    </div>
                     <span className="pill">種別: {project.projectType}</span>
                   </div>
+                  <span className="project-card-arrow" aria-hidden="true">開く →</span>
                   <p className="meta">現在工程: {project.currentStageId ?? '未設定'}</p>
                   <p className="meta">次のマイルストーン: {project.milestones[0] ?? '未設定'}</p>
                   <div className="project-meta-grid">
@@ -95,7 +96,7 @@ export const WorkspaceHome = ({
                     <span>確認待ち: {projectSummary.reviewWaiting}件</span>
                     <span>修正待ち: {projectSummary.revisionWaiting}件</span>
                   </div>
-                  <span className="secondary-link">プロジェクト概要へ進む →</span>
+                  <span className="project-card-cta">このプロジェクトを開く →</span>
                 </button>
               );
             })}
@@ -121,10 +122,6 @@ export const WorkspaceHome = ({
         </article>
       </section>
 
-      <section className="card" id="task-list">
-        <h2>タスク仮一覧</h2>
-        <TaskDebugList tasks={tasks} onChangeStatus={onChangeStatus} />
-      </section>
     </main>
   );
 };
