@@ -21,7 +21,17 @@ type Props = {
   ) => void;
 };
 
-const resolveDueText = (task: TaskViewModel) => task.dueDate || task.endDateTime || '-';
+const formatCompactDateTime = (value?: string): string => {
+  if (!value) return '-';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  const hasTime = value.includes('T') || /\d{1,2}:\d{2}/.test(value);
+  return hasTime
+    ? date.toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+    : date.toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' });
+};
+
+const resolveDueText = (task: TaskViewModel) => formatCompactDateTime(task.dueDate || task.endDateTime);
 
 const toSortableTime = (value?: string) => {
   const time = value ? new Date(value).getTime() : Number.NaN;

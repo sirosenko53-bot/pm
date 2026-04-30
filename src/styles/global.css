@@ -1338,6 +1338,71 @@ button:hover {
   gap: 14px;
 }
 
+.today-item,
+.board-card,
+.review-fix-task-card,
+.overview-task-item {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.today-item > div,
+.board-card > *,
+.review-fix-task-card > *,
+.overview-task-item > * {
+  min-width: 0;
+}
+
+.today-time,
+.today-title,
+.board-card h3,
+.board-card .meta,
+.review-fix-task-title,
+.review-fix-task-card .meta {
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+.today-time {
+  line-height: 1.35;
+}
+
+.today-title,
+.board-card h3,
+.review-fix-task-title {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.today-side-grid .today-item,
+.workflow-detail-card .today-item {
+  grid-template-columns: 1fr;
+}
+
+.today-side-grid .today-time,
+.workflow-detail-card .today-time {
+  width: fit-content;
+  max-width: 100%;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #eef4ff;
+  font-size: 13px;
+}
+
+.status-row,
+.status-buttons {
+  min-width: 0;
+}
+
+.status-button,
+.pill,
+.warning {
+  max-width: 100%;
+  white-space: normal;
+}
+
 .workflow-layout {
   grid-template-columns: minmax(330px, 0.92fr) minmax(520px, 1.45fr) minmax(280px, 0.75fr);
   gap: 28px;
@@ -1513,8 +1578,8 @@ button:hover {
 
 .review-fix-column-heading,
 .review-fix-task-header {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: flex-start;
   gap: 12px;
 }

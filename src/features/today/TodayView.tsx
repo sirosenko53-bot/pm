@@ -18,6 +18,16 @@ type Props = {
   onChangeStatus: (task: TaskViewModel, status: TaskStatus) => void;
 };
 
+const formatCompactDateTime = (value?: string): string => {
+  if (!value) return '-';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  const hasTime = value.includes('T') || /\d{1,2}:\d{2}/.test(value);
+  return hasTime
+    ? date.toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+    : date.toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' });
+};
+
 export const TodayView = ({
   workspace,
   projectId,
@@ -108,7 +118,7 @@ export const TodayView = ({
               {dueTodayTasks.length === 0 ? <p className="empty-state">今日締切の未完了タスクはありません。</p> : null}
               {dueTodayTasks.map((task) => (
                 <article className="today-item" key={task.taskId}>
-                  <p className="today-time">{task.dueDate ?? '-'}</p>
+                  <p className="today-time">{formatCompactDateTime(task.dueDate)}</p>
                   <div>
                     <p className="today-title">{task.taskName}</p>
                     <p className="meta">担当: {task.assignee} / 工程: {task.stageName}</p>
@@ -126,7 +136,7 @@ export const TodayView = ({
               {todayReviewTasks.length === 0 ? <p className="empty-state">対象タスクはありません。</p> : null}
               {todayReviewTasks.map((task) => (
                 <article className="today-item" key={task.taskId}>
-                  <p className="today-time">{task.dueDate ?? formatTaskTime(task)}</p>
+                  <p className="today-time">{task.dueDate ? formatCompactDateTime(task.dueDate) : formatTaskTime(task)}</p>
                   <div>
                     <p className="today-title">{task.taskName}</p>
                     <p className="meta">担当: {task.assignee} / 工程: {task.stageName}</p>
