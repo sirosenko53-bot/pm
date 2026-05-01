@@ -2132,6 +2132,101 @@ button:hover {
   grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
 }
 
+.calendar-correction-panel {
+  display: grid;
+  gap: 22px;
+}
+
+.calendar-correction-heading {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: start;
+}
+
+.calendar-correction-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(320px, 1fr));
+  gap: 20px;
+}
+
+.calendar-correction-card {
+  min-width: 0;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 18px;
+  padding: 18px;
+  background: #fbfdff;
+  display: grid;
+  gap: 12px;
+}
+
+.calendar-correction-card input {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid #dbe7f5;
+  border-radius: 12px;
+  padding: 10px 12px;
+  font: inherit;
+}
+
+.calendar-correction-list {
+  display: grid;
+  gap: 12px;
+}
+
+.calendar-correction-item {
+  min-width: 0;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 14px;
+  background: #ffffff;
+  display: grid;
+  gap: 10px;
+}
+
+.calendar-correction-item-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: start;
+}
+
+.calendar-correction-item-header strong,
+.calendar-preview-diff dd {
+  overflow-wrap: anywhere;
+  line-height: 1.45;
+}
+
+.calendar-preview-diff {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.calendar-preview-diff div {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+}
+
+.calendar-preview-diff dt {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.calendar-preview-diff dd {
+  margin: 0;
+  color: #172033;
+}
+
+.field-label {
+  color: #334155;
+  font-size: 13px;
+  font-weight: 800;
+}
+
 @media (max-width: 1320px) {
   .common-nav {
     grid-template-columns: 1fr;
@@ -2152,7 +2247,9 @@ button:hover {
 
   .overview-bottom-grid,
   .workflow-layout,
-  .review-fix-dashboard {
+  .review-fix-dashboard,
+  .calendar-correction-grid,
+  .calendar-correction-heading {
     grid-template-columns: 1fr;
   }
 
