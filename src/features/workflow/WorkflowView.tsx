@@ -103,7 +103,7 @@ export const WorkflowView = ({
         </div>
         <p>{workspace.workspaceName} / {project.projectName}（{project.projectType}）</p>
         <p className="meta">現在工程: {currentStage?.stageName ?? '未設定'}</p>
-        <p className="meta">Googleカレンダー正本 / ローカル保存 / JSONバックアップ対応</p>
+        <p className="meta">Googleカレンダー正本 / ローカル保存 / 復元用ファイル対応</p>
         {storageWarning ? <p className="warning-text">{storageWarning}</p> : null}
       </section>
 

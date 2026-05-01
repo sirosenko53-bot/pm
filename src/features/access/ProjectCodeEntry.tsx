@@ -57,7 +57,7 @@ export const ProjectCodeEntry = ({ onSubmit }: Props) => {
           <p className="note">一度参加したプロジェクトはこの端末に保存されます。</p>
           <p className="note">次回以降は参加中プロジェクト一覧から開けます。</p>
           <p className="note">Googleカレンダーを正本として読み込みます。</p>
-          <p className="note">ローカル保存とJSONバックアップで無課金運用します。</p>
+          <p className="note">ローカル保存と復元用ファイルで無課金運用します。</p>
         </div>
       </section>
     </main>

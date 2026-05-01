@@ -1,5 +1,6 @@
 import { TASK_STATUSES, type TaskStatus, type TaskViewModel } from '../../domain/taskTypes';
 import type { Workspace } from '../../domain/workspaceTypes';
+import { CalendarMaintenancePanel } from '../calendar/CalendarMaintenancePanel';
 import { CommonNav } from '../navigation/CommonNav';
 import {
   calculateReviewFixSummary,
@@ -18,6 +19,7 @@ type Props = {
   onOpenBoard: () => void;
   onOpenBackup: () => void;
   onChangeStatus: (task: TaskViewModel, status: TaskStatus) => void;
+  onCalendarWriteBackComplete: () => void;
 };
 
 const formatCompactDateTime = (value?: string): string => {
@@ -89,6 +91,7 @@ export const ReviewFixView = ({
   onOpenBoard,
   onOpenBackup,
   onChangeStatus,
+  onCalendarWriteBackComplete,
 }: Props) => {
   const project = workspace.projects.find((item) => item.projectId === projectId);
   if (!project) return null;
@@ -119,7 +122,7 @@ export const ReviewFixView = ({
           <span className="pill">確認・修正</span>
         </div>
         <p>{workspace.workspaceName} / {project.projectName}（{project.projectType}）</p>
-        <p className="meta">Googleカレンダー正本 / ローカル保存 / JSONバックアップ / Drive共有JSON対応</p>
+        <p className="meta">Googleカレンダー正本 / ローカル保存 / 復元用ファイル / Drive共有対応</p>
         {storageWarning ? <p className="warning-text">{storageWarning}</p> : null}
       </section>
 
@@ -130,7 +133,6 @@ export const ReviewFixView = ({
               <h2>確認待ち</h2>
               <span className="pill">{summary.reviewWaiting.length}件</span>
             </div>
-            <p className="meta">status = 確認待ち のタスク一覧</p>
             <div className="review-fix-task-list">
               {summary.reviewWaiting.length === 0 ? <p className="empty-state">該当タスクなし</p> : null}
               {summary.reviewWaiting.map((task) => renderTaskCard(task, onOpenBoard, onChangeStatus))}
@@ -142,7 +144,6 @@ export const ReviewFixView = ({
               <h2>修正待ち</h2>
               <span className="pill">{summary.fixWaiting.length}件</span>
             </div>
-            <p className="meta">status = 修正待ち のタスク一覧</p>
             <div className="review-fix-task-list">
               {summary.fixWaiting.length === 0 ? <p className="empty-state">該当タスクなし</p> : null}
               {summary.fixWaiting.map((task) => renderTaskCard(task, onOpenBoard, onChangeStatus))}
@@ -184,6 +185,12 @@ export const ReviewFixView = ({
           </article>
         </div>
       </section>
+
+      <CalendarMaintenancePanel
+        project={project}
+        tasks={tasks}
+        onWriteBackComplete={onCalendarWriteBackComplete}
+      />
     </main>
   );
 };

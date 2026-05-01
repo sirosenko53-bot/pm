@@ -51,8 +51,8 @@ const formatDateTime = (value: string | null): string => (value ? new Date(value
 
 const sourceLabelMap: Record<SharedStateMetadata['source'], string> = {
   local: 'ローカル',
-  'shared-json': '共有JSON',
-  'shared-json-read-failed': '共有JSON読み取り失敗',
+  'shared-json': '共有ファイル',
+  'shared-json-read-failed': '共有ファイル読み取り失敗',
 };
 
 
@@ -103,12 +103,12 @@ export const BackupPanel = ({
       exportBackupToFile(backup);
       const saveResult = saveLastBackupAt(backup.exportedAt);
       setLastBackupAt(backup.exportedAt);
-      setPanelMessage('JSONバックアップを書き出しました。');
+      setPanelMessage('復元用ファイルを書き出しました。');
       if (saveResult.warning) {
         setPanelError(saveResult.warning);
       }
     } catch {
-      setPanelError('JSONバックアップの書き出しに失敗しました。');
+      setPanelError('復元用ファイルの書き出しに失敗しました。');
     }
   };
 
@@ -122,14 +122,14 @@ export const BackupPanel = ({
     });
 
     if (!result.value) {
-      setPanelError(result.warning ?? 'Drive共有JSON設定の保存に失敗しました。');
+      setPanelError(result.warning ?? '共有ファイル設定の保存に失敗しました。');
       return;
     }
 
     setSharedFileIdInput(result.value.sharedFileId ?? '');
     setSharedFileNameInput(result.value.sharedFileName ?? '');
     onSharedStateMetadataUpdated(result.value, result.warning);
-    setPanelMessage('Drive共有JSON設定を保存しました。');
+    setPanelMessage('共有ファイル設定を保存しました。');
 
     if (result.warning) {
       setPanelError(result.warning);
@@ -143,7 +143,7 @@ export const BackupPanel = ({
     setSharedFileIdInput('');
     setSharedFileNameInput('');
     onSharedStateMetadataUpdated(result.value, result.warning);
-    setPanelMessage('Drive共有JSON設定をクリアしました。');
+    setPanelMessage('共有ファイル設定をクリアしました。');
     if (result.warning) {
       setPanelError(result.warning);
     }
@@ -209,7 +209,7 @@ export const BackupPanel = ({
     if (!fileId) {
       const failed = markSharedStateSaveFailed('sharedFileIdが未設定です。');
       onSharedStateMetadataUpdated(failed.value, failed.warning);
-      setPanelError('sharedFileIdが未設定です。先にDrive共有JSON設定を保存してください。');
+      setPanelError('共有ファイルIDが未設定です。先に共有ファイル設定を保存してください。');
       return;
     }
 
@@ -265,7 +265,7 @@ export const BackupPanel = ({
     onSharedStateMetadataUpdated(saved.value, saved.warning);
     setConflictState(null);
 
-    const message = `共有JSONへ保存しました（revision: ${sharedPackage.revision}）。`;
+    const message = `共有ファイルへ保存しました（revision: ${sharedPackage.revision}）。`;
     setPanelMessage(message);
     onSharedStateApplied(message, saved.warning);
   };
@@ -278,7 +278,7 @@ export const BackupPanel = ({
     if (!fileId) {
       const failed = markSharedStateSaveFailed('sharedFileIdが未設定です。');
       onSharedStateMetadataUpdated(failed.value, failed.warning);
-      setPanelError('sharedFileIdが未設定です。先にDrive共有JSON設定を保存してください。');
+      setPanelError('共有ファイルIDが未設定です。先に共有ファイル設定を保存してください。');
       return;
     }
 
@@ -356,12 +356,12 @@ export const BackupPanel = ({
 
     const validation = validateBackupPackage(parsed.data);
     if (!validation.ok) {
-      setPanelError(`バックアップJSONの検証に失敗しました。\n${validation.errors.join('\n')}`);
+      setPanelError(`復元用ファイルの検証に失敗しました。\n${validation.errors.join('\n')}`);
       return;
     }
 
     setCandidateBackup(parsed.data);
-    setPanelMessage('バックアップJSONを読み込みました。内容を確認して復元してください。');
+    setPanelMessage('復元用ファイルを読み込みました。内容を確認して復元してください。');
   };
 
   const handleToggleAutoReadOnEnter = (enabled: boolean) => {
@@ -371,8 +371,8 @@ export const BackupPanel = ({
     onSharedStateMetadataUpdated(result.value, result.warning);
     setPanelMessage(
       enabled
-        ? '起動時自動読取を有効にしました。'
-        : '起動時自動読取を無効にしました。',
+        ? '入室時の共有データ読み込みをONにしました。'
+        : '入室時の共有データ読み込みをOFFにしました。',
     );
     if (result.warning) {
       setPanelError(result.warning);
@@ -410,9 +410,9 @@ export const BackupPanel = ({
           <h1>設定・バックアップ</h1>
           <span className="pill">設定</span>
         </div>
-        <p>ローカル保存された状態をJSONとして書き出し・復元します。</p>
+        <p>ローカル保存された状態を、復元用ファイルとして書き出し・復元します。</p>
         <p>現在のワークスペース: {workspace.workspaceName}</p>
-        <p>保存済みTaskOverlay件数: {overlayCount}件</p>
+        <p>保存済みの進行状況: {overlayCount}件</p>
         <p>最終バックアップ日時: {lastBackupAt ? new Date(lastBackupAt).toLocaleString() : '未実施'}</p>
         <p>最終同期日時: {lastSyncedAt ? new Date(lastSyncedAt).toLocaleString() : '未記録'}</p>
         <p className="note">Googleカレンダー予定そのものは復元対象ではありません。</p>
@@ -422,12 +422,12 @@ export const BackupPanel = ({
       </section>
 
       <section className="card shared-state-card">
-        <h2>共有状態</h2>
-        <p className="note">Google Drive共有JSONの手動読取・手動保存に対応しています。自動保存、ポーリング同期、Driveファイル作成は未実装です。OAuthトークンは保存しません。</p>
+        <h2>共有データの状態</h2>
+        <p className="note">Google Drive上の共有ファイルを手動で読み書きします。自動保存、ポーリング同期、Driveファイル作成は未実装です。OAuthトークンは保存しません。</p>
         <div className="shared-state-grid">
           <p>状態ソース: <strong>{sourceLabelMap[sharedStateMetadata.source]}</strong></p>
           <p>同期状態: <strong>{sharedStateMetadata.syncStatus}</strong></p>
-          <p>共有JSONファイル: <strong>{sharedStateMetadata.sharedFileName ?? '未設定'}</strong></p>
+          <p>共有ファイル: <strong>{sharedStateMetadata.sharedFileName ?? '未設定'}</strong></p>
           <p>共有ファイルID: <strong>{sharedStateMetadata.sharedFileId ?? '未設定'}</strong></p>
           <p>revision: <strong>{sharedStateMetadata.revision}</strong></p>
           <p>最終共有読取日時: <strong>{formatDateTime(sharedStateMetadata.lastReadAt)}</strong></p>
@@ -435,7 +435,7 @@ export const BackupPanel = ({
           <p>savedBy: <strong>{sharedStateMetadata.savedBy ?? '未記録'}</strong></p>
           <p>deviceId: <strong>{sharedStateMetadata.deviceId ?? '未記録'}</strong></p>
           <p>
-            起動時自動読取:
+            入室時の読み込み:
             {' '}
             <strong>{sharedStateMetadata.autoReadSharedStateOnEnter ? '有効' : '無効'}</strong>
           </p>
@@ -445,12 +445,12 @@ export const BackupPanel = ({
           <p className="note">現在はローカル保存された状態を表示しています。</p>
         ) : null}
         {!hasSharedFileId ? (
-          <p className="note">DriveファイルIDを設定すると、共有JSONの読取・保存ができます。</p>
+          <p className="note">DriveファイルIDを設定すると、共有ファイルの読み込み・保存ができます。</p>
         ) : null}
 
         {sharedStateMetadata.hasLocalChangesAfterShare ? (
           <p className="warning-text shared-state-warning">
-            共有JSONへ保存すると他端末に反映できます。
+            共有ファイルへ保存すると他端末に反映できます。
           </p>
         ) : (
           <p className="note">共有後のローカル変更はありません。</p>
@@ -463,14 +463,14 @@ export const BackupPanel = ({
           disabled={!hasSharedFileId || sharedStateMetadata.syncStatus === 'saving'}
           onClick={() => void handleManualSaveSharedState()}
         >
-          共有JSONへ保存
+          共有ファイルへ保存
         </button>
 
         {conflictState ? (
           <div className="shared-conflict">
             <h3>共有状態の競合を検出しました</h3>
             <p>
-              Drive上の共有JSONが、現在のローカル状態より新しい可能性があります。上書きする前に、再読み込みするか、ローカル状態で上書きするかを選択してください。
+              Drive上の共有ファイルが、現在のローカル状態より新しい可能性があります。上書きする前に、再読み込みするか、ローカル状態で上書きするかを選択してください。
             </p>
             <ul>
               <li>ローカルrevision: {conflictState.localRevision}</li>
@@ -499,9 +499,9 @@ export const BackupPanel = ({
       </section>
 
       <section className="card shared-state-card">
-        <h2>起動時自動読取設定</h2>
-        <p className="note">有効にすると、ワークスペース入室時にGoogle Drive上の共有JSONを読み取ります。</p>
-        <p className="note">読み取りにはGoogle認証が必要です。認証が必要な場合は手動読取を実行してください。</p>
+        <h2>入室時に共有データを読む</h2>
+        <p className="note">ONにすると、ワークスペースに入るときGoogle Drive上の共有ファイルを読み取ります。</p>
+        <p className="note">読み取りにはGoogle認証が必要です。認証が必要な場合は手動で読み込んでください。</p>
         <p className="note">読み取りに失敗した場合はローカル状態で表示します。Driveへ自動保存はしません。</p>
         <div className="overview-nav">
           <button
@@ -524,9 +524,9 @@ export const BackupPanel = ({
       </section>
 
       <section className="card shared-state-card">
-        <h2>Drive共有JSON設定</h2>
-        <p className="note">Google Drive上の shared-state.json / workspace-state.json のファイルIDを登録します。</p>
-        <p className="note">登録したファイルIDを使って、手動読取・手動保存を実行します。</p>
+        <h2>共有ファイルの設定</h2>
+        <p className="note">Google Drive上に置いた共有用ファイルのIDを登録します。</p>
+        <p className="note">登録したファイルIDを使って、手動で読み込み・保存します。</p>
         <div className="shared-settings-form">
           <label>
             DriveファイルID
@@ -554,11 +554,11 @@ export const BackupPanel = ({
       </section>
 
       <section className="card shared-state-card">
-        <h2>Drive共有JSONの手動読取</h2>
-        <p className="note">Google Drive上の通常JSONファイルを指定してください。Googleドキュメントやスプレッドシートはこの段階では対象外です。</p>
+        <h2>共有ファイルを読み込む</h2>
+        <p className="note">Google Drive上の共有用ファイルを読み込み、他端末で保存された進行状況を反映します。Googleドキュメントやスプレッドシートはこの段階では対象外です。</p>
         <p className="note">通常はGoogle認証経由でDrive読取トークンを取得して読み込みます。トークンは保存しません。</p>
         {!hasSharedFileId ? (
-          <p className="note">共有JSONを読み込むには、先にDriveファイルIDを設定してください。</p>
+          <p className="note">共有ファイルを読み込むには、先にDriveファイルIDを設定してください。</p>
         ) : null}
         <button
           type="button"
@@ -566,7 +566,7 @@ export const BackupPanel = ({
           disabled={!hasSharedFileId || sharedStateMetadata.syncStatus === 'loading'}
           onClick={() => void handleManualReadWithOAuth()}
         >
-          共有JSONを読み込む（Google認証）
+          共有ファイルを読み込む（Google認証）
         </button>
 
         <details className="shared-debug">
@@ -592,12 +592,13 @@ export const BackupPanel = ({
       </section>
 
       <section className="card backup-actions">
-        <h2>JSONバックアップ書き出し</h2>
-        <button type="button" className="secondary" onClick={handleExport}>JSONバックアップを書き出す</button>
+        <h2>この端末の状態を保存</h2>
+        <p className="note">現在の進行状況や画面設定を、復元用ファイルとして書き出します。</p>
+        <button type="button" className="secondary" onClick={handleExport}>復元用ファイルを書き出す</button>
       </section>
 
       <section className="card backup-actions">
-        <h2>JSONバックアップ読み込み</h2>
+        <h2>保存ファイルから復元</h2>
         <p className="note">読み込み後は「上書き復元」を実行するまで保存は変更されません。</p>
         <input
           type="file"
@@ -614,7 +615,7 @@ export const BackupPanel = ({
           <div className="backup-preview">
             <p>読み込み済み: {new Date(candidateBackup.exportedAt).toLocaleString()}</p>
             <p>workspaceCode: {candidateBackup.workspace.workspaceCode}</p>
-            <p>taskOverlays: {candidateBackup.taskOverlays.length}件</p>
+            <p>進行状況: {candidateBackup.taskOverlays.length}件</p>
             <button type="button" className="secondary" onClick={handleRestore}>上書き復元を実行する</button>
           </div>
         ) : null}
