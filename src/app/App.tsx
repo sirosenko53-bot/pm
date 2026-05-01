@@ -49,6 +49,8 @@ import { WorkspaceHome } from '../features/workspace/WorkspaceHome';
 import packageInfo from '../../package.json';
 
 const APP_VERSION = packageInfo.version;
+const USE_MOCK_CALENDAR = import.meta.env.VITE_USE_MOCK_CALENDAR !== 'false';
+const GOOGLE_OAUTH_CLIENT_ID = import.meta.env.VITE_GOOGLE_OAUTH_CLIENT_ID as string | undefined;
 
 const isProjectVisible = (projectId: string, joinedProjects: JoinedProject[], accessMode: ProjectAccessMode) => {
   if (isAdminAccess(accessMode)) {
@@ -184,7 +186,10 @@ export const App = () => {
   }, [joinedProjects.length, route, visibleProjectIdSet]);
 
   useEffect(() => {
-    void initializeGoogleClient({ useMock: true });
+    void initializeGoogleClient({
+      useMock: USE_MOCK_CALENDAR,
+      oauthClientId: GOOGLE_OAUTH_CLIENT_ID,
+    });
     const sharedMetaResult = loadSharedStateMetadata();
     setSharedStateMetadata(sharedMetaResult.value);
     if (sharedMetaResult.warning) {
@@ -203,7 +208,7 @@ export const App = () => {
       );
       setTasks(groupedTasks.flat());
       setOverlays(getAllTaskOverlays());
-      setCalendarStatus('モック表示中（Googleカレンダー差し替え可能）');
+      setCalendarStatus(USE_MOCK_CALENDAR ? 'モック表示中（Googleカレンダー差し替え可能）' : 'Googleカレンダー読取済み');
       setLastSyncedAt(new Date().toISOString());
       setCalendarError(undefined);
     } catch (error) {
