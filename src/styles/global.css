@@ -296,7 +296,7 @@ h1,h2,h3,p { margin: 0; }
 
 .board-column.drop-active { border-color: #2563eb; background: #eaf2ff; }
 .board-card.dragging { opacity: 0.45; border-color: #2563eb; box-shadow: 0 8px 20px rgba(37,99,235,0.24); }
-.drag-handle { font-size: 11px; color: #2563eb; margin-bottom: 2px; font-weight: 700; letter-spacing: 0.02em; }
+.drag-handle { font-size: 18px; color: #94a3b8; margin-bottom: 0; font-weight: 900; line-height: 1; letter-spacing: 0; }
 
 .backup-actions { display: grid; gap: 10px; }
 .backup-preview { display: grid; gap: 6px; margin-top: 10px; border: 1px solid #dbeafe; border-radius: 10px; padding: 10px; background: #f8fbff; }
@@ -1163,20 +1163,35 @@ button:hover {
 .board-card {
   border-color: rgba(148, 163, 184, 0.22);
   border-radius: 16px;
-  padding: 16px;
-  gap: 8px;
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.055);
+  padding: 14px;
+  gap: 7px;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.045);
 }
 
 .board-card h3 {
-  font-size: 17px;
+  font-size: 16px;
   line-height: 1.45;
   overflow-wrap: anywhere;
 }
 
 .drag-handle {
-  color: #6b7da0;
+  color: #94a3b8;
   letter-spacing: 0;
+}
+
+.board-status-menu {
+  margin-top: 4px;
+}
+
+.board-status-menu summary {
+  cursor: pointer;
+  color: #2563eb;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.board-status-menu .status-buttons {
+  margin-top: 8px;
 }
 
 .board-column.drop-active {
@@ -1802,27 +1817,19 @@ button:hover {
 
 .overview-feature-grid {
   display: grid;
-  grid-template-columns: minmax(240px, 1fr) minmax(260px, 1.05fr) minmax(280px, 1.1fr) minmax(250px, 0.95fr);
-  grid-template-areas:
-    "current milestone today delayed"
-    "current milestone today review";
-  gap: 22px;
-  align-items: stretch;
+  grid-template-columns: repeat(5, minmax(190px, 1fr));
+  gap: 18px;
+  align-items: start;
 }
 
 .overview-feature-card {
   display: grid;
   align-content: start;
-  gap: 14px;
+  gap: 12px;
   min-width: 0;
-  min-height: 218px;
+  min-height: 0;
+  padding: 22px;
 }
-
-.overview-current-card { grid-area: current; }
-.overview-feature-card:nth-child(2) { grid-area: milestone; }
-.overview-feature-card:nth-child(3) { grid-area: today; }
-.overview-feature-card:nth-child(4) { grid-area: delayed; }
-.overview-feature-card:nth-child(5) { grid-area: review; }
 
 .overview-card-heading {
   display: flex;
@@ -2144,10 +2151,6 @@ button:hover {
 
   .overview-feature-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-template-areas:
-      "current milestone"
-      "today delayed"
-      "today review";
   }
 
   .overview-bottom-grid,
@@ -2168,12 +2171,6 @@ button:hover {
 @media (max-width: 860px) {
   .overview-feature-grid {
     grid-template-columns: 1fr;
-    grid-template-areas:
-      "current"
-      "milestone"
-      "today"
-      "delayed"
-      "review";
   }
 
   .overview-status-grid,

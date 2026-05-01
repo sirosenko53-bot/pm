@@ -369,7 +369,7 @@ export const App = () => {
 
       const tokenResult = await tryGetDriveReadAccessTokenSilently();
       if (!tokenResult.ok) {
-        const message = 'Drive共有JSONの自動読取にはGoogle認証が必要です。設定・バックアップ画面から共有JSONを手動読取してください。';
+        const message = '共有データの自動読み込みにはGoogle認証が必要です。設定・バックアップ画面から手動で読み込んでください。';
         const failed = markSharedStateReadFailed(message);
         setSharedStateMetadata(failed.value);
         setStorageWarning(failed.warning ?? message);
@@ -393,7 +393,7 @@ export const App = () => {
         return;
       }
 
-      setStorageWarning(readResult.warning ?? '共有JSONを自動読取しました。');
+      setStorageWarning(readResult.warning ?? '共有データを自動で読み込みました。');
       setOverlays(getAllTaskOverlays());
     };
 

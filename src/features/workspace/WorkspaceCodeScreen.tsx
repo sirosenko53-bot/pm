@@ -34,7 +34,7 @@ export const WorkspaceCodeScreen = ({ onSubmit }: Props) => {
           <button type="submit">ワークスペースに入る</button>
         </form>
         <p className="note">Googleカレンダーを正本として読み込みます</p>
-        <p className="note">ローカル保存とJSONバックアップで無料運用します</p>
+        <p className="note">ローカル保存と復元用ファイルで無料運用します</p>
       </section>
     </main>
   );

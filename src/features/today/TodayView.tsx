@@ -73,7 +73,7 @@ export const TodayView = ({
         </div>
         <p>{workspace.workspaceName} / {project?.projectName ?? 'プロジェクト未選択'}</p>
         <p className="meta">{today.toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' })}</p>
-        <p className="meta">Googleカレンダー正本 / ローカル保存 / JSONバックアップ対応</p>
+        <p className="meta">Googleカレンダー正本 / ローカル保存 / 復元用ファイル対応</p>
         {storageWarning ? <p className="warning-text">{storageWarning}</p> : null}
       </section>
 

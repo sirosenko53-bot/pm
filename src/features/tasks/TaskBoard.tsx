@@ -177,7 +177,7 @@ export const TaskBoard = ({
         <p className="meta board-caption">
           表示中: {selectedProjectId === 'all' ? '全プロジェクト' : selectedProject?.projectName ?? '不明'}
         </p>
-        <p className="meta board-caption">Googleカレンダー正本 / ローカル保存 / JSONバックアップ対応</p>
+        <p className="meta board-caption">Googleカレンダー正本 / ローカル保存 / 復元用ファイル対応</p>
         {storageWarning ? <p className="warning-text">{storageWarning}</p> : null}
         <div className="board-filter">
           <label htmlFor="project-filter">表示プロジェクト</label>
@@ -247,36 +247,31 @@ export const TaskBoard = ({
                         handleDrop(status, task.taskId);
                       }}
                     >
-                      <p className="drag-handle">⋮⋮ ドラッグして移動</p>
-                      <p><span className="pill">{task.status}</span></p>
+                      <p className="drag-handle" aria-label="ドラッグして移動">⋮⋮</p>
                       <h3>{task.taskName}</h3>
-                      <p className="meta">担当: {task.assignee}</p>
-                      <p className="meta">プロジェクト: {task.projectName}</p>
-                      <p className="meta">工程: {task.stageName}</p>
-                      <p className="meta">期限: {resolveDueText(task)}</p>
+                      <p className="meta">担当: {task.assignee} / 期限: {resolveDueText(task)}</p>
+                      {selectedProjectId === 'all' ? <p className="meta">プロジェクト: {task.projectName}</p> : null}
                       <div className="status-row">
                         {task.isDelayed ? <span className="warning">遅延</span> : null}
                         {task.parseError ? <span className="warning">解析エラー</span> : null}
                         {task.isUnclassifiedProject ? <span className="warning">未分類</span> : null}
                       </div>
-                      <p className="meta">
-                        {task.overlayUpdatedAt
-                          ? `更新: ${new Date(task.overlayUpdatedAt).toLocaleString()}`
-                          : '保存済み: 未作成'}
-                      </p>
 
-                      <div className="status-buttons">
-                        {TASK_STATUSES.map((nextStatus) => (
-                          <button
-                            key={nextStatus}
-                            type="button"
-                            className={`status-button ${task.status === nextStatus ? 'active' : ''}`}
-                            onClick={() => onChangeStatus(task, nextStatus)}
-                          >
-                            {nextStatus}
-                          </button>
-                        ))}
-                      </div>
+                      <details className="board-status-menu">
+                        <summary>状態を変更</summary>
+                        <div className="status-buttons">
+                          {TASK_STATUSES.map((nextStatus) => (
+                            <button
+                              key={nextStatus}
+                              type="button"
+                              className={`status-button ${task.status === nextStatus ? 'active' : ''}`}
+                              onClick={() => onChangeStatus(task, nextStatus)}
+                            >
+                              {nextStatus}
+                            </button>
+                          ))}
+                        </div>
+                      </details>
                     </div>
                   ))}
                 </div>

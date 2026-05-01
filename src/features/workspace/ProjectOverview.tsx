@@ -106,7 +106,7 @@ export const ProjectOverview = ({
           <span>{workspaceName} / {project.projectName}</span>
           <span className="calendar-state">Googleカレンダー正本</span>
         </div>
-        <p className="meta">ローカル保存 / JSONバックアップ対応</p>
+        <p className="meta">ローカル保存 / 復元用ファイル対応</p>
         {storageWarning ? <p className="warning-text">{storageWarning}</p> : null}
       </section>
 
@@ -117,7 +117,6 @@ export const ProjectOverview = ({
             <h2>現在の工程</h2>
           </div>
           <p className="overview-current-stage-name">{currentStageLabel}</p>
-          {project.currentStageId ? <p className="meta">工程ID: {project.currentStageId}</p> : null}
           <div className="progress-block">
             <div className="progress-label">
               <span>工程の進捗</span>

@@ -54,7 +54,6 @@ export const WorkspaceHome = ({
             <strong>制作PM</strong>
           </div>
           <div className="workspace-tools" aria-label="補助情報">
-            <span>検索</span>
             <span>同期済み</span>
             <button type="button" className="text-action" onClick={onOpenBackup}>設定</button>
           </div>
@@ -65,7 +64,7 @@ export const WorkspaceHome = ({
         </div>
         <p>コードに紐づくプロジェクトを表示しています</p>
         <p className="meta">Googleカレンダー連携状態: {calendarStatus}</p>
-        <p className="meta">ローカル保存 / JSONバックアップ対応</p>
+        <p className="meta">ローカル保存 / 復元用ファイル対応</p>
         {calendarError ? <p className="error">{calendarError}</p> : null}
         {storageWarning ? <p className="warning-text">{storageWarning}</p> : null}
         <div className="overview-nav">
