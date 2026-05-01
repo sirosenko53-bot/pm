@@ -88,7 +88,9 @@ VITE_CALENDAR_ID_NOVEL=dummy-novel-calendar-id
 
 GoogleカレンダーIDは、Googleカレンダーの「設定と共有」から対象カレンダーを開き、「カレンダーの統合」内の「カレンダーID」で確認します。
 
-`VITE_USE_MOCK_CALENDAR=false` のときは実カレンダー読取を行います。`VITE_CALENDAR_ID_POETRY`、`VITE_CALENDAR_ID_EXHIBITION`、`VITE_CALENDAR_ID_AUDIO`、`VITE_CALENDAR_ID_NOVEL` が未設定の場合、`workspaceConfig.ts` の仮IDが使われるため、実読取は失敗する可能性があります。
+`VITE_USE_MOCK_CALENDAR=false` のときは、Google Calendar APIをread-only scopeで呼び出して実カレンダー読取を行います。取得対象は直近90日前から365日後までの予定です。
+
+`VITE_CALENDAR_ID_POETRY`、`VITE_CALENDAR_ID_EXHIBITION`、`VITE_CALENDAR_ID_AUDIO`、`VITE_CALENDAR_ID_NOVEL` が未設定の場合、`workspaceConfig.ts` の仮IDが使われるため、実読取は失敗します。実読取を使う場合は、対象カレンダーIDと `VITE_GOOGLE_OAUTH_CLIENT_ID` を `.env.local` に設定してください。
 
 ## 8. 注意点
 
