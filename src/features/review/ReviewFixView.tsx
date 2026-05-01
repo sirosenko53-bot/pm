@@ -1,5 +1,6 @@
 import { TASK_STATUSES, type TaskStatus, type TaskViewModel } from '../../domain/taskTypes';
 import type { Workspace } from '../../domain/workspaceTypes';
+import { CalendarMaintenancePanel } from '../calendar/CalendarMaintenancePanel';
 import { CommonNav } from '../navigation/CommonNav';
 import {
   calculateReviewFixSummary,
@@ -18,6 +19,7 @@ type Props = {
   onOpenBoard: () => void;
   onOpenBackup: () => void;
   onChangeStatus: (task: TaskViewModel, status: TaskStatus) => void;
+  onCalendarWriteBackComplete: () => void;
 };
 
 const formatCompactDateTime = (value?: string): string => {
@@ -89,6 +91,7 @@ export const ReviewFixView = ({
   onOpenBoard,
   onOpenBackup,
   onChangeStatus,
+  onCalendarWriteBackComplete,
 }: Props) => {
   const project = workspace.projects.find((item) => item.projectId === projectId);
   if (!project) return null;
@@ -182,6 +185,12 @@ export const ReviewFixView = ({
           </article>
         </div>
       </section>
+
+      <CalendarMaintenancePanel
+        project={project}
+        tasks={tasks}
+        onWriteBackComplete={onCalendarWriteBackComplete}
+      />
     </main>
   );
 };

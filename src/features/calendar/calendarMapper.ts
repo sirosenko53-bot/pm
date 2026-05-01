@@ -15,6 +15,11 @@ export const mapCalendarEventToTask = (
   const projectByTitle = workspace.projects.find((item) => item.projectName === parsed.projectName);
   const projectByCalendar = workspace.projects.find((item) => item.projectId === calendarSource.projectId);
   const project = projectByTitle ?? projectByCalendar;
+  const parseError =
+    parsed.parseError
+    ?? (!projectByTitle && parsed.projectName !== '未分類'
+      ? '予定名のプロジェクト名が設定と一致しないため、カレンダー設定のプロジェクトで分類しました'
+      : undefined);
 
   const startDateTime = resolveDateValue(event.start);
   const endDateTime = resolveDateValue(event.end);
@@ -32,6 +37,6 @@ export const mapCalendarEventToTask = (
     startDateTime,
     endDateTime: endDateTime || undefined,
     dueDate: endDateTime || startDateTime || undefined,
-    parseError: parsed.parseError,
+    parseError,
   };
 };

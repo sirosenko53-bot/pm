@@ -1653,6 +1653,102 @@ button:hover {
   padding-top: 2px;
 }
 
+.calendar-maintenance-card {
+  display: grid;
+  gap: 18px;
+}
+
+.calendar-maintenance-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(320px, 1fr));
+  gap: 22px;
+}
+
+.calendar-maintenance-section,
+.calendar-preview {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  padding: 18px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 16px;
+  background: #fbfdff;
+}
+
+.calendar-maintenance-section label,
+.calendar-maintenance-actions label {
+  display: grid;
+  gap: 7px;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.calendar-maintenance-section input,
+.calendar-maintenance-section select,
+.calendar-maintenance-actions input {
+  width: 100%;
+  min-height: 40px;
+  border: 1px solid rgba(148, 163, 184, 0.34);
+  border-radius: 12px;
+  background: #fff;
+  color: #172033;
+  padding: 8px 12px;
+  font: inherit;
+}
+
+.calendar-maintenance-list,
+.calendar-preview-list {
+  display: grid;
+  gap: 10px;
+}
+
+.calendar-maintenance-item,
+.calendar-preview-item {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 14px;
+  background: #fff;
+}
+
+.calendar-maintenance-item strong,
+.calendar-preview-item strong,
+.calendar-preview-item .meta {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.calendar-maintenance-item span {
+  color: #dc2626;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.calendar-maintenance-actions {
+  display: grid;
+  grid-template-columns: minmax(140px, auto) minmax(160px, 1fr) minmax(170px, auto);
+  gap: 12px;
+  align-items: end;
+}
+
+.calendar-preview-item {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+}
+
+.danger-outline {
+  color: #dc2626;
+  border-color: rgba(220, 38, 38, 0.28);
+}
+
+.danger-outline:hover {
+  background: #fff1f2;
+  border-color: rgba(220, 38, 38, 0.42);
+}
+
 @media (max-width: 1240px) {
   .workflow-layout,
   .review-fix-dashboard,
@@ -1674,6 +1770,12 @@ button:hover {
 
   .review-fix-stat {
     grid-template-columns: 1fr auto auto;
+  }
+
+  .calendar-maintenance-grid,
+  .calendar-maintenance-actions,
+  .calendar-preview-item {
+    grid-template-columns: 1fr;
   }
 }
 

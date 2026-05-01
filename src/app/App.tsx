@@ -23,7 +23,12 @@ import {
   updateLastOpenedProject,
 } from '../features/access/projectAccessStore';
 import { mapCalendarEventToTask } from '../features/calendar/calendarMapper';
-import { fetchCalendarEvents, initializeGoogleClient } from '../features/calendar/googleCalendarClient';
+import {
+  fetchCalendarEvents,
+  initializeGoogleClient,
+  isUsingMockCalendar,
+  requestGoogleCalendarReadAccessToken,
+} from '../features/calendar/googleCalendarClient';
 import { BackupPanel } from '../features/backup/BackupPanel';
 import {
   loadSharedStateMetadata,
@@ -184,7 +189,9 @@ export const App = () => {
   }, [joinedProjects.length, route, visibleProjectIdSet]);
 
   useEffect(() => {
-    void initializeGoogleClient({ useMock: true });
+    const useMock = import.meta.env.VITE_USE_MOCK_CALENDAR !== 'false';
+    const oauthClientId = import.meta.env.VITE_GOOGLE_OAUTH_CLIENT_ID as string | undefined;
+    void initializeGoogleClient({ useMock, oauthClientId });
     const sharedMetaResult = loadSharedStateMetadata();
     setSharedStateMetadata(sharedMetaResult.value);
     if (sharedMetaResult.warning) {
@@ -195,15 +202,29 @@ export const App = () => {
 
   const loadTasks = async (nextWorkspace: Workspace) => {
     try {
+      const useMockCalendar = isUsingMockCalendar();
+      let calendarAccessToken: string | undefined;
+      if (!useMockCalendar) {
+        const authResult = await requestGoogleCalendarReadAccessToken();
+        if (!authResult.ok) {
+          throw new Error(authResult.error);
+        }
+        calendarAccessToken = authResult.accessToken;
+      }
+
       const groupedTasks = await Promise.all(
         nextWorkspace.calendarSources.map(async (calendarSource) => {
-          const events = await fetchCalendarEvents(calendarSource.calendarId);
+          const events = await fetchCalendarEvents(calendarSource.calendarId, calendarAccessToken);
           return events.map((event) => mapCalendarEventToTask(event, calendarSource, nextWorkspace));
         }),
       );
       setTasks(groupedTasks.flat());
       setOverlays(getAllTaskOverlays());
-      setCalendarStatus('モック表示中（Googleカレンダー差し替え可能）');
+      setCalendarStatus(
+        useMockCalendar
+          ? 'モック表示中（Googleカレンダー差し替え可能）'
+          : 'Googleカレンダー読取済み',
+      );
       setLastSyncedAt(new Date().toISOString());
       setCalendarError(undefined);
     } catch (error) {
@@ -560,6 +581,7 @@ export const App = () => {
         onOpenBoard={() => openTaskBoard(project.projectId, project.projectId)}
         onOpenBackup={() => openBackup(project.projectId)}
         onChangeStatus={handleChangeStatus}
+        onCalendarWriteBackComplete={() => void loadTasks(workspace)}
       />
     );
   }
