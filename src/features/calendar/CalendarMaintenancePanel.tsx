@@ -16,6 +16,13 @@ type Props = {
   onWriteBackComplete: () => void;
 };
 
+type WriteBackResult = {
+  draftId: string;
+  taskName: string;
+  ok: boolean;
+  message: string;
+};
+
 const formatDateTime = (value?: string): string => {
   if (!value) return '-';
   const date = new Date(value);
@@ -26,7 +33,14 @@ const formatDateTime = (value?: string): string => {
 };
 
 const reasonLabel = (draft: CalendarWriteBackDraft): string =>
-  draft.reason === 'title-normalize' ? '予定名を整える' : '先送り';
+  draft.reason === 'title-normalize' ? '予定名を整える' : '予定日を先送りする';
+
+const summarizeDraft = (draft: CalendarWriteBackDraft): string => {
+  if (draft.reason === 'title-normalize') {
+    return `予定名: ${draft.previousSummary} -> ${draft.nextSummary ?? '-'}`;
+  }
+  return `日時: ${formatDateTime(draft.previousStart)} -> ${formatDateTime(draft.nextStart)}`;
+};
 
 export const CalendarMaintenancePanel = ({ project, tasks, onWriteBackComplete }: Props) => {
   const [postponeTaskId, setPostponeTaskId] = useState('');
@@ -35,6 +49,7 @@ export const CalendarMaintenancePanel = ({ project, tasks, onWriteBackComplete }
   const [drafts, setDrafts] = useState<CalendarWriteBackDraft[]>([]);
   const [message, setMessage] = useState<string | undefined>();
   const [error, setError] = useState<string | undefined>();
+  const [writeResults, setWriteResults] = useState<WriteBackResult[]>([]);
   const [isWriting, setIsWriting] = useState(false);
 
   const invalidTasks = useMemo(
@@ -48,8 +63,11 @@ export const CalendarMaintenancePanel = ({ project, tasks, onWriteBackComplete }
   );
 
   const selectedPostponeTask = delayedTasks.find((task) => task.taskId === postponeTaskId) ?? delayedTasks[0];
+  const titleDraftCount = drafts.filter((draft) => draft.reason === 'title-normalize').length;
+  const postponeDraftCount = drafts.filter((draft) => draft.reason === 'postpone').length;
 
   const appendDrafts = (nextDrafts: CalendarWriteBackDraft[]) => {
+    setWriteResults([]);
     setDrafts((current) => {
       const map = new Map(current.map((draft) => [draft.draftId, draft]));
       nextDrafts.forEach((draft) => map.set(draft.draftId, draft));
@@ -59,16 +77,18 @@ export const CalendarMaintenancePanel = ({ project, tasks, onWriteBackComplete }
 
   const handleCreateTitleDrafts = () => {
     setError(undefined);
+    setWriteResults([]);
     if (invalidTasks.length === 0) {
-      setMessage('形式を直す必要がある予定はありません。');
+      setMessage('補正が必要な予定名はありません。');
       return;
     }
     appendDrafts(invalidTasks.map((task) => createTitleNormalizeDraft(task, project)));
-    setMessage(`予定名の補正候補を ${invalidTasks.length}件 作成しました。`);
+    setMessage(`予定名の補正候補を ${invalidTasks.length} 件作成しました。内容を確認してから書き戻してください。`);
   };
 
   const handlePlanPostpone = () => {
     setError(undefined);
+    setWriteResults([]);
     if (!selectedPostponeTask) {
       setError('遅延している予定がありません。');
       return;
@@ -84,6 +104,7 @@ export const CalendarMaintenancePanel = ({ project, tasks, onWriteBackComplete }
 
   const handleCreatePostponeDraft = () => {
     setError(undefined);
+    setWriteResults([]);
     if (!selectedPostponeTask) {
       setError('先送りする予定を選んでください。');
       return;
@@ -94,18 +115,20 @@ export const CalendarMaintenancePanel = ({ project, tasks, onWriteBackComplete }
       return;
     }
     appendDrafts([result.draft]);
-    setMessage('先送りの書き戻しプレビューを作成しました。');
+    setMessage('先送りの書き戻しプレビューを作成しました。内容を確認してから書き戻してください。');
   };
 
   const handleRemoveDraft = (draftId: string) => {
+    setWriteResults([]);
     setDrafts((current) => current.filter((draft) => draft.draftId !== draftId));
   };
 
   const handleWriteBack = async () => {
     setMessage(undefined);
     setError(undefined);
+    setWriteResults([]);
     if (drafts.length === 0) {
-      setError('書き戻し前プレビューがありません。');
+      setError('書き戻し前プレビューがありません。先に補正候補または先送りプレビューを作成してください。');
       return;
     }
 
@@ -114,11 +137,11 @@ export const CalendarMaintenancePanel = ({ project, tasks, onWriteBackComplete }
       exportCalendarWriteBackBackup(drafts);
       const authResult = await requestGoogleCalendarWriteAccessToken();
       if (!authResult.ok) {
-        setError(authResult.error);
+        setError(`Google認証に失敗しました。カレンダーには書き戻していません。\n${authResult.error}`);
         return;
       }
 
-      const errors: string[] = [];
+      const results: WriteBackResult[] = [];
       for (const draft of drafts) {
         const result = await updateCalendarEvent({
           calendarId: draft.calendarId,
@@ -126,18 +149,23 @@ export const CalendarMaintenancePanel = ({ project, tasks, onWriteBackComplete }
           accessToken: authResult.accessToken,
           patch: draft.patch,
         });
-        if (!result.ok) {
-          errors.push(`${draft.taskName}: ${result.error}`);
-        }
+        results.push({
+          draftId: draft.draftId,
+          taskName: draft.taskName,
+          ok: result.ok,
+          message: result.ok ? '書き戻し済み' : result.error,
+        });
       }
 
-      if (errors.length > 0) {
-        setError(errors.join('\n'));
+      setWriteResults(results);
+      const failed = results.filter((result) => !result.ok);
+      if (failed.length > 0) {
+        setError(`${failed.length} 件の書き戻しに失敗しました。成功した予定もあるため、一覧で結果を確認してください。`);
         return;
       }
 
       setDrafts([]);
-      setMessage('Googleカレンダーへ書き戻しました。予定を再読み込みします。');
+      setMessage('Googleカレンダーへ書き戻しました。復元用ファイルも保存済みです。予定を再読み込みします。');
       onWriteBackComplete();
     } finally {
       setIsWriting(false);
@@ -148,18 +176,19 @@ export const CalendarMaintenancePanel = ({ project, tasks, onWriteBackComplete }
     <section className="card calendar-maintenance-card">
       <div className="review-fix-column-heading">
         <h2>カレンダー予定の整備</h2>
-        <span className="pill">書き戻し前プレビュー必須</span>
+        <span className="pill">書き戻し前に確認</span>
       </div>
       <p className="note">
-        形式不正の予定名と遅延予定を確認し、プレビュー後にGoogleカレンダーへ反映します。OAuthトークンは保存しません。
+        形式が崩れた予定名と遅延している予定を確認し、プレビュー後にGoogleカレンダーへ反映します。
+        書き戻し前には復元用ファイルを書き出します。OAuthトークンは保存しません。
       </p>
 
       <div className="calendar-maintenance-grid">
         <article className="calendar-maintenance-section">
-          <h3>形式不正の予定</h3>
-          <p className="meta">予定名を「担当者 / タスク名 / プロジェクト」に整えます。</p>
+          <h3>形式が崩れている予定</h3>
+          <p className="meta">予定名を「担当者 / タスク名 / プロジェクト」の形に整えます。</p>
           {invalidTasks.length === 0 ? (
-            <p className="empty-state">形式不正の予定はありません。</p>
+            <p className="empty-state">形式が崩れている予定はありません。</p>
           ) : (
             <div className="calendar-maintenance-list">
               {invalidTasks.slice(0, 5).map((task) => (
@@ -198,7 +227,7 @@ export const CalendarMaintenancePanel = ({ project, tasks, onWriteBackComplete }
               type="text"
               value={postponePrompt}
               onChange={(event) => setPostponePrompt(event.target.value)}
-              placeholder="例: 3日後にする / 1週間先へ送る"
+              placeholder="例: 3日後 / 二週間後 / 来週月曜 / 5/10 / 月末"
             />
           </label>
           <div className="calendar-maintenance-actions">
@@ -219,7 +248,18 @@ export const CalendarMaintenancePanel = ({ project, tasks, onWriteBackComplete }
       </div>
 
       <div className="calendar-preview">
-        <h3>書き戻し前プレビュー</h3>
+        <div className="calendar-preview-heading">
+          <div>
+            <h3>書き戻し前プレビュー</h3>
+            <p className="meta">
+              予定名補正 {titleDraftCount} 件 / 先送り {postponeDraftCount} 件
+            </p>
+          </div>
+          <span className="pill">合計 {drafts.length} 件</span>
+        </div>
+        <p className="note">
+          ここに表示されている内容だけをGoogleカレンダーへ書き戻します。実行前に復元用ファイルを自動で保存します。
+        </p>
         {drafts.length === 0 ? (
           <p className="empty-state">まだプレビューはありません。</p>
         ) : (
@@ -229,12 +269,10 @@ export const CalendarMaintenancePanel = ({ project, tasks, onWriteBackComplete }
                 <div>
                   <strong>{draft.taskName}</strong>
                   <p className="meta">{reasonLabel(draft)} / {draft.projectName}</p>
-                  {draft.nextSummary ? <p className="meta">予定名: {draft.previousSummary} → {draft.nextSummary}</p> : null}
-                  {draft.nextStart || draft.nextEnd ? (
+                  <p className="calendar-preview-change">{summarizeDraft(draft)}</p>
+                  {draft.reason === 'postpone' ? (
                     <p className="meta">
-                      日時: {formatDateTime(draft.previousStart)} → {formatDateTime(draft.nextStart)}
-                      {' / '}
-                      {formatDateTime(draft.previousEnd)} → {formatDateTime(draft.nextEnd)}
+                      終了: {formatDateTime(draft.previousEnd)} -&gt; {formatDateTime(draft.nextEnd)}
                     </p>
                   ) : null}
                 </div>
@@ -246,6 +284,20 @@ export const CalendarMaintenancePanel = ({ project, tasks, onWriteBackComplete }
           </div>
         )}
       </div>
+
+      {writeResults.length > 0 ? (
+        <div className="calendar-write-result">
+          <h3>書き戻し結果</h3>
+          <div className="calendar-preview-list">
+            {writeResults.map((result) => (
+              <div key={result.draftId} className={`calendar-result-item ${result.ok ? 'is-success' : 'is-failed'}`}>
+                <strong>{result.taskName}</strong>
+                <span>{result.message}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       {message ? <p className="note">{message}</p> : null}
       {error ? <p className="error preserve-line-break">{error}</p> : null}

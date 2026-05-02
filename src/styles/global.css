@@ -1665,7 +1665,8 @@ button:hover {
 }
 
 .calendar-maintenance-section,
-.calendar-preview {
+.calendar-preview,
+.calendar-write-result {
   display: grid;
   gap: 12px;
   min-width: 0;
@@ -1703,6 +1704,14 @@ button:hover {
   gap: 10px;
 }
 
+.calendar-preview-heading {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 16px;
+  min-width: 0;
+}
+
 .calendar-maintenance-item,
 .calendar-preview-item {
   display: grid;
@@ -1716,9 +1725,19 @@ button:hover {
 
 .calendar-maintenance-item strong,
 .calendar-preview-item strong,
-.calendar-preview-item .meta {
+.calendar-preview-item .meta,
+.calendar-preview-change,
+.calendar-result-item {
   min-width: 0;
   overflow-wrap: anywhere;
+}
+
+.calendar-preview-change {
+  margin: 0;
+  color: #172033;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.6;
 }
 
 .calendar-maintenance-item span {
@@ -1737,6 +1756,40 @@ button:hover {
 .calendar-preview-item {
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: start;
+}
+
+.calendar-result-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: #fff;
+}
+
+.calendar-result-item span {
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.calendar-result-item.is-success {
+  border-color: rgba(16, 185, 129, 0.26);
+  background: #f0fdf4;
+}
+
+.calendar-result-item.is-success span {
+  color: #047857;
+}
+
+.calendar-result-item.is-failed {
+  border-color: rgba(220, 38, 38, 0.24);
+  background: #fff1f2;
+}
+
+.calendar-result-item.is-failed span {
+  color: #be123c;
 }
 
 .danger-outline {
