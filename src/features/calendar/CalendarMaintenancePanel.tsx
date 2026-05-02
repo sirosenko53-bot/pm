@@ -227,7 +227,7 @@ export const CalendarMaintenancePanel = ({ project, tasks, onWriteBackComplete }
               type="text"
               value={postponePrompt}
               onChange={(event) => setPostponePrompt(event.target.value)}
-              placeholder="例: 3日後にする / 1週間先へ送る"
+              placeholder="例: 3日後 / 二週間後 / 来週月曜 / 5/10 / 月末"
             />
           </label>
           <div className="calendar-maintenance-actions">
