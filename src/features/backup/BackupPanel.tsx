@@ -52,7 +52,7 @@ const formatDateTime = (value: string | null): string => (value ? new Date(value
 const sourceLabelMap: Record<SharedStateMetadata['source'], string> = {
   local: 'ローカル',
   'shared-json': '共有ファイル',
-  'shared-json-read-failed': '共有ファイル読み取り失敗',
+  'shared-json-read-failed': '共有ファイルを読めませんでした',
 };
 
 
@@ -235,7 +235,7 @@ export const BackupPanel = ({
 
     const validation = validateSharedStatePackage(sharedPackage);
     if (!validation.ok) {
-      const failedMessage = `保存用SharedStatePackageの検証に失敗しました。\n${validation.errors.join('\n')}`;
+      const failedMessage = `共有ファイルへ保存する内容の検証に失敗しました。\n${validation.errors.join('\n')}`;
       const failed = markSharedStateSaveFailed(failedMessage);
       onSharedStateMetadataUpdated(failed.value, failed.warning);
       setPanelError(failedMessage);
@@ -265,7 +265,7 @@ export const BackupPanel = ({
     onSharedStateMetadataUpdated(saved.value, saved.warning);
     setConflictState(null);
 
-    const message = `共有ファイルへ保存しました（revision: ${sharedPackage.revision}）。`;
+    const message = `共有ファイルへ保存しました（共有版: ${sharedPackage.revision}）。`;
     setPanelMessage(message);
     onSharedStateApplied(message, saved.warning);
   };
@@ -425,17 +425,17 @@ export const BackupPanel = ({
         <h2>共有データの状態</h2>
         <p className="note">Google Drive上の共有ファイルを手動で読み書きします。自動保存、ポーリング同期、Driveファイル作成は未実装です。OAuthトークンは保存しません。</p>
         <div className="shared-state-grid">
-          <p>状態ソース: <strong>{sourceLabelMap[sharedStateMetadata.source]}</strong></p>
-          <p>同期状態: <strong>{sharedStateMetadata.syncStatus}</strong></p>
+          <p>表示元: <strong>{sourceLabelMap[sharedStateMetadata.source]}</strong></p>
+          <p>共有の状態: <strong>{sharedStateMetadata.syncStatus}</strong></p>
           <p>共有ファイル: <strong>{sharedStateMetadata.sharedFileName ?? '未設定'}</strong></p>
-          <p>共有ファイルID: <strong>{sharedStateMetadata.sharedFileId ?? '未設定'}</strong></p>
-          <p>revision: <strong>{sharedStateMetadata.revision}</strong></p>
-          <p>最終共有読取日時: <strong>{formatDateTime(sharedStateMetadata.lastReadAt)}</strong></p>
-          <p>最終共有保存日時: <strong>{formatDateTime(sharedStateMetadata.lastSaveAt)}</strong></p>
-          <p>savedBy: <strong>{sharedStateMetadata.savedBy ?? '未記録'}</strong></p>
-          <p>deviceId: <strong>{sharedStateMetadata.deviceId ?? '未記録'}</strong></p>
+          <p>Drive上のファイルID: <strong>{sharedStateMetadata.sharedFileId ?? '未設定'}</strong></p>
+          <p>共有版: <strong>{sharedStateMetadata.revision}</strong></p>
+          <p>最後に共有から読んだ日時: <strong>{formatDateTime(sharedStateMetadata.lastReadAt)}</strong></p>
+          <p>最後に共有へ保存した日時: <strong>{formatDateTime(sharedStateMetadata.lastSaveAt)}</strong></p>
+          <p>保存した端末: <strong>{sharedStateMetadata.savedBy ?? '未記録'}</strong></p>
+          <p>この端末ID: <strong>{sharedStateMetadata.deviceId ?? '未記録'}</strong></p>
           <p>
-            入室時の読み込み:
+            入室時に読む:
             {' '}
             <strong>{sharedStateMetadata.autoReadSharedStateOnEnter ? '有効' : '無効'}</strong>
           </p>
@@ -473,10 +473,10 @@ export const BackupPanel = ({
               Drive上の共有ファイルが、現在のローカル状態より新しい可能性があります。上書きする前に、再読み込みするか、ローカル状態で上書きするかを選択してください。
             </p>
             <ul>
-              <li>ローカルrevision: {conflictState.localRevision}</li>
-              <li>Drive側revision: {conflictState.remoteRevision}</li>
-              <li>Drive側savedAt: {formatDateTime(conflictState.remoteSavedAt ?? null)}</li>
-              <li>Drive側savedBy: {conflictState.remoteSavedBy ?? '未記録'}</li>
+              <li>ローカル共有版: {conflictState.localRevision}</li>
+              <li>Drive側共有版: {conflictState.remoteRevision}</li>
+              <li>Drive側保存日時: {formatDateTime(conflictState.remoteSavedAt ?? null)}</li>
+              <li>Drive側保存端末: {conflictState.remoteSavedBy ?? '未記録'}</li>
               <li>ローカル最終保存日時: {formatDateTime(sharedStateMetadata.lastSaveAt)}</li>
               <li>共有後ローカル変更あり: {sharedStateMetadata.hasLocalChangesAfterShare ? 'あり' : 'なし'}</li>
             </ul>
@@ -499,7 +499,7 @@ export const BackupPanel = ({
       </section>
 
       <section className="card shared-state-card">
-        <h2>入室時に共有データを読む</h2>
+        <h2>入室時に自動で読む</h2>
         <p className="note">ONにすると、ワークスペースに入るときGoogle Drive上の共有ファイルを読み取ります。</p>
         <p className="note">読み取りにはGoogle認証が必要です。認証が必要な場合は手動で読み込んでください。</p>
         <p className="note">読み取りに失敗した場合はローカル状態で表示します。Driveへ自動保存はしません。</p>
@@ -524,7 +524,7 @@ export const BackupPanel = ({
       </section>
 
       <section className="card shared-state-card">
-        <h2>共有ファイルの設定</h2>
+        <h2>チーム共有ファイル</h2>
         <p className="note">Google Drive上に置いた共有用ファイルのIDを登録します。</p>
         <p className="note">登録したファイルIDを使って、手動で読み込み・保存します。</p>
         <div className="shared-settings-form">
@@ -554,7 +554,7 @@ export const BackupPanel = ({
       </section>
 
       <section className="card shared-state-card">
-        <h2>共有ファイルを読み込む</h2>
+        <h2>チームの進行状況を取り込む</h2>
         <p className="note">Google Drive上の共有用ファイルを読み込み、他端末で保存された進行状況を反映します。Googleドキュメントやスプレッドシートはこの段階では対象外です。</p>
         <p className="note">通常はGoogle認証経由でDrive読取トークンを取得して読み込みます。トークンは保存しません。</p>
         {!hasSharedFileId ? (
@@ -594,7 +594,7 @@ export const BackupPanel = ({
       <section className="card backup-actions">
         <h2>この端末の状態を保存</h2>
         <p className="note">現在の進行状況や画面設定を、復元用ファイルとして書き出します。</p>
-        <button type="button" className="secondary" onClick={handleExport}>復元用ファイルを書き出す</button>
+        <button type="button" className="secondary" onClick={handleExport}>この端末の状態をファイルに保存</button>
       </section>
 
       <section className="card backup-actions">
