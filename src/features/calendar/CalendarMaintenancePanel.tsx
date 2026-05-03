@@ -23,6 +23,8 @@ type WriteBackResult = {
   message: string;
 };
 
+const POSTPONE_TEMPLATES = ['明日', '3日後', '来週月曜', '月末'];
+
 const formatDateTime = (value?: string): string => {
   if (!value) return '-';
   const date = new Date(value);
@@ -33,20 +35,24 @@ const formatDateTime = (value?: string): string => {
 };
 
 const reasonLabel = (draft: CalendarWriteBackDraft): string =>
-  draft.reason === 'title-normalize' ? '予定名を整える' : '予定日を先送りする';
+  draft.reason === 'title-normalize' ? '予定名の補正' : '予定日の先送り';
 
 const summarizeDraft = (draft: CalendarWriteBackDraft): string => {
   if (draft.reason === 'title-normalize') {
     return `予定名: ${draft.previousSummary} -> ${draft.nextSummary ?? '-'}`;
   }
-  return `日時: ${formatDateTime(draft.previousStart)} -> ${formatDateTime(draft.nextStart)}`;
+  return `開始: ${formatDateTime(draft.previousStart)} -> ${formatDateTime(draft.nextStart)}`;
 };
+
+const buildDraftMap = (drafts: CalendarWriteBackDraft[]): Map<string, CalendarWriteBackDraft> =>
+  new Map(drafts.map((draft) => [draft.draftId, draft]));
 
 export const CalendarMaintenancePanel = ({ project, tasks, onWriteBackComplete }: Props) => {
   const [postponeTaskId, setPostponeTaskId] = useState('');
   const [postponePrompt, setPostponePrompt] = useState('');
   const [postponeDate, setPostponeDate] = useState('');
   const [drafts, setDrafts] = useState<CalendarWriteBackDraft[]>([]);
+  const [selectedDraftIds, setSelectedDraftIds] = useState<string[]>([]);
   const [message, setMessage] = useState<string | undefined>();
   const [error, setError] = useState<string | undefined>();
   const [writeResults, setWriteResults] = useState<WriteBackResult[]>([]);
@@ -63,15 +69,22 @@ export const CalendarMaintenancePanel = ({ project, tasks, onWriteBackComplete }
   );
 
   const selectedPostponeTask = delayedTasks.find((task) => task.taskId === postponeTaskId) ?? delayedTasks[0];
+  const selectedDraftIdSet = useMemo(() => new Set(selectedDraftIds), [selectedDraftIds]);
+  const selectedDrafts = drafts.filter((draft) => selectedDraftIdSet.has(draft.draftId));
   const titleDraftCount = drafts.filter((draft) => draft.reason === 'title-normalize').length;
   const postponeDraftCount = drafts.filter((draft) => draft.reason === 'postpone').length;
 
   const appendDrafts = (nextDrafts: CalendarWriteBackDraft[]) => {
     setWriteResults([]);
     setDrafts((current) => {
-      const map = new Map(current.map((draft) => [draft.draftId, draft]));
+      const map = buildDraftMap(current);
       nextDrafts.forEach((draft) => map.set(draft.draftId, draft));
       return [...map.values()];
+    });
+    setSelectedDraftIds((current) => {
+      const next = new Set(current);
+      nextDrafts.forEach((draft) => next.add(draft.draftId));
+      return [...next];
     });
   };
 
@@ -121,6 +134,29 @@ export const CalendarMaintenancePanel = ({ project, tasks, onWriteBackComplete }
   const handleRemoveDraft = (draftId: string) => {
     setWriteResults([]);
     setDrafts((current) => current.filter((draft) => draft.draftId !== draftId));
+    setSelectedDraftIds((current) => current.filter((id) => id !== draftId));
+  };
+
+  const toggleDraftSelection = (draftId: string) => {
+    setSelectedDraftIds((current) =>
+      current.includes(draftId)
+        ? current.filter((id) => id !== draftId)
+        : [...current, draftId],
+    );
+  };
+
+  const selectAllDrafts = () => {
+    setSelectedDraftIds(drafts.map((draft) => draft.draftId));
+  };
+
+  const clearSelectedDrafts = () => {
+    setSelectedDraftIds([]);
+  };
+
+  const applyTemplatePrompt = (prompt: string) => {
+    setPostponePrompt(prompt);
+    setMessage(undefined);
+    setError(undefined);
   };
 
   const handleWriteBack = async () => {
@@ -131,10 +167,18 @@ export const CalendarMaintenancePanel = ({ project, tasks, onWriteBackComplete }
       setError('書き戻し前プレビューがありません。先に補正候補または先送りプレビューを作成してください。');
       return;
     }
+    if (selectedDrafts.length === 0) {
+      setError('Googleカレンダーへ書き戻す予定を選択してください。');
+      return;
+    }
+    const confirmed = window.confirm(
+      `選択した ${selectedDrafts.length} 件をGoogleカレンダーへ書き戻します。\n実行前に復元用ファイルを保存します。続行しますか？`,
+    );
+    if (!confirmed) return;
 
     setIsWriting(true);
     try {
-      exportCalendarWriteBackBackup(drafts);
+      exportCalendarWriteBackBackup(selectedDrafts);
       const authResult = await requestGoogleCalendarWriteAccessToken();
       if (!authResult.ok) {
         setError(`Google認証に失敗しました。カレンダーには書き戻していません。\n${authResult.error}`);
@@ -142,7 +186,7 @@ export const CalendarMaintenancePanel = ({ project, tasks, onWriteBackComplete }
       }
 
       const results: WriteBackResult[] = [];
-      for (const draft of drafts) {
+      for (const draft of selectedDrafts) {
         const result = await updateCalendarEvent({
           calendarId: draft.calendarId,
           eventId: draft.googleCalendarEventId,
@@ -159,12 +203,15 @@ export const CalendarMaintenancePanel = ({ project, tasks, onWriteBackComplete }
 
       setWriteResults(results);
       const failed = results.filter((result) => !result.ok);
+      const succeededIds = new Set(results.filter((result) => result.ok).map((result) => result.draftId));
+      setDrafts((current) => current.filter((draft) => !succeededIds.has(draft.draftId)));
+      setSelectedDraftIds((current) => current.filter((draftId) => !succeededIds.has(draftId)));
+
       if (failed.length > 0) {
-        setError(`${failed.length} 件の書き戻しに失敗しました。成功した予定もあるため、一覧で結果を確認してください。`);
+        setError(`${failed.length} 件の書き戻しに失敗しました。成功した予定はプレビューから外しました。結果一覧を確認してください。`);
         return;
       }
 
-      setDrafts([]);
       setMessage('Googleカレンダーへ書き戻しました。復元用ファイルも保存済みです。予定を再読み込みします。');
       onWriteBackComplete();
     } finally {
@@ -230,6 +277,18 @@ export const CalendarMaintenancePanel = ({ project, tasks, onWriteBackComplete }
               placeholder="例: 3日後 / 二週間後 / 来週月曜 / 5/10 / 月末"
             />
           </label>
+          <div className="calendar-template-row" aria-label="先送り日の例">
+            {POSTPONE_TEMPLATES.map((template) => (
+              <button
+                key={template}
+                type="button"
+                className="calendar-template-button"
+                onClick={() => applyTemplatePrompt(template)}
+              >
+                {template}
+              </button>
+            ))}
+          </div>
           <div className="calendar-maintenance-actions">
             <button type="button" className="secondary" onClick={handlePlanPostpone}>日数案を作る</button>
             <label>
@@ -252,13 +311,21 @@ export const CalendarMaintenancePanel = ({ project, tasks, onWriteBackComplete }
           <div>
             <h3>書き戻し前プレビュー</h3>
             <p className="meta">
-              予定名補正 {titleDraftCount} 件 / 先送り {postponeDraftCount} 件
+              予定名補正 {titleDraftCount} 件 / 先送り {postponeDraftCount} 件 / 選択中 {selectedDrafts.length} 件
             </p>
           </div>
-          <span className="pill">合計 {drafts.length} 件</span>
+          <div className="calendar-preview-controls">
+            <span className="pill">合計 {drafts.length} 件</span>
+            <button type="button" className="secondary" onClick={selectAllDrafts} disabled={drafts.length === 0}>
+              すべて選択
+            </button>
+            <button type="button" className="secondary" onClick={clearSelectedDrafts} disabled={drafts.length === 0}>
+              選択解除
+            </button>
+          </div>
         </div>
         <p className="note">
-          ここに表示されている内容だけをGoogleカレンダーへ書き戻します。実行前に復元用ファイルを自動で保存します。
+          チェックした予定だけをGoogleカレンダーへ書き戻します。実行前に、選択中の予定だけを含む復元用ファイルを保存します。
         </p>
         {drafts.length === 0 ? (
           <p className="empty-state">まだプレビューはありません。</p>
@@ -266,6 +333,14 @@ export const CalendarMaintenancePanel = ({ project, tasks, onWriteBackComplete }
           <div className="calendar-preview-list">
             {drafts.map((draft) => (
               <article key={draft.draftId} className="calendar-preview-item">
+                <label className="calendar-preview-select">
+                  <input
+                    type="checkbox"
+                    checked={selectedDraftIdSet.has(draft.draftId)}
+                    onChange={() => toggleDraftSelection(draft.draftId)}
+                  />
+                  <span>書き戻す</span>
+                </label>
                 <div>
                   <strong>{draft.taskName}</strong>
                   <p className="meta">{reasonLabel(draft)} / {draft.projectName}</p>
@@ -305,10 +380,10 @@ export const CalendarMaintenancePanel = ({ project, tasks, onWriteBackComplete }
       <button
         type="button"
         className="primary"
-        disabled={drafts.length === 0 || isWriting}
+        disabled={selectedDrafts.length === 0 || isWriting}
         onClick={() => void handleWriteBack()}
       >
-        プレビュー内容をGoogleカレンダーへ書き戻す
+        選択した予定をGoogleカレンダーへ書き戻す
       </button>
     </section>
   );
