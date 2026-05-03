@@ -249,16 +249,20 @@ export const TaskBoard = ({
                     >
                       <p className="drag-handle" aria-label="ドラッグして移動">⋮⋮</p>
                       <h3>{task.taskName}</h3>
-                      <p className="meta">担当: {task.assignee} / 期限: {resolveDueText(task)}</p>
-                      {selectedProjectId === 'all' ? <p className="meta">プロジェクト: {task.projectName}</p> : null}
-                      <div className="status-row">
-                        {task.isDelayed ? <span className="warning">遅延</span> : null}
-                        {task.parseError ? <span className="warning">解析エラー</span> : null}
-                        {task.isUnclassifiedProject ? <span className="warning">未分類</span> : null}
-                      </div>
+                      <p className="meta board-card-brief">
+                        {task.assignee} / {resolveDueText(task)}
+                        {selectedProjectId === 'all' ? ` / ${task.projectName}` : ''}
+                      </p>
+                      {task.isDelayed || task.parseError || task.isUnclassifiedProject ? (
+                        <div className="status-row">
+                          {task.isDelayed ? <span className="warning">遅延</span> : null}
+                          {task.parseError ? <span className="warning">解析エラー</span> : null}
+                          {task.isUnclassifiedProject ? <span className="warning">未分類</span> : null}
+                        </div>
+                      ) : null}
 
                       <details className="board-status-menu">
-                        <summary>状態を変更</summary>
+                        <summary>状態を変える</summary>
                         <div className="status-buttons">
                           {TASK_STATUSES.map((nextStatus) => (
                             <button

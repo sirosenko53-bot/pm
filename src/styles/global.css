@@ -1174,6 +1174,12 @@ button:hover {
   overflow-wrap: anywhere;
 }
 
+.board-card-brief {
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
 .drag-handle {
   color: #94a3b8;
   letter-spacing: 0;
@@ -1712,6 +1718,20 @@ button:hover {
   min-width: 0;
 }
 
+.calendar-preview-controls {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.calendar-preview-controls .secondary {
+  min-height: 34px;
+  padding: 7px 10px;
+  font-size: 12px;
+}
+
 .calendar-maintenance-item,
 .calendar-preview-item {
   display: grid;
@@ -1753,9 +1773,48 @@ button:hover {
   align-items: end;
 }
 
+.calendar-template-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.calendar-template-button {
+  min-height: 32px;
+  border: 1px solid rgba(37, 99, 235, 0.18);
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  padding: 6px 11px;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.calendar-template-button:hover {
+  border-color: rgba(37, 99, 235, 0.34);
+  background: #dbeafe;
+}
+
 .calendar-preview-item {
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: start;
+}
+
+.calendar-preview-select {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.calendar-preview-select input {
+  width: 16px;
+  height: 16px;
+  accent-color: #2563eb;
 }
 
 .calendar-result-item {
