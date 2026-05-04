@@ -247,7 +247,7 @@ export const TaskBoard = ({
                         handleDrop(status, task.taskId);
                       }}
                     >
-                      <p className="drag-handle" aria-label="ドラッグして移動">⋮⋮</p>
+                      <p className="drag-handle" aria-hidden="true">⋮⋮</p>
                       <h3>{task.taskName}</h3>
                       <p className="meta board-card-brief">
                         {task.assignee} / {resolveDueText(task)}
@@ -262,7 +262,7 @@ export const TaskBoard = ({
                       ) : null}
 
                       <details className="board-status-menu">
-                        <summary>状態を変える</summary>
+                        <summary>変更</summary>
                         <div className="status-buttons">
                           {TASK_STATUSES.map((nextStatus) => (
                             <button

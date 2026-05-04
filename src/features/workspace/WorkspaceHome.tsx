@@ -54,7 +54,7 @@ export const WorkspaceHome = ({
             <strong>制作PM</strong>
           </div>
           <div className="workspace-tools" aria-label="補助情報">
-            <span>同期済み</span>
+            <span>共有は手動</span>
             <button type="button" className="text-action" onClick={onOpenBackup}>設定</button>
           </div>
         </div>
