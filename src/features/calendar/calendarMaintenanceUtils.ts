@@ -199,8 +199,9 @@ const resolveTargetDateFromInstruction = (
 export const buildNormalizedTitle = (task: TaskViewModel, project?: Project): string => {
   const assignee = task.assignee?.trim() || '未設定';
   const taskName = task.taskName?.trim() || task.titleRaw.trim() || 'タイトルなし';
+  const priority = task.priority ?? '中';
   const projectName = project?.projectName ?? task.projectName?.trim() ?? '未分類';
-  return `${assignee} / ${taskName} / ${projectName}`;
+  return `${assignee} / ${taskName}（${priority}） / ${projectName}`;
 };
 
 export const createTitleNormalizeDraft = (task: TaskViewModel, project?: Project): CalendarWriteBackDraft => {

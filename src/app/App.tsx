@@ -126,6 +126,7 @@ export const App = () => {
   const [overlays, setOverlays] = useState(getAllTaskOverlays());
   const [calendarStatus, setCalendarStatus] = useState('モック表示中');
   const [calendarError, setCalendarError] = useState<string | undefined>();
+  const [isLoadingTasks, setIsLoadingTasks] = useState(false);
   const [storageWarning, setStorageWarning] = useState<string | undefined>();
   const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
   const [sharedStateMetadata, setSharedStateMetadata] = useState<SharedStateMetadata>(
@@ -201,6 +202,7 @@ export const App = () => {
   }, []);
 
   const loadTasks = async (nextWorkspace: Workspace) => {
+    setIsLoadingTasks(true);
     try {
       const useMockCalendar = isUsingMockCalendar();
       let calendarAccessToken: string | undefined;
@@ -230,6 +232,8 @@ export const App = () => {
     } catch (error) {
       setCalendarStatus('取得失敗');
       setCalendarError(error instanceof Error ? error.message : '予定取得に失敗しました。');
+    } finally {
+      setIsLoadingTasks(false);
     }
   };
 
@@ -623,11 +627,13 @@ export const App = () => {
       tasks={visibleTaskViewModels}
       calendarStatus={calendarStatus}
       calendarError={calendarError}
+      isReloadingCalendar={isLoadingTasks}
       storageWarning={storageWarning}
       onSelectProject={openProjectOverview}
       onOpenBoard={() => openTaskBoard()}
       onOpenBackup={() => openBackup()}
       onOpenJoinedProjects={() => setRoute({ name: 'joined-projects' })}
+      onReloadCalendar={() => void loadTasks(workspace)}
     />
   );
 };

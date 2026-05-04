@@ -233,7 +233,7 @@ export const CalendarMaintenancePanel = ({ project, tasks, onWriteBackComplete }
       <div className="calendar-maintenance-grid">
         <article className="calendar-maintenance-section">
           <h3>形式が崩れている予定</h3>
-          <p className="meta">予定名を「担当者 / タスク名 / プロジェクト」の形に整えます。</p>
+          <p className="meta">予定名を「担当者 / タスク名（高・中・低） / プロジェクト」の形に整えます。</p>
           {invalidTasks.length === 0 ? (
             <p className="empty-state">形式が崩れている予定はありません。</p>
           ) : (

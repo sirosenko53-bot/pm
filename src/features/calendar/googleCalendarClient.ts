@@ -12,21 +12,21 @@ export type GoogleCalendarEvent = {
 export const MOCK_EVENTS: GoogleCalendarEvent[] = [
   {
     id: 'event-001',
-    summary: '佐藤 / 第6詩 本文 / 詩集制作',
+    summary: '佐藤 / 第6詩 本文（高） / 詩集制作',
     start: { dateTime: '2026-04-27T10:00:00+09:00' },
     end: { dateTime: '2026-04-27T12:00:00+09:00' },
     description: '本文作成',
   },
   {
     id: 'event-002',
-    summary: 'C / プロローグ室ラフ実装 / 展示制作',
+    summary: 'C / プロローグ室ラフ実装（中） / 展示制作',
     start: { dateTime: '2026-04-28T13:00:00+09:00' },
     end: { dateTime: '2026-04-28T16:00:00+09:00' },
     description: '',
   },
   {
     id: 'event-003',
-    summary: '佐藤 / 登場人物との関係整理 / 音声作品',
+    summary: '佐藤 / 登場人物との関係整理（低） / 音声作品',
     start: { dateTime: '2026-04-29T09:00:00+09:00' },
     end: { dateTime: '2026-04-29T11:00:00+09:00' },
     description: '',

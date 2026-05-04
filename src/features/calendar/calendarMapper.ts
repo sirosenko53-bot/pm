@@ -31,6 +31,7 @@ export const mapCalendarEventToTask = (
     titleRaw: event.summary ?? '',
     assignee: parsed.assignee,
     taskName: parsed.taskName,
+    priority: parsed.priority,
     projectName: project?.projectName ?? parsed.projectName,
     projectId: project?.projectId ?? 'unclassified',
     stageId: project ? estimateStageId(project.projectType, parsed.taskName) : undefined,

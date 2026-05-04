@@ -981,6 +981,29 @@ button:hover {
   border-color: #fed7aa;
 }
 
+.priority-pill {
+  display: inline-block;
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 800;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  background: #f8fafc;
+  color: #475569;
+}
+
+.priority-high {
+  border-color: #fecdd3;
+  background: #fff1f2;
+  color: #be123c;
+}
+
+.priority-low {
+  border-color: #dbe7f5;
+  background: #f8fafc;
+  color: #64748b;
+}
+
 .warning-inline {
   color: #dc2626;
 }
@@ -1433,7 +1456,8 @@ button:hover {
 
 .status-button,
 .pill,
-.warning {
+.warning,
+.priority-pill {
   max-width: 100%;
   white-space: normal;
 }
