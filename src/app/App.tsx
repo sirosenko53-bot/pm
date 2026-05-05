@@ -610,6 +610,8 @@ export const App = () => {
         workspaceName={workspace.workspaceName}
         project={project}
         tasks={visibleTaskViewModels.filter((task) => task.projectId === project.projectId)}
+        calendarStatus={calendarStatus}
+        isReloadingCalendar={isLoadingTasks}
         storageWarning={storageWarning}
         onBack={() => setRoute({ name: 'workspace-home' })}
         onOpenBoard={() => openTaskBoard(project.projectId, project.projectId)}
@@ -617,6 +619,7 @@ export const App = () => {
         onOpenToday={() => openToday(project.projectId)}
         onOpenWorkflow={() => openWorkflow(project.projectId)}
         onOpenReviewFix={() => openReviewFix(project.projectId)}
+        onReloadCalendar={() => void loadTasks(workspace)}
       />
     );
   }

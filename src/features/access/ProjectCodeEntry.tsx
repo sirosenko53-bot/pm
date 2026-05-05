@@ -39,6 +39,23 @@ export const ProjectCodeEntry = ({ onSubmit }: Props) => {
       <section className="card entry project-code-card">
         <p className="app-title">制作PM</p>
         <h1>プロジェクトに参加する</h1>
+        <div className="entry-setup-flow" aria-label="初回セットアップの流れ">
+          <div>
+            <span>1</span>
+            <strong>コードを入力</strong>
+            <p>共有されたプロジェクトコードだけを入れます。</p>
+          </div>
+          <div>
+            <span>2</span>
+            <strong>予定を取り込む</strong>
+            <p>参加後にGoogleカレンダーを更新します。</p>
+          </div>
+          <div>
+            <span>3</span>
+            <strong>共有を確認</strong>
+            <p>必要な場合だけチームの進行状況を読み込みます。</p>
+          </div>
+        </div>
         <form onSubmit={handleSubmit} className="form project-code-form">
           <label>
             プロジェクトコード

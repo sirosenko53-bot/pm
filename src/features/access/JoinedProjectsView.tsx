@@ -68,6 +68,27 @@ export const JoinedProjectsView = ({
         <button type="button" className="secondary" onClick={onOpenBackup}>設定・バックアップ</button>
       </section>
 
+      <section className="share-guide-card" aria-label="共有された人向けの使い方">
+        <div>
+          <p className="meta">共有された人向け</p>
+          <h2>まずはこの順番で進めます</h2>
+        </div>
+        <ol className="share-guide-steps">
+          <li>
+            <strong>1. プロジェクトを開く</strong>
+            <p>参加中カードの「このプロジェクトを開く」から作業画面へ進みます。</p>
+          </li>
+          <li>
+            <strong>2. 予定を更新する</strong>
+            <p>ホームまたはプロジェクト概要でGoogleカレンダーを取り込みます。</p>
+          </li>
+          <li>
+            <strong>3. 必要なら共有を読む</strong>
+            <p>他の人の進行状況が必要なときだけ、設定画面からチーム共有を読み込みます。</p>
+          </li>
+        </ol>
+      </section>
+
       <section className="joined-projects-layout">
         {joinedProjectCards.length === 0 ? (
           <article className="card">
