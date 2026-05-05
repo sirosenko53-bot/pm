@@ -11,6 +11,7 @@ export type Task = {
   titleRaw: string;
   assignee: string;
   taskName: string;
+  priority: TaskPriority;
   projectName: string;
   projectId: string;
   stageId?: string;

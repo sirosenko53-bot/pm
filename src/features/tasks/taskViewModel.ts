@@ -83,7 +83,7 @@ export const buildTaskViewModels = (tasks: Task[], overlays: TaskOverlay[], work
       stageId,
       stageName: resolveStageName(workspace, stageId),
       status,
-      priority: overlay?.priority,
+      priority: overlay?.priority ?? task.priority ?? '中',
       reviewer: overlay?.reviewer,
       memo: overlay?.memo,
       sortOrder: overlay?.sortOrder,

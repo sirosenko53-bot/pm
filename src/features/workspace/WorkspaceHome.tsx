@@ -7,11 +7,13 @@ type Props = {
   tasks: TaskViewModel[];
   calendarStatus: string;
   calendarError?: string;
+  isReloadingCalendar?: boolean;
   storageWarning?: string;
   onSelectProject: (projectId: string) => void;
   onOpenBoard: () => void;
   onOpenBackup: () => void;
   onOpenJoinedProjects: () => void;
+  onReloadCalendar: () => void;
 };
 
 export const WorkspaceHome = ({
@@ -19,11 +21,13 @@ export const WorkspaceHome = ({
   tasks,
   calendarStatus,
   calendarError,
+  isReloadingCalendar = false,
   storageWarning,
   onSelectProject,
   onOpenBoard,
   onOpenBackup,
   onOpenJoinedProjects,
+  onReloadCalendar,
 }: Props) => {
   const summary = calculateTaskSummary(tasks);
   const todayKey = new Date().toISOString().slice(0, 10);
@@ -67,7 +71,48 @@ export const WorkspaceHome = ({
         <p className="meta">ローカル保存 / 復元用ファイル対応</p>
         {calendarError ? <p className="error">{calendarError}</p> : null}
         {storageWarning ? <p className="warning-text">{storageWarning}</p> : null}
+        <div className="quick-setup-card" aria-label="初回セットアップ">
+          <div className="quick-setup-heading">
+            <p className="meta">初回はここだけ確認</p>
+            <h2>3ステップで使い始める</h2>
+          </div>
+          <ol className="quick-setup-steps">
+            <li>
+              <span className="setup-step-number">1</span>
+              <div>
+                <strong>プロジェクト参加</strong>
+                <p>{workspace.projects.length}件の参加中プロジェクトを表示しています。</p>
+              </div>
+              <button type="button" className="setup-step-action" onClick={onOpenJoinedProjects}>
+                参加を確認
+              </button>
+            </li>
+            <li>
+              <span className="setup-step-number">2</span>
+              <div>
+                <strong>Googleカレンダーを取り込む</strong>
+                <p>予定を最新にします。状態: {calendarStatus}</p>
+              </div>
+              <button type="button" className="setup-step-action primary-lite" onClick={onReloadCalendar} disabled={isReloadingCalendar}>
+                {isReloadingCalendar ? '取り込み中' : '予定を更新'}
+              </button>
+            </li>
+            <li>
+              <span className="setup-step-number">3</span>
+              <div>
+                <strong>チーム共有を確認</strong>
+                <p>他の端末で保存された進行状況が必要なときだけ開きます。</p>
+              </div>
+              <button type="button" className="setup-step-action" onClick={onOpenBackup}>
+                共有設定へ
+              </button>
+            </li>
+          </ol>
+        </div>
         <div className="overview-nav">
+          <button type="button" className="secondary" onClick={onReloadCalendar} disabled={isReloadingCalendar}>
+            {isReloadingCalendar ? '取り込み中' : 'Googleカレンダーを取り込む'}
+          </button>
           <button type="button" className="secondary" onClick={onOpenJoinedProjects}>参加中プロジェクト一覧</button>
           <button type="button" className="secondary" onClick={onOpenBoard}>全タスクボードを見る</button>
           <button type="button" className="secondary" onClick={onOpenBackup}>設定・バックアップ</button>

@@ -8,6 +8,8 @@ type Props = {
   workspaceName: string;
   project: Project;
   tasks: TaskViewModel[];
+  calendarStatus?: string;
+  isReloadingCalendar?: boolean;
   storageWarning?: string;
   onBack: () => void;
   onOpenBoard: () => void;
@@ -15,6 +17,7 @@ type Props = {
   onOpenToday: () => void;
   onOpenWorkflow: () => void;
   onOpenReviewFix: () => void;
+  onReloadCalendar?: () => void;
 };
 
 const formatOverviewDate = (value?: string) => {
@@ -39,6 +42,8 @@ export const ProjectOverview = ({
   workspaceName,
   project,
   tasks,
+  calendarStatus = '未確認',
+  isReloadingCalendar = false,
   storageWarning,
   onBack,
   onOpenBoard,
@@ -46,6 +51,7 @@ export const ProjectOverview = ({
   onOpenToday,
   onOpenWorkflow,
   onOpenReviewFix,
+  onReloadCalendar,
 }: Props) => {
   const summary = calculateTaskSummary(tasks);
   const today = new Date();
@@ -108,6 +114,44 @@ export const ProjectOverview = ({
         </div>
         <p className="meta">ローカル保存 / 復元用ファイル対応</p>
         {storageWarning ? <p className="warning-text">{storageWarning}</p> : null}
+      </section>
+
+      <section className="quick-setup-card project-quick-setup" aria-label="初回セットアップ">
+        <div className="quick-setup-heading">
+          <p className="meta">迷ったらこの順番</p>
+          <h2>入室後の3ステップ</h2>
+        </div>
+        <ol className="quick-setup-steps">
+          <li>
+            <span className="setup-step-number">1</span>
+            <div>
+              <strong>このプロジェクトを開く</strong>
+              <p>{project.projectName}に参加済みです。</p>
+            </div>
+          </li>
+          <li>
+            <span className="setup-step-number">2</span>
+            <div>
+              <strong>予定を更新</strong>
+              <p>Googleカレンダーの状態: {calendarStatus}</p>
+            </div>
+            {onReloadCalendar ? (
+              <button type="button" className="setup-step-action primary-lite" onClick={onReloadCalendar} disabled={isReloadingCalendar}>
+                {isReloadingCalendar ? '取り込み中' : 'Googleカレンダーを取り込む'}
+              </button>
+            ) : null}
+          </li>
+          <li>
+            <span className="setup-step-number">3</span>
+            <div>
+              <strong>チーム共有を確認</strong>
+              <p>共有された進行状況が必要なときだけ設定を開きます。</p>
+            </div>
+            <button type="button" className="setup-step-action" onClick={onOpenBackup}>
+              共有設定へ
+            </button>
+          </li>
+        </ol>
       </section>
 
       <section className="overview-feature-grid">

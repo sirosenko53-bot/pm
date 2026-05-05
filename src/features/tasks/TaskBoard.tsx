@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { TASK_STATUSES, type TaskStatus, type TaskViewModel } from '../../domain/taskTypes';
+import { TASK_STATUSES, type TaskPriority, type TaskStatus, type TaskViewModel } from '../../domain/taskTypes';
 import type { Workspace } from '../../domain/workspaceTypes';
 import { CommonNav, type CommonNavItem } from '../navigation/CommonNav';
 
@@ -62,6 +62,9 @@ const STATUS_DESCRIPTION: Record<TaskStatus, string> = {
   修正待ち: '修正対応が必要',
   完了: '完了済みタスク',
 };
+
+const priorityClassName = (priority: TaskPriority) =>
+  `priority-pill priority-${priority === '高' ? 'high' : priority === '低' ? 'low' : 'normal'}`;
 
 export const TaskBoard = ({
   workspace,
@@ -253,8 +256,9 @@ export const TaskBoard = ({
                         {task.assignee} / {resolveDueText(task)}
                         {selectedProjectId === 'all' ? ` / ${task.projectName}` : ''}
                       </p>
-                      {task.isDelayed || task.parseError || task.isUnclassifiedProject ? (
+                      {task.priority !== '中' || task.isDelayed || task.parseError || task.isUnclassifiedProject ? (
                         <div className="status-row">
+                          {task.priority !== '中' ? <span className={priorityClassName(task.priority)}>優先 {task.priority}</span> : null}
                           {task.isDelayed ? <span className="warning">遅延</span> : null}
                           {task.parseError ? <span className="warning">解析エラー</span> : null}
                           {task.isUnclassifiedProject ? <span className="warning">未分類</span> : null}

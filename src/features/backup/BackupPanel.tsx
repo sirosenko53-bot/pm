@@ -421,6 +421,27 @@ export const BackupPanel = ({
         {panelError ? <p className="error preserve-line-break">{panelError}</p> : null}
       </section>
 
+      <section className="share-guide-card backup-guide-card" aria-label="設定画面でやること">
+        <div>
+          <p className="meta">設定で迷ったら</p>
+          <h2>普段使うのはこの3つだけです</h2>
+        </div>
+        <ol className="share-guide-steps">
+          <li>
+            <strong>チームの状態を読む</strong>
+            <p>他の人が保存した進行状況を、この端末に取り込みます。</p>
+          </li>
+          <li>
+            <strong>チームへ保存する</strong>
+            <p>この端末の進行状況を、共有ファイルへ反映します。</p>
+          </li>
+          <li>
+            <strong>復元用ファイルを保存する</strong>
+            <p>作業前後の控えを手元に残します。Googleカレンダー予定そのものは含みません。</p>
+          </li>
+        </ol>
+      </section>
+
       <section className="card shared-state-card">
         <h2>共有データの状態</h2>
         <p className="note">Google Drive上の共有ファイルを手動で読み書きします。自動保存、ポーリング同期、Driveファイル作成は未実装です。OAuthトークンは保存しません。</p>
