@@ -165,8 +165,8 @@ export const App = () => {
   }), [workspace, visibleProjects, visibleProjectIdSet]);
 
   const calendarDiagnostics = useMemo(
-    () => buildCalendarConnectionDiagnostic(workspace),
-    [workspace],
+    () => buildCalendarConnectionDiagnostic(visibleWorkspace),
+    [visibleWorkspace],
   );
 
   const visibleTaskViewModels = useMemo(
@@ -631,7 +631,7 @@ export const App = () => {
         onOpenBoard={() => openTaskBoard(project.projectId, project.projectId)}
         onOpenBackup={() => openBackup(project.projectId)}
         onChangeStatus={handleChangeStatus}
-        onCalendarWriteBackComplete={() => void loadTasks(workspace)}
+        onCalendarWriteBackComplete={() => void loadTasks(visibleWorkspace)}
       />
     );
   }
@@ -665,7 +665,7 @@ export const App = () => {
         onOpenToday={() => openToday(project.projectId)}
         onOpenWorkflow={() => openWorkflow(project.projectId)}
         onOpenReviewFix={() => openReviewFix(project.projectId)}
-        onReloadCalendar={() => void loadTasks(workspace)}
+        onReloadCalendar={() => void loadTasks(visibleWorkspace)}
       />
     );
   }
@@ -684,7 +684,7 @@ export const App = () => {
       onOpenBoard={() => openTaskBoard()}
       onOpenBackup={() => openBackup()}
       onOpenJoinedProjects={() => setRoute({ name: 'joined-projects' })}
-      onReloadCalendar={() => void loadTasks(workspace)}
+      onReloadCalendar={() => void loadTasks(visibleWorkspace)}
     />
   );
 };
