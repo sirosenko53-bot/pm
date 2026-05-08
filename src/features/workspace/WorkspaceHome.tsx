@@ -1,5 +1,9 @@
 import type { TaskViewModel } from '../../domain/taskTypes';
 import type { Workspace } from '../../domain/workspaceTypes';
+import type {
+  CalendarConnectionDiagnostic,
+  CalendarImportSummary,
+} from '../calendar/calendarDiagnostics';
 import { calculateTaskSummary, filterTasksByProject } from '../tasks/taskMetrics';
 
 type Props = {
@@ -7,6 +11,8 @@ type Props = {
   tasks: TaskViewModel[];
   calendarStatus: string;
   calendarError?: string;
+  calendarDiagnostics: CalendarConnectionDiagnostic;
+  calendarImportSummary?: CalendarImportSummary;
   isReloadingCalendar?: boolean;
   storageWarning?: string;
   onSelectProject: (projectId: string) => void;
@@ -21,6 +27,8 @@ export const WorkspaceHome = ({
   tasks,
   calendarStatus,
   calendarError,
+  calendarDiagnostics,
+  calendarImportSummary,
   isReloadingCalendar = false,
   storageWarning,
   onSelectProject,
@@ -49,6 +57,10 @@ export const WorkspaceHome = ({
     return new Date(base).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
   };
 
+  const lastImportText = calendarImportSummary
+    ? new Date(calendarImportSummary.updatedAt).toLocaleString('ja-JP')
+    : '未実施';
+
   return (
     <main className="page">
       <section className="card workspace-home-header">
@@ -71,6 +83,22 @@ export const WorkspaceHome = ({
         <p className="meta">ローカル保存 / 復元用ファイル対応</p>
         {calendarError ? <p className="error">{calendarError}</p> : null}
         {storageWarning ? <p className="warning-text">{storageWarning}</p> : null}
+        <div className="calendar-readiness-strip">
+          <div>
+            <p className="meta">カレンダー準備</p>
+            <strong>{calendarDiagnostics.statusLabel}</strong>
+            <p>{calendarDiagnostics.nextAction}</p>
+          </div>
+          <div className="calendar-readiness-stats" aria-label="カレンダー設定状況">
+            <span>設定済み {calendarDiagnostics.configuredSources}/{calendarDiagnostics.totalSources}</span>
+            <span>前回取込 {lastImportText}</span>
+            {calendarImportSummary ? (
+              <span>
+                予定 {calendarImportSummary.totalEvents}件 / タスク {calendarImportSummary.totalTasks}件
+              </span>
+            ) : null}
+          </div>
+        </div>
         <div className="quick-setup-card" aria-label="初回セットアップ">
           <div className="quick-setup-heading">
             <p className="meta">初回はここだけ確認</p>
@@ -91,7 +119,12 @@ export const WorkspaceHome = ({
               <span className="setup-step-number">2</span>
               <div>
                 <strong>Googleカレンダーを取り込む</strong>
-                <p>予定を最新にします。状態: {calendarStatus}</p>
+                <p>
+                  予定を最新にします。状態: {calendarStatus}
+                  {calendarImportSummary?.skippedSourceCount
+                    ? ` / 未設定 ${calendarImportSummary.skippedSourceCount}件を読み飛ばし`
+                    : ''}
+                </p>
               </div>
               <button type="button" className="setup-step-action primary-lite" onClick={onReloadCalendar} disabled={isReloadingCalendar}>
                 {isReloadingCalendar ? '取り込み中' : '予定を更新'}

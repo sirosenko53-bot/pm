@@ -24,6 +24,12 @@ import {
 } from '../features/access/projectAccessStore';
 import { mapCalendarEventToTask } from '../features/calendar/calendarMapper';
 import {
+  buildCalendarConnectionDiagnostic,
+  buildCalendarImportSummary,
+  isPlaceholderCalendarId,
+  type CalendarImportSummary,
+} from '../features/calendar/calendarDiagnostics';
+import {
   fetchCalendarEvents,
   initializeGoogleClient,
   isUsingMockCalendar,
@@ -126,6 +132,7 @@ export const App = () => {
   const [overlays, setOverlays] = useState(getAllTaskOverlays());
   const [calendarStatus, setCalendarStatus] = useState('モック表示中');
   const [calendarError, setCalendarError] = useState<string | undefined>();
+  const [calendarImportSummary, setCalendarImportSummary] = useState<CalendarImportSummary | undefined>();
   const [isLoadingTasks, setIsLoadingTasks] = useState(false);
   const [storageWarning, setStorageWarning] = useState<string | undefined>();
   const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
@@ -156,6 +163,11 @@ export const App = () => {
     projects: visibleProjects,
     calendarSources: workspace.calendarSources.filter((source) => visibleProjectIdSet.has(source.projectId)),
   }), [workspace, visibleProjects, visibleProjectIdSet]);
+
+  const calendarDiagnostics = useMemo(
+    () => buildCalendarConnectionDiagnostic(workspace),
+    [workspace],
+  );
 
   const visibleTaskViewModels = useMemo(
     () => taskViewModels.filter((task) => visibleProjectIdSet.has(task.projectId)),
@@ -214,20 +226,46 @@ export const App = () => {
         calendarAccessToken = authResult.accessToken;
       }
 
-      const groupedTasks = await Promise.all(
+      const sourceResults = await Promise.all(
         nextWorkspace.calendarSources.map(async (calendarSource) => {
+          if (!useMockCalendar && isPlaceholderCalendarId(calendarSource.calendarId)) {
+            return {
+              source: calendarSource,
+              events: [],
+              tasks: [],
+              skipped: true,
+              skipReason: 'カレンダーID未設定',
+            };
+          }
+
           const events = await fetchCalendarEvents(calendarSource.calendarId, calendarAccessToken);
-          return events.map((event) => mapCalendarEventToTask(event, calendarSource, nextWorkspace));
+          return {
+            source: calendarSource,
+            events,
+            tasks: events.map((event) => mapCalendarEventToTask(event, calendarSource, nextWorkspace)),
+          };
         }),
       );
-      setTasks(groupedTasks.flat());
+      const nextTasks = sourceResults.flatMap((result) => result.tasks);
+      const updatedAt = new Date().toISOString();
+      const skippedSourceCount = sourceResults.filter((result) => result.skipped).length;
+      setTasks(nextTasks);
       setOverlays(getAllTaskOverlays());
       setCalendarStatus(
         useMockCalendar
           ? 'モック表示中（Googleカレンダー差し替え可能）'
-          : 'Googleカレンダー読取済み',
+          : skippedSourceCount > 0
+            ? 'Googleカレンダー読取済み（一部未設定）'
+            : 'Googleカレンダー読取済み',
       );
-      setLastSyncedAt(new Date().toISOString());
+      setCalendarImportSummary(
+        buildCalendarImportSummary({
+          useMockCalendar,
+          sourceResults,
+          updatedAt,
+        }),
+      );
+      setLastSyncedAt(updatedAt);
       setCalendarError(undefined);
     } catch (error) {
       setCalendarStatus('取得失敗');
@@ -478,6 +516,10 @@ export const App = () => {
         workspace={visibleWorkspace}
         appVersion={APP_VERSION}
         lastSyncedAt={lastSyncedAt}
+        calendarStatus={calendarStatus}
+        calendarError={calendarError}
+        calendarDiagnostics={calendarDiagnostics}
+        calendarImportSummary={calendarImportSummary}
         storageWarning={storageWarning}
         onBackHome={() => setRoute({ name: 'workspace-home' })}
         onBackProject={
@@ -630,6 +672,8 @@ export const App = () => {
       tasks={visibleTaskViewModels}
       calendarStatus={calendarStatus}
       calendarError={calendarError}
+      calendarDiagnostics={calendarDiagnostics}
+      calendarImportSummary={calendarImportSummary}
       isReloadingCalendar={isLoadingTasks}
       storageWarning={storageWarning}
       onSelectProject={openProjectOverview}
