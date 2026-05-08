@@ -1089,6 +1089,117 @@ button:hover {
   line-height: 1.45;
 }
 
+.calendar-readiness-strip {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) minmax(300px, auto);
+  gap: 16px;
+  align-items: center;
+  margin: 18px 0;
+  padding: 16px;
+  border: 1px solid rgba(37, 99, 235, 0.16);
+  border-radius: 18px;
+  background: linear-gradient(135deg, #f8fbff 0%, #eef5ff 100%);
+}
+
+.calendar-readiness-strip strong {
+  color: #172033;
+  font-size: 18px;
+}
+
+.calendar-readiness-strip p {
+  margin: 4px 0 0;
+  color: #53627a;
+  line-height: 1.55;
+}
+
+.calendar-readiness-stats {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.calendar-readiness-stats span,
+.setup-check-grid p,
+.missing-source-list {
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 999px;
+  background: #fff;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 8px 11px;
+}
+
+.calendar-readiness-card {
+  display: grid;
+  gap: 16px;
+}
+
+.section-heading-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.section-heading-row h2 {
+  margin: 2px 0 0;
+}
+
+.setup-check-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 10px;
+}
+
+.setup-check-grid p {
+  display: grid;
+  gap: 4px;
+  border-radius: 14px;
+  padding: 13px 14px;
+}
+
+.setup-check-grid span {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.setup-check-grid strong {
+  color: #172033;
+  overflow-wrap: anywhere;
+}
+
+.missing-source-list {
+  border-radius: 14px;
+  color: #475569;
+  padding: 13px 14px;
+}
+
+.missing-source-list ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.missing-source-list li {
+  border-radius: 999px;
+  background: #fff7ed;
+  color: #c2410c;
+  padding: 5px 9px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.pill.status-complete {
+  border-color: rgba(16, 185, 129, 0.24);
+  background: #ecfdf5;
+  color: #047857;
+}
+
 .setup-step-action {
   border: 1px solid rgba(37, 99, 235, 0.2);
   color: #1d4ed8;
@@ -2588,11 +2699,20 @@ button:hover {
 
 @media (max-width: 860px) {
   .entry-setup-flow,
+  .calendar-readiness-strip,
   .quick-setup-card,
   .quick-setup-steps li,
   .share-guide-card,
   .share-guide-steps {
     grid-template-columns: 1fr;
+  }
+
+  .calendar-readiness-stats {
+    justify-content: flex-start;
+  }
+
+  .section-heading-row {
+    flex-direction: column;
   }
 
   .setup-step-action {

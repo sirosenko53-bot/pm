@@ -1,6 +1,10 @@
 import { useMemo, useState } from 'react';
 import { WORKFLOW_TEMPLATES } from '../../config/workflowTemplates';
 import type { Workspace } from '../../domain/workspaceTypes';
+import type {
+  CalendarConnectionDiagnostic,
+  CalendarImportSummary,
+} from '../calendar/calendarDiagnostics';
 import { fetchDriveJsonFile, updateDriveJsonFile } from '../sharedState/googleDriveSharedStateClient';
 import { getDriveReadAccessToken, getDriveWriteAccessToken } from '../sharedState/googleDriveAuth';
 import {
@@ -38,6 +42,10 @@ type Props = {
   workspace: Workspace;
   appVersion: string;
   lastSyncedAt: string | null;
+  calendarStatus: string;
+  calendarError?: string;
+  calendarDiagnostics: CalendarConnectionDiagnostic;
+  calendarImportSummary?: CalendarImportSummary;
   storageWarning?: string;
   sharedStateMetadata: SharedStateMetadata;
   onBackHome: () => void;
@@ -67,6 +75,10 @@ export const BackupPanel = ({
   workspace,
   appVersion,
   lastSyncedAt,
+  calendarStatus,
+  calendarError,
+  calendarDiagnostics,
+  calendarImportSummary,
   storageWarning,
   sharedStateMetadata,
   onBackHome,
@@ -86,6 +98,9 @@ export const BackupPanel = ({
 
   const overlayCount = useMemo(() => getAllTaskOverlays().length, [lastBackupAt, panelMessage]);
   const hasSharedFileId = Boolean(sharedStateMetadata.sharedFileId);
+  const lastImportText = calendarImportSummary
+    ? new Date(calendarImportSummary.updatedAt).toLocaleString('ja-JP')
+    : '未実施';
 
   const handleExport = () => {
     setPanelMessage(undefined);
@@ -440,6 +455,63 @@ export const BackupPanel = ({
             <p>作業前後の控えを手元に残します。Googleカレンダー予定そのものは含みません。</p>
           </li>
         </ol>
+      </section>
+
+      <section className="card calendar-readiness-card">
+        <div className="section-heading-row">
+          <div>
+            <p className="meta">最初に見る場所</p>
+            <h2>接続準備チェック</h2>
+          </div>
+          <span className={calendarDiagnostics.readyForGoogleRead ? 'pill status-complete' : 'pill'}>
+            {calendarDiagnostics.statusLabel}
+          </span>
+        </div>
+        <p className="note">{calendarDiagnostics.detail}</p>
+        <div className="setup-check-grid">
+          <p>
+            <span>予定の表示</span>
+            <strong>{calendarStatus}</strong>
+          </p>
+          <p>
+            <span>OAuth Client ID</span>
+            <strong>{calendarDiagnostics.hasOAuthClientId ? '設定済み' : '未設定'}</strong>
+          </p>
+          <p>
+            <span>カレンダーID</span>
+            <strong>{calendarDiagnostics.configuredSources}/{calendarDiagnostics.totalSources}件</strong>
+          </p>
+          <p>
+            <span>前回の取り込み</span>
+            <strong>{lastImportText}</strong>
+          </p>
+          <p>
+            <span>取り込んだ予定</span>
+            <strong>{calendarImportSummary ? `${calendarImportSummary.totalEvents}件` : '未実施'}</strong>
+          </p>
+          <p>
+            <span>形式確認が必要</span>
+            <strong>{calendarImportSummary ? `${calendarImportSummary.parseErrorCount}件` : '未実施'}</strong>
+          </p>
+        </div>
+        {calendarDiagnostics.missingSources.length > 0 ? (
+          <div className="missing-source-list">
+            <strong>未設定のカレンダー</strong>
+            <ul>
+              {calendarDiagnostics.missingSources.map((source) => (
+                <li key={source.calendarSourceId}>{source.displayName}</li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+        {calendarImportSummary?.skippedSourceCount ? (
+          <p className="note">
+            前回取り込みでは未設定カレンダー {calendarImportSummary.skippedSourceCount}件を読み飛ばしました。
+            設定済みのプロジェクトはそのまま使えます。
+          </p>
+        ) : null}
+        {calendarError ? <p className="error preserve-line-break">{calendarError}</p> : null}
+        <p className="note">{calendarDiagnostics.nextAction}</p>
       </section>
 
       <section className="card shared-state-card">
