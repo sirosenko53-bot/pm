@@ -130,7 +130,7 @@ export const App = () => {
   const [accessMode, setAccessMode] = useState<ProjectAccessMode>(loadProjectAccessMode);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [overlays, setOverlays] = useState(getAllTaskOverlays());
-  const [calendarStatus, setCalendarStatus] = useState('モック表示中');
+  const [calendarStatus, setCalendarStatus] = useState('未取り込み');
   const [calendarError, setCalendarError] = useState<string | undefined>();
   const [calendarImportSummary, setCalendarImportSummary] = useState<CalendarImportSummary | undefined>();
   const [isLoadingTasks, setIsLoadingTasks] = useState(false);
@@ -210,20 +210,24 @@ export const App = () => {
     if (sharedMetaResult.warning) {
       setStorageWarning(sharedMetaResult.warning);
     }
-    void loadTasks(workspace);
   }, []);
 
   const loadTasks = async (nextWorkspace: Workspace) => {
     setIsLoadingTasks(true);
+    setCalendarError(undefined);
     try {
       const useMockCalendar = isUsingMockCalendar();
       let calendarAccessToken: string | undefined;
       if (!useMockCalendar) {
+        setCalendarStatus('Google認証を待っています');
         const authResult = await requestGoogleCalendarReadAccessToken();
         if (!authResult.ok) {
           throw new Error(authResult.error);
         }
         calendarAccessToken = authResult.accessToken;
+        setCalendarStatus('Googleカレンダー取得中');
+      } else {
+        setCalendarStatus('モック予定を取り込み中');
       }
 
       const sourceResults = await Promise.all(
