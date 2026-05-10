@@ -90,6 +90,12 @@ const parseGoogleCalendarList = (data: unknown): GoogleCalendarEvent[] => {
   return (data as { items: GoogleCalendarEvent[] }).items.filter((event) => event.id);
 };
 
+const readNextPageToken = (data: unknown): string | undefined => {
+  if (typeof data !== 'object' || data === null) return undefined;
+  const token = (data as { nextPageToken?: unknown }).nextPageToken;
+  return typeof token === 'string' && token.trim() ? token : undefined;
+};
+
 export const fetchCalendarEvents = async (
   calendarId: string,
   accessToken?: string,
@@ -107,7 +113,7 @@ export const fetchCalendarEvents = async (
   const timeMax = new Date();
   timeMax.setDate(timeMax.getDate() + 120);
 
-  const params = new URLSearchParams({
+  const baseParams = new URLSearchParams({
     singleEvents: 'true',
     orderBy: 'startTime',
     maxResults: '2500',
@@ -115,16 +121,30 @@ export const fetchCalendarEvents = async (
     timeMax: timeMax.toISOString(),
   });
 
-  const response = await fetch(
-    `${CALENDAR_API_BASE}/${encodeURIComponent(calendarId)}/events?${params.toString()}`,
-    { headers: buildAuthHeaders(accessToken) },
-  );
+  const events: GoogleCalendarEvent[] = [];
+  let nextPageToken: string | undefined;
 
-  if (!response.ok) {
-    throw new Error(toCalendarError(response.status, 'Googleカレンダー予定の取得に失敗しました。'));
-  }
+  do {
+    const params = new URLSearchParams(baseParams);
+    if (nextPageToken) {
+      params.set('pageToken', nextPageToken);
+    }
 
-  return parseGoogleCalendarList(await response.json());
+    const response = await fetch(
+      `${CALENDAR_API_BASE}/${encodeURIComponent(calendarId)}/events?${params.toString()}`,
+      { headers: buildAuthHeaders(accessToken) },
+    );
+
+    if (!response.ok) {
+      throw new Error(toCalendarError(response.status, 'Googleカレンダー予定の取得に失敗しました。'));
+    }
+
+    const data = await response.json();
+    events.push(...parseGoogleCalendarList(data));
+    nextPageToken = readNextPageToken(data);
+  } while (nextPageToken);
+
+  return events;
 };
 
 export const requestGoogleCalendarReadAccessToken = async (): Promise<

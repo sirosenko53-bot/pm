@@ -23,6 +23,11 @@ const toUpdatedTime = (overlay?: TaskOverlay) => {
   return Number.isFinite(time) ? time : 0;
 };
 
+type OverlayIndex = {
+  byTaskId: Map<string, TaskOverlay>;
+  byEventId: Map<string, TaskOverlay[]>;
+};
+
 const getTaskDedupeKey = (task: Task) => {
   const eventId = task.googleCalendarEventId?.trim();
   if (eventId) return `event:${task.projectId}:${eventId}`;
@@ -30,17 +35,36 @@ const getTaskDedupeKey = (task: Task) => {
   return `fallback:${task.projectId}:${task.taskName}:${task.startDateTime}:${task.dueDate ?? ''}`;
 };
 
-const resolveOverlayForTasks = (tasks: Task[], overlayMap: Map<string, TaskOverlay>): TaskOverlay | undefined => {
+const buildOverlayIndex = (overlays: TaskOverlay[]): OverlayIndex => {
+  const byTaskId = new Map<string, TaskOverlay>();
+  const byEventId = new Map<string, TaskOverlay[]>();
+
+  overlays.forEach((overlay) => {
+    byTaskId.set(overlay.taskId, overlay);
+    if (!overlay.googleCalendarEventId) return;
+    const current = byEventId.get(overlay.googleCalendarEventId) ?? [];
+    byEventId.set(overlay.googleCalendarEventId, [...current, overlay]);
+  });
+
+  return { byTaskId, byEventId };
+};
+
+const resolveOverlayForTasks = (tasks: Task[], overlayIndex: OverlayIndex): TaskOverlay | undefined => {
   const overlays = tasks
-    .map((task) => overlayMap.get(task.taskId))
+    .flatMap((task) => {
+      const exactOverlay = overlayIndex.byTaskId.get(task.taskId);
+      return exactOverlay ? [exactOverlay] : overlayIndex.byEventId.get(task.googleCalendarEventId) ?? [];
+    })
     .filter((overlay): overlay is TaskOverlay => Boolean(overlay));
 
   if (overlays.length === 0) return undefined;
 
-  const latestOverlay = overlays.reduce((latest, current) =>
+  const uniqueOverlays = [...new Map(overlays.map((overlay) => [overlay.taskId, overlay])).values()];
+
+  const latestOverlay = uniqueOverlays.reduce((latest, current) =>
     toUpdatedTime(current) >= toUpdatedTime(latest) ? current : latest,
   );
-  const latestSortOrderOverlay = overlays
+  const latestSortOrderOverlay = uniqueOverlays
     .filter((overlay) => typeof overlay.sortOrder === 'number')
     .reduce<TaskOverlay | undefined>(
       (latest, current) => (!latest || toUpdatedTime(current) >= toUpdatedTime(latest) ? current : latest),
@@ -53,7 +77,7 @@ const resolveOverlayForTasks = (tasks: Task[], overlayMap: Map<string, TaskOverl
   };
 };
 
-const dedupeTasks = (tasks: Task[], overlayMap: Map<string, TaskOverlay>) => {
+const dedupeTasks = (tasks: Task[], overlayIndex: OverlayIndex) => {
   const groups = new Map<string, Task[]>();
 
   tasks.forEach((task) => {
@@ -62,7 +86,7 @@ const dedupeTasks = (tasks: Task[], overlayMap: Map<string, TaskOverlay>) => {
   });
 
   return [...groups.values()].map((group) => {
-    const overlay = resolveOverlayForTasks(group, overlayMap);
+    const overlay = resolveOverlayForTasks(group, overlayIndex);
     const task = overlay
       ? group.find((item) => item.taskId === overlay.taskId) ?? group[0]
       : group[0];
@@ -72,9 +96,9 @@ const dedupeTasks = (tasks: Task[], overlayMap: Map<string, TaskOverlay>) => {
 };
 
 export const buildTaskViewModels = (tasks: Task[], overlays: TaskOverlay[], workspace: Workspace): TaskViewModel[] => {
-  const overlayMap = new Map(overlays.map((overlay) => [overlay.taskId, overlay]));
+  const overlayIndex = buildOverlayIndex(overlays);
 
-  return dedupeTasks(tasks, overlayMap).map(({ task, overlay }) => {
+  return dedupeTasks(tasks, overlayIndex).map(({ task, overlay }) => {
     const stageId = overlay?.stageOverride ?? task.stageId;
     const status = overlay?.status ?? '未着手';
 

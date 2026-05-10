@@ -1,4 +1,5 @@
 const GSI_SCRIPT_URL = 'https://accounts.google.com/gsi/client';
+const DEFAULT_TOKEN_TIMEOUT_MS = 60_000;
 
 let gsiLoadPromise: Promise<void> | null = null;
 
@@ -72,7 +73,7 @@ const toUserMessage = (response: GoogleTokenClientResponse): string => {
 
 export const requestGoogleAccessToken = async (
   scopes: string[],
-  options?: { prompt?: string },
+  options?: { prompt?: string; timeoutMs?: number },
 ): Promise<{ ok: true; accessToken: string } | { ok: false; error: string }> => {
   try {
     await loadGsiScript();
@@ -84,19 +85,42 @@ export const requestGoogleAccessToken = async (
     }
 
     const tokenResult = await new Promise<{ ok: true; accessToken: string } | { ok: false; error: string }>((resolve) => {
+      let settled = false;
+      const timeoutId = window.setTimeout(() => {
+        if (settled) return;
+        settled = true;
+        resolve({
+          ok: false,
+          error: 'Google認証が完了しませんでした。ポップアップブロックや認証画面の状態を確認して、もう一度実行してください。',
+        });
+      }, options?.timeoutMs ?? DEFAULT_TOKEN_TIMEOUT_MS);
+      const finish = (result: { ok: true; accessToken: string } | { ok: false; error: string }) => {
+        if (settled) return;
+        settled = true;
+        window.clearTimeout(timeoutId);
+        resolve(result);
+      };
+
       const tokenClient = googleGlobal.accounts.oauth2.initTokenClient({
         client_id: clientId,
         scope: scopes.join(' '),
         callback: (response) => {
           if (!response.access_token) {
-            resolve({ ok: false, error: toUserMessage(response) });
+            finish({ ok: false, error: toUserMessage(response) });
             return;
           }
-          resolve({ ok: true, accessToken: response.access_token });
+          finish({ ok: true, accessToken: response.access_token });
         },
       });
 
-      tokenClient.requestAccessToken({ prompt: options?.prompt ?? 'consent' });
+      try {
+        tokenClient.requestAccessToken({ prompt: options?.prompt ?? 'consent' });
+      } catch (error) {
+        finish({
+          ok: false,
+          error: error instanceof Error ? error.message : 'Google認証の開始に失敗しました。',
+        });
+      }
     });
 
     return tokenResult;
