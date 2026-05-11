@@ -618,11 +618,16 @@ export const App = () => {
         calendarError={calendarError}
         calendarDiagnostics={calendarDiagnostics}
         calendarImportSummary={calendarImportSummary}
+        calendarAuthStatus={calendarAuthStatus}
+        isConnectingGoogle={isConnectingGoogleCalendar}
+        isReloadingCalendar={isLoadingTasks}
         storageWarning={storageWarning}
         onBackHome={() => setRoute({ name: 'workspace-home' })}
         onBackProject={
           route.projectId && visibleProjectIdSet.has(route.projectId) ? () => openProjectOverview(route.projectId!) : undefined
         }
+        onConnectGoogleCalendar={() => void handleConnectGoogleCalendar()}
+        onReloadCalendar={() => void loadTasks(visibleWorkspace)}
         onRestored={handleBackupRestored}
         sharedStateMetadata={sharedStateMetadata}
         onSharedStateMetadataUpdated={(metadata, warning) => {

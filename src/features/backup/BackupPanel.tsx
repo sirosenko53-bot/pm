@@ -51,10 +51,15 @@ type Props = {
   calendarError?: string;
   calendarDiagnostics: CalendarConnectionDiagnostic;
   calendarImportSummary?: CalendarImportSummary;
+  calendarAuthStatus?: string;
+  isConnectingGoogle?: boolean;
+  isReloadingCalendar?: boolean;
   storageWarning?: string;
   sharedStateMetadata: SharedStateMetadata;
   onBackHome: () => void;
   onBackProject?: () => void;
+  onConnectGoogleCalendar: () => void;
+  onReloadCalendar: () => void;
   onRestored: (message: string, warning?: string) => void;
   onSharedStateMetadataUpdated: (metadata: SharedStateMetadata, warning?: string) => void;
   onSharedStateApplied: (message: string, warning?: string) => void;
@@ -85,10 +90,15 @@ export const BackupPanel = ({
   calendarError,
   calendarDiagnostics,
   calendarImportSummary,
+  calendarAuthStatus = '未接続',
+  isConnectingGoogle = false,
+  isReloadingCalendar = false,
   storageWarning,
   sharedStateMetadata,
   onBackHome,
   onBackProject,
+  onConnectGoogleCalendar,
+  onReloadCalendar,
   onRestored,
   onSharedStateMetadataUpdated,
   onSharedStateApplied,
@@ -538,6 +548,34 @@ export const BackupPanel = ({
           </span>
         </div>
         <p className="note">{calendarDiagnostics.detail}</p>
+        <div className="calendar-connect-guide">
+          <div>
+            <strong>Googleアカウントで許可が必要です</strong>
+            <p>
+              カレンダーIDだけでは予定を読めません。対象カレンダーを閲覧できるGoogleアカウントを選び、
+              読み取りを許可してから取り込みます。取得したトークンは保存しません。
+            </p>
+          </div>
+          <div className="calendar-connect-actions">
+            <span className="pill">接続: {calendarAuthStatus}</span>
+            <button
+              type="button"
+              className="setup-step-action"
+              onClick={onConnectGoogleCalendar}
+              disabled={isConnectingGoogle || calendarDiagnostics.isMockMode}
+            >
+              {isConnectingGoogle ? '接続中' : 'Googleアカウントで接続'}
+            </button>
+            <button
+              type="button"
+              className="setup-step-action primary-lite"
+              onClick={onReloadCalendar}
+              disabled={isReloadingCalendar || (!calendarDiagnostics.isMockMode && !calendarDiagnostics.readyForGoogleRead)}
+            >
+              {isReloadingCalendar ? '取り込み中' : 'Googleカレンダーを取り込む'}
+            </button>
+          </div>
+        </div>
         <div className="setup-check-grid">
           <p>
             <span>予定の表示</span>
