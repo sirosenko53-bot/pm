@@ -1,22 +1,35 @@
 import { FormEvent, useState } from 'react';
-import type { ProjectJoinSetupInput } from './projectAccessTypes';
 
 type Props = {
-  onSubmit: (
-    code: string,
-    setupInput: ProjectJoinSetupInput,
-  ) => { ok: true; message?: string } | { ok: false; error: string };
+  calendarAuthStatus: string;
+  calendarStatus: string;
+  isConnectingGoogle: boolean;
+  isMockMode: boolean;
+  onConnectGoogleCalendar: () => void;
+  onSubmit: (code: string) => { ok: true; message?: string } | { ok: false; error: string };
 };
 
-export const ProjectCodeEntry = ({ onSubmit }: Props) => {
+export const ProjectCodeEntry = ({
+  calendarAuthStatus,
+  calendarStatus,
+  isConnectingGoogle,
+  isMockMode,
+  onConnectGoogleCalendar,
+  onSubmit,
+}: Props) => {
   const [projectCode, setProjectCode] = useState('');
-  const [calendarId, setCalendarId] = useState('');
-  const [sharedFileId, setSharedFileId] = useState('');
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+  const canSubmitProjectCode = isMockMode || calendarAuthStatus.startsWith('接続済み');
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
+    if (!canSubmitProjectCode) {
+      setError('先にGoogleアカウントで接続してください。');
+      setMessage('');
+      return;
+    }
+
     const code = projectCode.trim();
     if (!code) {
       setError('プロジェクトコードを入力してください。');
@@ -24,10 +37,7 @@ export const ProjectCodeEntry = ({ onSubmit }: Props) => {
       return;
     }
 
-    const result = onSubmit(code, {
-      calendarId,
-      sharedFileId,
-    });
+    const result = onSubmit(code);
     if (!result.ok) {
       setError(result.error);
       setMessage('');
@@ -51,19 +61,37 @@ export const ProjectCodeEntry = ({ onSubmit }: Props) => {
         <div className="entry-setup-flow" aria-label="初回セットアップの流れ">
           <div>
             <span>1</span>
+            <strong>Googleに接続</strong>
+            <p>カレンダーを読めるアカウントで、予定の読み込みと修正を許可します。</p>
+          </div>
+          <div>
+            <span>2</span>
             <strong>コードを入力</strong>
             <p>共有されたプロジェクトコードだけを入れます。</p>
           </div>
           <div>
-            <span>2</span>
-            <strong>IDを入れる</strong>
-            <p>持っている場合はカレンダーIDと共有ファイルIDも入れます。</p>
-          </div>
-          <div>
             <span>3</span>
-            <strong>予定を取り込む</strong>
-            <p>参加後にボタンでGoogleカレンダーを読み込みます。</p>
+            <strong>予定を見る</strong>
+            <p>参加後、登録済みカレンダーから予定を取り込みます。</p>
           </div>
+        </div>
+        <div className="entry-google-connect">
+          <div>
+            <strong>Googleアカウント接続</strong>
+            <p>
+              カレンダーIDはアプリ側で管理します。最初に、対象カレンダーを閲覧・編集できるGoogleアカウントで許可してください。
+              トークンは保存しません。
+            </p>
+            <p className="meta">接続状態: {calendarAuthStatus} / 予定表示: {calendarStatus}</p>
+          </div>
+          <button
+            type="button"
+            className="setup-step-action primary-lite"
+            onClick={onConnectGoogleCalendar}
+            disabled={isConnectingGoogle || isMockMode}
+          >
+            {isConnectingGoogle ? '接続中' : 'Googleアカウントで接続'}
+          </button>
         </div>
         <form onSubmit={handleSubmit} className="form project-code-form">
           <label>
@@ -75,36 +103,17 @@ export const ProjectCodeEntry = ({ onSubmit }: Props) => {
               autoFocus
             />
           </label>
-          <fieldset className="project-code-setup-fields">
-            <legend>初回設定（任意）</legend>
-            <p className="note">
-              共有されたIDを持っている場合だけ入力してください。未入力でもあとから設定・バックアップ画面で登録できます。
-            </p>
-            <label>
-              GoogleカレンダーID
-              <input
-                value={calendarId}
-                onChange={(event) => setCalendarId(event.target.value)}
-                placeholder="project-calendar-id@group.calendar.google.com"
-              />
-            </label>
-            <label>
-              チーム共有ファイルID / URL
-              <input
-                value={sharedFileId}
-                onChange={(event) => setSharedFileId(event.target.value)}
-                placeholder="Google Driveの共有ファイルIDまたはURL"
-              />
-            </label>
-          </fieldset>
+          {!canSubmitProjectCode ? (
+            <p className="note">Google接続後にプロジェクトコードを入力できます。</p>
+          ) : null}
           {error ? <p className="error project-code-error">{error}</p> : null}
           {message ? <p className="note">{message}</p> : null}
-          <button type="submit">プロジェクトに参加する</button>
+          <button type="submit" disabled={!canSubmitProjectCode}>プロジェクトに参加する</button>
         </form>
         <div className="project-code-notes">
           <p className="note">Discordなどで共有されたプロジェクトコードを入力してください。</p>
           <p className="note">一度参加したプロジェクトはこの端末に保存されます。</p>
-          <p className="note">カレンダーIDと共有ファイルIDもこの端末にだけ保存されます。</p>
+          <p className="note">カレンダーIDはプロジェクト定義側で管理します。</p>
           <p className="note">Googleカレンダーを正本として読み込みます。</p>
           <p className="note">ローカル保存と復元用ファイルで無課金運用します。</p>
         </div>

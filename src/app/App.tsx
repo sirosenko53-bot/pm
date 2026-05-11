@@ -5,7 +5,7 @@ import type { Workspace } from '../domain/workspaceTypes';
 import type { AppRoute } from './routes';
 import { JoinedProjectsView } from '../features/access/JoinedProjectsView';
 import { ProjectCodeEntry } from '../features/access/ProjectCodeEntry';
-import type { JoinedProject, ProjectAccessMode, ProjectJoinSetupInput } from '../features/access/projectAccessTypes';
+import type { JoinedProject, ProjectAccessMode } from '../features/access/projectAccessTypes';
 import {
   addJoinedProjectsByAccessCode,
   clearLastView,
@@ -32,20 +32,19 @@ import {
 import {
   applyCalendarSourceSettings,
   loadCalendarSourceSettings,
-  saveCalendarIdForProject,
 } from '../features/calendar/calendarSourceSettings';
 import {
   fetchCalendarEvents,
   initializeGoogleClient,
   isUsingMockCalendar,
-  requestGoogleCalendarReadAccessToken,
+  requestGoogleCalendarReadWriteAccessToken,
 } from '../features/calendar/googleCalendarClient';
 import { BackupPanel } from '../features/backup/BackupPanel';
 import {
+  applyDefaultSharedDriveFileSettings,
   loadSharedStateMetadata,
   markLocalChangesAfterSharedRead,
   markSharedStateReadFailed,
-  saveSharedDriveFileSettings,
   setSharedStateSyncStatus,
 } from '../features/sharedState/sharedStateStore';
 import type { SharedStateMetadata } from '../features/sharedState/sharedStateTypes';
@@ -220,7 +219,7 @@ export const App = () => {
     const useMock = import.meta.env.VITE_USE_MOCK_CALENDAR !== 'false';
     const oauthClientId = import.meta.env.VITE_GOOGLE_OAUTH_CLIENT_ID as string | undefined;
     void initializeGoogleClient({ useMock, oauthClientId });
-    const sharedMetaResult = loadSharedStateMetadata();
+    const sharedMetaResult = applyDefaultSharedDriveFileSettings();
     setSharedStateMetadata(sharedMetaResult.value);
     if (sharedMetaResult.warning) {
       setStorageWarning(sharedMetaResult.warning);
@@ -236,7 +235,7 @@ export const App = () => {
       if (!useMockCalendar) {
         if (!calendarAccessToken) {
           setCalendarStatus('Google認証を待っています');
-          const authResult = await requestGoogleCalendarReadAccessToken();
+          const authResult = await requestGoogleCalendarReadWriteAccessToken();
           if (!authResult.ok) {
             setCalendarAuthStatus('未接続');
             throw new Error(authResult.error);
@@ -311,7 +310,7 @@ export const App = () => {
         return;
       }
 
-      const authResult = await requestGoogleCalendarReadAccessToken();
+      const authResult = await requestGoogleCalendarReadWriteAccessToken();
       if (!authResult.ok) {
         setCalendarReadAccessToken(undefined);
         setCalendarAuthStatus('未接続');
@@ -321,44 +320,10 @@ export const App = () => {
 
       setCalendarReadAccessToken(authResult.accessToken);
       setCalendarAuthStatus('接続済み（この画面の操作中のみ）');
-      setCalendarStatus('Googleアカウント接続済み');
+      setCalendarStatus('Googleアカウント接続済み（読取・修正を許可）');
     } finally {
       setIsConnectingGoogleCalendar(false);
     }
-  };
-
-  const applyJoinSetupInput = (setupInput: ProjectJoinSetupInput, projectId?: string): string[] => {
-    const messages: string[] = [];
-
-    if (setupInput.calendarId?.trim()) {
-      if (projectId) {
-        const nextSettings = saveCalendarIdForProject(projectId, setupInput.calendarId);
-        setCalendarSourceSettings(nextSettings);
-        messages.push('GoogleカレンダーIDを保存しました。');
-      } else {
-        messages.push('GoogleカレンダーIDは、参加後に設定画面でプロジェクトごとに保存してください。');
-      }
-    }
-
-    if (setupInput.sharedFileId?.trim()) {
-      const result = saveSharedDriveFileSettings({
-        sharedFileId: setupInput.sharedFileId,
-      });
-
-      if (result.value) {
-        setSharedStateMetadata(result.value);
-        messages.push('チーム共有ファイルIDを保存しました。');
-      }
-
-      if (result.warning) {
-        setStorageWarning(result.warning);
-        if (!result.value) {
-          messages.push('チーム共有ファイルIDは保存できませんでした。');
-        }
-      }
-    }
-
-    return messages;
   };
 
   const markProjectOpened = (projectId: string) => {
@@ -367,10 +332,7 @@ export const App = () => {
     setJoinedProjects(updateLastOpenedProject(getAccessProjectId(project)));
   };
 
-  const handleProjectCodeSubmit = (
-    projectCode: string,
-    setupInput: ProjectJoinSetupInput,
-  ): { ok: true; message?: string } | { ok: false; error: string } => {
+  const handleProjectCodeSubmit = (projectCode: string): { ok: true; message?: string } | { ok: false; error: string } => {
     const result = addJoinedProjectsByAccessCode(projectCode);
     if (!result.ok) return result;
 
@@ -380,23 +342,19 @@ export const App = () => {
     const defaultProject = result.defaultProjectId
       ? findProjectByAccessProjectId(configuredWorkspace.projects, result.defaultProjectId)
       : undefined;
-    const setupMessages = applyJoinSetupInput(setupInput, defaultProject?.projectId);
 
     if (defaultProject && !isAdminAccess(result.accessMode)) {
       markProjectOpened(defaultProject.projectId);
       setLastProjectContextId(defaultProject.projectId);
       setRoute({ name: 'project-overview', projectId: defaultProject.projectId });
-      return { ok: true, message: [`${result.label}に参加しました。`, ...setupMessages].join(' ') };
+      return { ok: true, message: `${result.label}に参加しました。` };
     }
 
     setRoute({ name: 'joined-projects' });
-    return { ok: true, message: [`${result.label}を参加中プロジェクトに追加しました。`, ...setupMessages].join(' ') };
+    return { ok: true, message: `${result.label}を参加中プロジェクトに追加しました。` };
   };
 
-  const handleAdditionalProjectCodeSubmit = (
-    projectCode: string,
-    setupInput: ProjectJoinSetupInput,
-  ): { ok: true; message?: string } | { ok: false; error: string } => {
+  const handleAdditionalProjectCodeSubmit = (projectCode: string): { ok: true; message?: string } | { ok: false; error: string } => {
     const result = addJoinedProjectsByAccessCode(projectCode);
     if (!result.ok) return result;
 
@@ -404,16 +362,11 @@ export const App = () => {
     setAccessMode(result.accessMode);
     setRoute({ name: 'joined-projects' });
 
-    const defaultProject = result.defaultProjectId
-      ? findProjectByAccessProjectId(configuredWorkspace.projects, result.defaultProjectId)
-      : undefined;
-    const setupMessages = applyJoinSetupInput(setupInput, defaultProject?.projectId);
-
     if (result.alreadyJoined) {
-      return { ok: true, message: ['このプロジェクトはすでに参加済みです。', ...setupMessages].join(' ') };
+      return { ok: true, message: 'このプロジェクトはすでに参加済みです。' };
     }
 
-    return { ok: true, message: [`${result.label}を参加中プロジェクトに追加しました。`, ...setupMessages].join(' ') };
+    return { ok: true, message: `${result.label}を参加中プロジェクトに追加しました。` };
   };
 
   const handleRemoveJoinedProject = (projectId: string) => {
@@ -568,7 +521,16 @@ export const App = () => {
   ]);
 
   if (joinedProjects.length === 0 || route.name === 'project-code') {
-    return <ProjectCodeEntry onSubmit={handleProjectCodeSubmit} />;
+    return (
+      <ProjectCodeEntry
+        calendarAuthStatus={calendarAuthStatus}
+        calendarStatus={calendarStatus}
+        isConnectingGoogle={isConnectingGoogleCalendar}
+        isMockMode={calendarDiagnostics.isMockMode}
+        onConnectGoogleCalendar={() => void handleConnectGoogleCalendar()}
+        onSubmit={handleProjectCodeSubmit}
+      />
+    );
   }
 
   if (route.name === 'joined-projects') {
@@ -618,11 +580,16 @@ export const App = () => {
         calendarError={calendarError}
         calendarDiagnostics={calendarDiagnostics}
         calendarImportSummary={calendarImportSummary}
+        calendarAuthStatus={calendarAuthStatus}
+        isConnectingGoogle={isConnectingGoogleCalendar}
+        isReloadingCalendar={isLoadingTasks}
         storageWarning={storageWarning}
         onBackHome={() => setRoute({ name: 'workspace-home' })}
         onBackProject={
           route.projectId && visibleProjectIdSet.has(route.projectId) ? () => openProjectOverview(route.projectId!) : undefined
         }
+        onConnectGoogleCalendar={() => void handleConnectGoogleCalendar()}
+        onReloadCalendar={() => void loadTasks(visibleWorkspace)}
         onRestored={handleBackupRestored}
         sharedStateMetadata={sharedStateMetadata}
         onSharedStateMetadataUpdated={(metadata, warning) => {

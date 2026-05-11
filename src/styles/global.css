@@ -1085,6 +1085,26 @@ button:hover {
   line-height: 1.55;
 }
 
+.entry-google-connect {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: center;
+  margin-top: 16px;
+  border: 1px solid rgba(37, 99, 235, 0.18);
+  border-radius: 20px;
+  background: #f8fbff;
+  padding: 16px;
+  text-align: left;
+}
+
+.entry-google-connect p {
+  margin: 6px 0 0;
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.65;
+}
+
 .quick-setup-card {
   display: grid;
   grid-template-columns: minmax(170px, 0.55fr) minmax(0, 2fr);
@@ -1173,6 +1193,36 @@ button:hover {
 .calendar-readiness-card {
   display: grid;
   gap: 16px;
+}
+
+.calendar-connect-guide {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: center;
+  border: 1px solid rgba(37, 99, 235, 0.16);
+  border-radius: 18px;
+  background: #f8fbff;
+  padding: 16px;
+}
+
+.calendar-connect-guide strong {
+  color: #172033;
+}
+
+.calendar-connect-guide p {
+  margin: 6px 0 0;
+  color: #475569;
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.calendar-connect-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
 }
 
 .section-heading-row {
@@ -2738,7 +2788,9 @@ button:hover {
 
 @media (max-width: 860px) {
   .entry-setup-flow,
+  .entry-google-connect,
   .calendar-readiness-strip,
+  .calendar-connect-guide,
   .quick-setup-card,
   .quick-setup-steps li,
   .share-guide-card,
@@ -2747,6 +2799,10 @@ button:hover {
   }
 
   .calendar-readiness-stats {
+    justify-content: flex-start;
+  }
+
+  .calendar-connect-actions {
     justify-content: flex-start;
   }
 

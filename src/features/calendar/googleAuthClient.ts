@@ -1,5 +1,6 @@
 const GSI_SCRIPT_URL = 'https://accounts.google.com/gsi/client';
 const DEFAULT_TOKEN_TIMEOUT_MS = 60_000;
+const DEFAULT_GOOGLE_OAUTH_CLIENT_ID = '969800358154-ireokpv3pq6sak6rnd7qn9lj07k94pq2.apps.googleusercontent.com';
 
 let gsiLoadPromise: Promise<void> | null = null;
 
@@ -55,10 +56,7 @@ type GoogleGlobal = {
 
 const getGoogleClientId = (): string => {
   const clientId = import.meta.env.VITE_GOOGLE_OAUTH_CLIENT_ID as string | undefined;
-  if (!clientId) {
-    throw new Error('Google OAuthクライアントIDが未設定です（VITE_GOOGLE_OAUTH_CLIENT_ID）。');
-  }
-  return clientId;
+  return clientId?.trim() || DEFAULT_GOOGLE_OAUTH_CLIENT_ID;
 };
 
 const toUserMessage = (response: GoogleTokenClientResponse): string => {
