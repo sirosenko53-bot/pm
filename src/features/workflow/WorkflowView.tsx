@@ -126,23 +126,6 @@ export const WorkflowView = ({
         {storageWarning ? <p className="warning-text">{storageWarning}</p> : null}
       </section>
 
-      <section className="card workflow-editor-card">
-        <div>
-          <h2>工程を自分で決める</h2>
-          <p className="meta">1行に1工程を書いて保存してください。例: 1. 構成確認 / 2. 収録 / 3. 編集</p>
-        </div>
-        <textarea
-          value={stageEditorText}
-          onChange={(event) => setStageEditorText(event.target.value)}
-          rows={4}
-          aria-label="工程一覧"
-        />
-        <div className="workflow-editor-actions">
-          <button type="button" className="secondary" onClick={handleSaveStages}>工程を保存</button>
-          {stageEditorMessage ? <p className="meta">{stageEditorMessage}</p> : null}
-        </div>
-      </section>
-
       <section className="workflow-layout">
         <article className="card">
           <h2>工程一覧</h2>
@@ -259,6 +242,33 @@ export const WorkflowView = ({
             ))}
           </div>
         </article>
+      </section>
+
+      <section className="card workflow-admin-settings">
+        <details>
+          <summary>
+            <span>工程設定を編集（管理者向け）</span>
+            <small>通常のタスク確認では触らず、プロジェクトの進め方を変える時だけ使います。</small>
+          </summary>
+          <div className="workflow-admin-settings-body">
+            <div>
+              <h2>工程を自分で決める</h2>
+              <p className="meta">
+                この端末の工程表示を変更します。1行に1工程を書いて保存してください。例: 1. 構成確認 / 2. 収録 / 3. 編集
+              </p>
+            </div>
+            <textarea
+              value={stageEditorText}
+              onChange={(event) => setStageEditorText(event.target.value)}
+              rows={4}
+              aria-label="工程一覧"
+            />
+            <div className="workflow-editor-actions">
+              <button type="button" className="secondary" onClick={handleSaveStages}>工程を保存</button>
+              {stageEditorMessage ? <p className="meta">{stageEditorMessage}</p> : null}
+            </div>
+          </div>
+        </details>
       </section>
     </main>
   );

@@ -2780,6 +2780,34 @@ button:hover {
   font: inherit;
 }
 
+.board-card-edit-panel {
+  margin-top: 4px;
+  border-top: 1px solid rgba(148, 163, 184, 0.16);
+  padding-top: 8px;
+}
+
+.board-card-edit-panel summary {
+  cursor: pointer;
+  color: #2563eb;
+  font-size: 12px;
+  font-weight: 800;
+  list-style-position: inside;
+}
+
+.board-card-edit-panel[open] summary {
+  margin-bottom: 8px;
+}
+
+.board-card-edit-grid {
+  grid-template-columns: 1fr;
+  margin-top: 0;
+}
+
+.board-card-edit-panel .secondary {
+  width: 100%;
+  margin-top: 8px;
+}
+
 .board-status-menu {
   margin-top: 2px;
   border-top: 1px solid rgba(148, 163, 184, 0.16);
@@ -2878,6 +2906,56 @@ button:hover {
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
+}
+
+.workflow-admin-settings {
+  margin-top: 4px;
+}
+
+.workflow-admin-settings details {
+  display: grid;
+  gap: 14px;
+}
+
+.workflow-admin-settings summary {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  cursor: pointer;
+  color: #172033;
+  font-weight: 900;
+  list-style-position: inside;
+}
+
+.workflow-admin-settings summary small {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.workflow-admin-settings-body {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: minmax(220px, 0.55fr) minmax(320px, 1fr);
+  align-items: start;
+  margin-top: 14px;
+}
+
+.workflow-admin-settings textarea {
+  width: 100%;
+  min-height: 116px;
+  resize: vertical;
+  border: 1px solid rgba(148, 163, 184, 0.34);
+  border-radius: 14px;
+  background: #fff;
+  color: #172033;
+  padding: 12px 14px;
+  font: inherit;
+  line-height: 1.6;
+}
+
+.workflow-admin-settings .workflow-editor-actions {
+  grid-column: 2;
 }
 
 .review-fix-dashboard {
