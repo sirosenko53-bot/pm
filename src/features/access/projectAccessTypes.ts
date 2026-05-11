@@ -14,11 +14,6 @@ export type JoinedProject = {
   lastOpenedAt?: string;
 };
 
-export type ProjectJoinSetupInput = {
-  calendarId?: string;
-  sharedFileId?: string;
-};
-
 export type LastViewRoute =
   | 'joined-projects'
   | 'workspace-home'

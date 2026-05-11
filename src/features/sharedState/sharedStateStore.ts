@@ -8,6 +8,11 @@ import {
 
 const SHARED_STATE_META_KEY = 'seisaku-pm:shared-state-meta';
 
+const readDefaultSharedFileId = (): string =>
+  typeof import.meta.env.VITE_SHARED_STATE_FILE_ID === 'string'
+    ? import.meta.env.VITE_SHARED_STATE_FILE_ID.trim()
+    : '';
+
 const extractDriveFileIdFromInput = (value: string): string => {
   const trimmed = value.trim();
   if (trimmed.length === 0) return '';
@@ -70,6 +75,29 @@ export const saveSharedDriveFileSettings = (params: {
   }
 
   return result;
+};
+
+export const applyDefaultSharedDriveFileSettings = (): {
+  value: SharedStateMetadata;
+  applied: boolean;
+  warning?: string;
+} => {
+  const current = loadSharedStateMetadata();
+  if (current.value.sharedFileId) {
+    return { value: current.value, applied: false, warning: current.warning };
+  }
+
+  const defaultFileId = readDefaultSharedFileId();
+  if (!defaultFileId) {
+    return { value: current.value, applied: false, warning: current.warning };
+  }
+
+  const saved = saveSharedDriveFileSettings({ sharedFileId: defaultFileId });
+  return {
+    value: saved.value ?? current.value,
+    applied: Boolean(saved.value),
+    warning: current.warning ?? saved.warning,
+  };
 };
 
 export const clearSharedDriveFileSettings = (): { value: SharedStateMetadata; warning?: string } =>

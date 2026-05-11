@@ -58,12 +58,7 @@ export const initializeGoogleClient = async (next: GoogleClientSettings): Promis
   settings = { ...settings, ...next };
 };
 
-export const isUsingMockCalendar = (): boolean => settings.useMock !== false || !settings.oauthClientId;
-
-export const signInToGoogle = async (): Promise<void> => {
-  if (settings.useMock || !settings.oauthClientId) return;
-  throw new Error('MVP-1/2ではGoogleログイン実装は未対応です。');
-};
+export const isUsingMockCalendar = (): boolean => settings.useMock !== false;
 
 const CALENDAR_API_BASE = 'https://www.googleapis.com/calendar/v3/calendars';
 export const GOOGLE_CALENDAR_READONLY_SCOPE = 'https://www.googleapis.com/auth/calendar.readonly';
@@ -157,6 +152,12 @@ export const requestGoogleCalendarWriteAccessToken = async (): Promise<
   { ok: true; accessToken: string } | { ok: false; error: string }
 > => {
   return requestGoogleAccessToken([GOOGLE_CALENDAR_EVENTS_SCOPE]);
+};
+
+export const requestGoogleCalendarReadWriteAccessToken = async (): Promise<
+  { ok: true; accessToken: string } | { ok: false; error: string }
+> => {
+  return requestGoogleAccessToken([GOOGLE_CALENDAR_READONLY_SCOPE, GOOGLE_CALENDAR_EVENTS_SCOPE]);
 };
 
 export type GoogleCalendarEventPatch = Pick<GoogleCalendarEvent, 'summary' | 'start' | 'end'>;

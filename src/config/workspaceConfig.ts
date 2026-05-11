@@ -3,12 +3,18 @@ import type { Workspace } from '../domain/workspaceTypes';
 const readCalendarId = (value: unknown, fallback: string): string =>
   typeof value === 'string' && value.trim() ? value.trim() : fallback;
 
-const CALENDAR_ID_POETRY = readCalendarId(import.meta.env.VITE_CALENDAR_ID_POETRY, 'cal-poetry@example.com');
+const CALENDAR_ID_POETRY = readCalendarId(
+  import.meta.env.VITE_CALENDAR_ID_POETRY,
+  '538e171ad66c6405a09bf417220bf10a0534a6e8c9107cf7f43aea81b7c98b60@group.calendar.google.com',
+);
 const CALENDAR_ID_EXHIBITION = readCalendarId(
   import.meta.env.VITE_CALENDAR_ID_EXHIBITION,
-  'cal-exhibition@example.com',
+  'bbd29788662fd63058d367a597ab62bfe44418398d38490e324171fd1477317e@group.calendar.google.com',
 );
-const CALENDAR_ID_AUDIO = readCalendarId(import.meta.env.VITE_CALENDAR_ID_AUDIO, 'cal-audio@example.com');
+const CALENDAR_ID_AUDIO = readCalendarId(
+  import.meta.env.VITE_CALENDAR_ID_AUDIO,
+  '70ab9409b6630fe7b73bb70071c6c3619eeed8fbfd6b39b98ae2e3115e64de75@group.calendar.google.com',
+);
 const CALENDAR_ID_NOVEL = readCalendarId(import.meta.env.VITE_CALENDAR_ID_NOVEL, 'cal-novel@example.com');
 
 export const WORKSPACE: Workspace = {
