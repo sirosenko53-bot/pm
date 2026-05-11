@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { WORKSPACE } from '../config/workspaceConfig';
-import type { Task, TaskStatus, TaskViewModel } from '../domain/taskTypes';
+import type { Task, TaskPriority, TaskStatus, TaskViewModel } from '../domain/taskTypes';
 import type { Workspace } from '../domain/workspaceTypes';
 import type { AppRoute } from './routes';
 import { JoinedProjectsView } from '../features/access/JoinedProjectsView';
@@ -441,13 +441,14 @@ export const App = () => {
 
   const handleUpdateTaskDetails = (
     task: TaskViewModel,
-    patch: { assignee: string; taskName: string; stageId?: string; stageName?: string },
+    patch: { assignee: string; taskName: string; priority: TaskPriority; stageId?: string; stageName?: string },
   ) => {
     const result = upsertTaskOverlayDetails(task, {
       assigneeOverride: patch.assignee,
       taskNameOverride: patch.taskName,
       stageOverride: patch.stageId,
       stageNameOverride: patch.stageName,
+      priority: patch.priority,
     });
     const sharedMetaResult = markLocalChangesAfterSharedRead();
     setStorageWarning(result.warning ?? sharedMetaResult.warning);

@@ -63,7 +63,10 @@ export const upsertTaskOverlayStatus = (
 
 export const upsertTaskOverlayDetails = (
   task: TaskViewModel,
-  patch: Pick<TaskOverlay, 'assigneeOverride' | 'taskNameOverride' | 'stageOverride' | 'stageNameOverride'>,
+  patch: Pick<
+    TaskOverlay,
+    'assigneeOverride' | 'taskNameOverride' | 'stageOverride' | 'stageNameOverride' | 'priority'
+  >,
 ): { warning?: string } => {
   const existing = getTaskOverlay(task.taskId);
   const normalizedPatch = {
@@ -72,6 +75,7 @@ export const upsertTaskOverlayDetails = (
     taskNameOverride: patch.taskNameOverride?.trim() || undefined,
     stageOverride: patch.stageOverride?.trim() || undefined,
     stageNameOverride: patch.stageNameOverride?.trim() || undefined,
+    priority: patch.priority,
   };
 
   if (existing) {

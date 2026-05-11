@@ -1,5 +1,11 @@
 import { useMemo, useState } from 'react';
-import { TASK_STATUSES, type TaskStatus, type TaskViewModel } from '../../domain/taskTypes';
+import {
+  TASK_PRIORITIES,
+  TASK_STATUSES,
+  type TaskPriority,
+  type TaskStatus,
+  type TaskViewModel,
+} from '../../domain/taskTypes';
 import type { WorkflowStage } from '../../domain/workflowTypes';
 import type { Workspace } from '../../domain/workspaceTypes';
 import { CalendarMaintenancePanel } from '../calendar/CalendarMaintenancePanel';
@@ -10,6 +16,7 @@ import { calculateReviewFixSummary } from './reviewFixUtils';
 type TaskDetailPatch = {
   assignee: string;
   taskName: string;
+  priority: TaskPriority;
   stageId?: string;
   stageName?: string;
 };
@@ -62,6 +69,7 @@ const ReviewFixTaskCard = ({
 }) => {
   const [assignee, setAssignee] = useState(task.assignee);
   const [taskName, setTaskName] = useState(task.taskName);
+  const [priority, setPriority] = useState<TaskPriority>(task.priority ?? '中');
   const [stageId, setStageId] = useState(task.stageId ?? '');
 
   const selectedStage = stages.find((stage) => stage.stageId === stageId);
@@ -75,6 +83,7 @@ const ReviewFixTaskCard = ({
       <p className="meta">
         担当: {task.assignee} / 工程: {task.stageName ?? '未設定'} / 期限: {formatDueLabel(task)}
       </p>
+      <p className="meta">優先度: {task.priority ?? '中'}</p>
       <div className="status-row">
         {task.isDelayed ? <span className="warning">遅延</span> : null}
         {task.parseError ? <span className="warning">解析エラー</span> : null}
@@ -82,18 +91,24 @@ const ReviewFixTaskCard = ({
       </div>
 
       <details className="task-edit-panel">
-        <summary>担当・タスク名・工程を修正</summary>
+        <summary>担当者・優先度・依存工程を修正</summary>
         <div className="task-edit-grid">
           <label>
             担当者
             <input value={assignee} onChange={(event) => setAssignee(event.target.value)} />
           </label>
           <label>
-            タスク名
-            <input value={taskName} onChange={(event) => setTaskName(event.target.value)} />
+            優先度
+            <select value={priority} onChange={(event) => setPriority(event.target.value as TaskPriority)}>
+              {TASK_PRIORITIES.map((nextPriority) => (
+                <option key={nextPriority} value={nextPriority}>
+                  {nextPriority}
+                </option>
+              ))}
+            </select>
           </label>
           <label>
-            工程
+            依存する工程
             <select value={stageId} onChange={(event) => setStageId(event.target.value)}>
               <option value="">未設定</option>
               {stages.map((stage) => (
@@ -104,12 +119,19 @@ const ReviewFixTaskCard = ({
             </select>
           </label>
         </div>
+        <div className="task-edit-secondary">
+          <label>
+            タスク名（必要な場合だけ修正）
+            <input value={taskName} onChange={(event) => setTaskName(event.target.value)} />
+          </label>
+        </div>
         <button
           type="button"
           className="secondary"
           onClick={() => onUpdateTaskDetails(task, {
             assignee,
             taskName,
+            priority,
             stageId: stageId || undefined,
             stageName: selectedStage?.stageName,
           })}

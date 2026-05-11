@@ -129,21 +129,19 @@ const BoardCard = ({
         {task.isUnclassifiedProject ? <span className="warning">未分類</span> : null}
       </div>
 
-      <details className="board-status-menu">
-        <summary>状態を変える</summary>
-        <div className="status-buttons">
+      <label className="board-status-select">
+        状態
+        <select
+          value={task.status}
+          onChange={(event) => onChangeStatus(task, event.target.value as TaskStatus)}
+        >
           {TASK_STATUSES.map((nextStatus) => (
-            <button
-              key={nextStatus}
-              type="button"
-              className={`status-button ${task.status === nextStatus ? 'active' : ''}`}
-              onClick={() => onChangeStatus(task, nextStatus)}
-            >
+            <option key={nextStatus} value={nextStatus}>
               {nextStatus}
-            </button>
+            </option>
           ))}
-        </div>
-      </details>
+        </select>
+      </label>
     </div>
   );
 };
