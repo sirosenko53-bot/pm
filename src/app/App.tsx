@@ -141,6 +141,9 @@ export const App = () => {
   const [calendarError, setCalendarError] = useState<string | undefined>();
   const [calendarImportSummary, setCalendarImportSummary] = useState<CalendarImportSummary | undefined>();
   const [isLoadingTasks, setIsLoadingTasks] = useState(false);
+  const [isConnectingGoogleCalendar, setIsConnectingGoogleCalendar] = useState(false);
+  const [calendarReadAccessToken, setCalendarReadAccessToken] = useState<string | undefined>();
+  const [calendarAuthStatus, setCalendarAuthStatus] = useState('未接続');
   const [storageWarning, setStorageWarning] = useState<string | undefined>();
   const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
   const [sharedStateMetadata, setSharedStateMetadata] = useState<SharedStateMetadata>(
@@ -229,14 +232,19 @@ export const App = () => {
     setCalendarError(undefined);
     try {
       const useMockCalendar = isUsingMockCalendar();
-      let calendarAccessToken: string | undefined;
+      let calendarAccessToken = calendarReadAccessToken;
       if (!useMockCalendar) {
-        setCalendarStatus('Google認証を待っています');
-        const authResult = await requestGoogleCalendarReadAccessToken();
-        if (!authResult.ok) {
-          throw new Error(authResult.error);
+        if (!calendarAccessToken) {
+          setCalendarStatus('Google認証を待っています');
+          const authResult = await requestGoogleCalendarReadAccessToken();
+          if (!authResult.ok) {
+            setCalendarAuthStatus('未接続');
+            throw new Error(authResult.error);
+          }
+          calendarAccessToken = authResult.accessToken;
+          setCalendarReadAccessToken(authResult.accessToken);
         }
-        calendarAccessToken = authResult.accessToken;
+        setCalendarAuthStatus('接続済み（この画面の操作中のみ）');
         setCalendarStatus('Googleカレンダー取得中');
       } else {
         setCalendarStatus('モック予定を取り込み中');
@@ -288,6 +296,34 @@ export const App = () => {
       setCalendarError(error instanceof Error ? error.message : '予定取得に失敗しました。');
     } finally {
       setIsLoadingTasks(false);
+    }
+  };
+
+  const handleConnectGoogleCalendar = async () => {
+    setCalendarError(undefined);
+    setIsConnectingGoogleCalendar(true);
+    setCalendarAuthStatus('接続中');
+
+    try {
+      if (isUsingMockCalendar()) {
+        setCalendarAuthStatus('モック表示中');
+        setCalendarError('現在はモック表示中です。実カレンダーを読むには VITE_USE_MOCK_CALENDAR=false にしてください。');
+        return;
+      }
+
+      const authResult = await requestGoogleCalendarReadAccessToken();
+      if (!authResult.ok) {
+        setCalendarReadAccessToken(undefined);
+        setCalendarAuthStatus('未接続');
+        setCalendarError(authResult.error);
+        return;
+      }
+
+      setCalendarReadAccessToken(authResult.accessToken);
+      setCalendarAuthStatus('接続済み（この画面の操作中のみ）');
+      setCalendarStatus('Googleアカウント接続済み');
+    } finally {
+      setIsConnectingGoogleCalendar(false);
     }
   };
 
@@ -738,11 +774,14 @@ export const App = () => {
       calendarDiagnostics={calendarDiagnostics}
       calendarImportSummary={calendarImportSummary}
       isReloadingCalendar={isLoadingTasks}
+      isConnectingGoogle={isConnectingGoogleCalendar}
+      calendarAuthStatus={calendarAuthStatus}
       storageWarning={storageWarning}
       onSelectProject={openProjectOverview}
       onOpenBoard={() => openTaskBoard()}
       onOpenBackup={() => openBackup()}
       onOpenJoinedProjects={() => setRoute({ name: 'joined-projects' })}
+      onConnectGoogleCalendar={() => void handleConnectGoogleCalendar()}
       onReloadCalendar={() => void loadTasks(visibleWorkspace)}
     />
   );
