@@ -14,11 +14,14 @@ type Props = {
   calendarDiagnostics: CalendarConnectionDiagnostic;
   calendarImportSummary?: CalendarImportSummary;
   isReloadingCalendar?: boolean;
+  isConnectingGoogle?: boolean;
+  calendarAuthStatus?: string;
   storageWarning?: string;
   onSelectProject: (projectId: string) => void;
   onOpenBoard: () => void;
   onOpenBackup: () => void;
   onOpenJoinedProjects: () => void;
+  onConnectGoogleCalendar: () => void;
   onReloadCalendar: () => void;
 };
 
@@ -30,11 +33,14 @@ export const WorkspaceHome = ({
   calendarDiagnostics,
   calendarImportSummary,
   isReloadingCalendar = false,
+  isConnectingGoogle = false,
+  calendarAuthStatus = '未接続',
   storageWarning,
   onSelectProject,
   onOpenBoard,
   onOpenBackup,
   onOpenJoinedProjects,
+  onConnectGoogleCalendar,
   onReloadCalendar,
 }: Props) => {
   const summary = calculateTaskSummary(tasks);
@@ -90,6 +96,7 @@ export const WorkspaceHome = ({
             <p>{calendarDiagnostics.nextAction}</p>
           </div>
           <div className="calendar-readiness-stats" aria-label="カレンダー設定状況">
+            <span>Google接続: {calendarAuthStatus}</span>
             <span>設定済み {calendarDiagnostics.configuredSources}/{calendarDiagnostics.totalSources}</span>
             <span>前回取込 {lastImportText}</span>
             {calendarImportSummary ? (
@@ -118,6 +125,21 @@ export const WorkspaceHome = ({
             <li>
               <span className="setup-step-number">2</span>
               <div>
+                <strong>Googleアカウントで接続</strong>
+                <p>カレンダーIDだけでは読めません。共有権限のあるGoogleアカウントで接続します。</p>
+              </div>
+              <button
+                type="button"
+                className="setup-step-action"
+                onClick={onConnectGoogleCalendar}
+                disabled={isConnectingGoogle || calendarDiagnostics.isMockMode}
+              >
+                {isConnectingGoogle ? '接続中' : 'Googleに接続'}
+              </button>
+            </li>
+            <li>
+              <span className="setup-step-number">3</span>
+              <div>
                 <strong>Googleカレンダーを取り込む</strong>
                 <p>
                   予定を最新にします。状態: {calendarStatus}
@@ -131,7 +153,7 @@ export const WorkspaceHome = ({
               </button>
             </li>
             <li>
-              <span className="setup-step-number">3</span>
+              <span className="setup-step-number">4</span>
               <div>
                 <strong>チーム共有を確認</strong>
                 <p>他の端末で保存された進行状況が必要なときだけ開きます。</p>
