@@ -1,10 +1,15 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { WORKFLOW_TEMPLATES } from '../../config/workflowTemplates';
 import type { Workspace } from '../../domain/workspaceTypes';
 import type {
   CalendarConnectionDiagnostic,
   CalendarImportSummary,
 } from '../calendar/calendarDiagnostics';
+import {
+  loadCalendarSourceSettings,
+  saveCalendarSourceSettings,
+  type CalendarSourceSettings,
+} from '../calendar/calendarSourceSettings';
 import { fetchDriveJsonFile, updateDriveJsonFile } from '../sharedState/googleDriveSharedStateClient';
 import { getDriveReadAccessToken, getDriveWriteAccessToken } from '../sharedState/googleDriveAuth';
 import {
@@ -53,6 +58,7 @@ type Props = {
   onRestored: (message: string, warning?: string) => void;
   onSharedStateMetadataUpdated: (metadata: SharedStateMetadata, warning?: string) => void;
   onSharedStateApplied: (message: string, warning?: string) => void;
+  onCalendarSourceSettingsUpdated: () => void;
 };
 
 const formatDateTime = (value: string | null): string => (value ? new Date(value).toLocaleString() : '未記録');
@@ -86,6 +92,7 @@ export const BackupPanel = ({
   onRestored,
   onSharedStateMetadataUpdated,
   onSharedStateApplied,
+  onCalendarSourceSettingsUpdated,
 }: Props) => {
   const [panelMessage, setPanelMessage] = useState<string | undefined>();
   const [panelError, setPanelError] = useState<string | undefined>();
@@ -93,6 +100,9 @@ export const BackupPanel = ({
   const [candidateBackup, setCandidateBackup] = useState<BackupPackage | null>(null);
   const [sharedFileIdInput, setSharedFileIdInput] = useState(sharedStateMetadata.sharedFileId ?? '');
   const [sharedFileNameInput, setSharedFileNameInput] = useState(sharedStateMetadata.sharedFileName ?? '');
+  const [calendarIdInputs, setCalendarIdInputs] = useState<CalendarSourceSettings>(() =>
+    Object.fromEntries(workspace.calendarSources.map((source) => [source.projectId, source.calendarId])),
+  );
   const [driveAccessToken, setDriveAccessToken] = useState('');
   const [conflictState, setConflictState] = useState<ConflictState | null>(null);
 
@@ -101,6 +111,31 @@ export const BackupPanel = ({
   const lastImportText = calendarImportSummary
     ? new Date(calendarImportSummary.updatedAt).toLocaleString('ja-JP')
     : '未実施';
+
+  useEffect(() => {
+    setCalendarIdInputs(
+      Object.fromEntries(workspace.calendarSources.map((source) => [source.projectId, source.calendarId])),
+    );
+  }, [workspace.calendarSources]);
+
+  const handleSaveCalendarSettings = () => {
+    setPanelMessage(undefined);
+    setPanelError(undefined);
+
+    const nextSettings = workspace.calendarSources.reduce<CalendarSourceSettings>((settings, source) => {
+      const value = calendarIdInputs[source.projectId]?.trim();
+      if (value) {
+        settings[source.projectId] = value;
+      } else {
+        delete settings[source.projectId];
+      }
+      return settings;
+    }, loadCalendarSourceSettings());
+
+    saveCalendarSourceSettings(nextSettings);
+    onCalendarSourceSettingsUpdated();
+    setPanelMessage('GoogleカレンダーIDを保存しました。');
+  };
 
   const handleExport = () => {
     setPanelMessage(undefined);
@@ -455,6 +490,41 @@ export const BackupPanel = ({
             <p>作業前後の控えを手元に残します。Googleカレンダー予定そのものは含みません。</p>
           </li>
         </ol>
+      </section>
+
+      <section className="card shared-state-card">
+        <h2>GoogleカレンダーID</h2>
+        <p className="note">
+          Googleカレンダーの「設定と共有」から取得したカレンダーIDを、プロジェクトごとに登録します。
+          ここで保存したIDはこの端末にだけ保存されます。
+        </p>
+        <div className="calendar-id-settings-grid">
+          {workspace.calendarSources.map((source) => (
+            <label key={source.calendarSourceId} className="calendar-id-input-row">
+              <span>{source.displayName}</span>
+              <input
+                type="text"
+                value={calendarIdInputs[source.projectId] ?? ''}
+                onChange={(event) => {
+                  const value = event.target.value;
+                  setCalendarIdInputs((current) => ({
+                    ...current,
+                    [source.projectId]: value,
+                  }));
+                }}
+                placeholder="project-calendar-id@group.calendar.google.com"
+              />
+            </label>
+          ))}
+        </div>
+        <div className="overview-nav">
+          <button type="button" className="secondary" onClick={handleSaveCalendarSettings}>
+            カレンダーIDを保存
+          </button>
+        </div>
+        <p className="note">
+          OAuthトークンは保存しません。実読取時はGoogle認証で一時的に読み取り権限を取得します。
+        </p>
       </section>
 
       <section className="card calendar-readiness-card">
