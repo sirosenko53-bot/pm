@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { WORKSPACE } from '../config/workspaceConfig';
-import type { Task, TaskStatus, TaskViewModel } from '../domain/taskTypes';
+import type { Task, TaskPriority, TaskStatus, TaskViewModel } from '../domain/taskTypes';
 import type { Workspace } from '../domain/workspaceTypes';
 import type { AppRoute } from './routes';
 import { JoinedProjectsView } from '../features/access/JoinedProjectsView';
@@ -57,6 +57,7 @@ import { ReviewFixView } from '../features/review/ReviewFixView';
 import {
   getAllTaskOverlays,
   updateTaskOverlaySortOrders,
+  upsertTaskOverlayDetails,
   upsertTaskOverlayStatus,
 } from '../features/tasks/taskOverlayStore';
 import { buildTaskViewModels } from '../features/tasks/taskViewModel';
@@ -438,6 +439,23 @@ export const App = () => {
     setOverlays(getAllTaskOverlays());
   };
 
+  const handleUpdateTaskDetails = (
+    task: TaskViewModel,
+    patch: { assignee: string; taskName: string; priority: TaskPriority; stageId?: string; stageName?: string },
+  ) => {
+    const result = upsertTaskOverlayDetails(task, {
+      assigneeOverride: patch.assignee,
+      taskNameOverride: patch.taskName,
+      stageOverride: patch.stageId,
+      stageNameOverride: patch.stageName,
+      priority: patch.priority,
+    });
+    const sharedMetaResult = markLocalChangesAfterSharedRead();
+    setStorageWarning(result.warning ?? sharedMetaResult.warning);
+    setSharedStateMetadata(sharedMetaResult.value);
+    setOverlays(getAllTaskOverlays());
+  };
+
   const handleReorder = (
     updates: Array<{ taskId: string; googleCalendarEventId: string; status: TaskStatus; sortOrder: number }>,
   ) => {
@@ -629,7 +647,6 @@ export const App = () => {
         onOpenReviewFix={() => openReviewFix(project.projectId)}
         onOpenBoard={() => openTaskBoard(project.projectId, project.projectId)}
         onOpenBackup={() => openBackup(project.projectId)}
-        onChangeStatus={handleChangeStatus}
       />
     );
   }
@@ -693,6 +710,7 @@ export const App = () => {
         onOpenBoard={() => openTaskBoard(project.projectId, project.projectId)}
         onOpenBackup={() => openBackup(project.projectId)}
         onChangeStatus={handleChangeStatus}
+        onUpdateTaskDetails={handleUpdateTaskDetails}
         onCalendarWriteBackComplete={() => void loadTasks(visibleWorkspace)}
       />
     );

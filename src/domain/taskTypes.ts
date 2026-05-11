@@ -25,7 +25,10 @@ export type TaskOverlay = {
   taskId: string;
   googleCalendarEventId: string;
   status: TaskStatus;
+  assigneeOverride?: string;
+  taskNameOverride?: string;
   stageOverride?: string;
+  stageNameOverride?: string;
   priority?: TaskPriority;
   reviewer?: string;
   memo?: string;

@@ -1,10 +1,14 @@
 import { WORKFLOW_TEMPLATES } from '../../config/workflowTemplates';
 import type { Task, TaskOverlay, TaskViewModel } from '../../domain/taskTypes';
 import type { Workspace } from '../../domain/workspaceTypes';
+import { resolveProjectStageName } from '../workflow/customWorkflowStore';
 
 const resolveStageName = (workspace: Workspace, stageId?: string) => {
   if (!stageId) return '未設定';
   for (const project of workspace.projects) {
+    const customStageName = resolveProjectStageName(project, stageId);
+    if (customStageName) return customStageName;
+
     const template = WORKFLOW_TEMPLATES.find((item) => item.workflowTemplateId === project.workflowTemplateId);
     const stage = template?.stages.find((item) => item.stageId === stageId);
     if (stage) return stage.stageName;
@@ -101,11 +105,15 @@ export const buildTaskViewModels = (tasks: Task[], overlays: TaskOverlay[], work
   return dedupeTasks(tasks, overlayIndex).map(({ task, overlay }) => {
     const stageId = overlay?.stageOverride ?? task.stageId;
     const status = overlay?.status ?? '未着手';
+    const taskName = overlay?.taskNameOverride?.trim() || task.taskName;
+    const assignee = overlay?.assigneeOverride?.trim() || task.assignee;
 
     return {
       ...task,
+      taskName,
+      assignee,
       stageId,
-      stageName: resolveStageName(workspace, stageId),
+      stageName: overlay?.stageNameOverride?.trim() || resolveStageName(workspace, stageId),
       status,
       priority: overlay?.priority ?? task.priority ?? '中',
       reviewer: overlay?.reviewer,

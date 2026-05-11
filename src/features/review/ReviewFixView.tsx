@@ -1,11 +1,25 @@
-import { TASK_STATUSES, type TaskStatus, type TaskViewModel } from '../../domain/taskTypes';
+import { useMemo, useState } from 'react';
+import {
+  TASK_PRIORITIES,
+  TASK_STATUSES,
+  type TaskPriority,
+  type TaskStatus,
+  type TaskViewModel,
+} from '../../domain/taskTypes';
+import type { WorkflowStage } from '../../domain/workflowTypes';
 import type { Workspace } from '../../domain/workspaceTypes';
 import { CalendarMaintenancePanel } from '../calendar/CalendarMaintenancePanel';
 import { CommonNav } from '../navigation/CommonNav';
-import {
-  calculateReviewFixSummary,
-  getTodayReviewFixTasks,
-} from './reviewFixUtils';
+import { resolveProjectWorkflowStages } from '../workflow/customWorkflowStore';
+import { calculateReviewFixSummary } from './reviewFixUtils';
+
+type TaskDetailPatch = {
+  assignee: string;
+  taskName: string;
+  priority: TaskPriority;
+  stageId?: string;
+  stageName?: string;
+};
 
 type Props = {
   workspace: Workspace;
@@ -19,6 +33,7 @@ type Props = {
   onOpenBoard: () => void;
   onOpenBackup: () => void;
   onChangeStatus: (task: TaskViewModel, status: TaskStatus) => void;
+  onUpdateTaskDetails: (task: TaskViewModel, patch: TaskDetailPatch) => void;
   onCalendarWriteBackComplete: () => void;
 };
 
@@ -39,45 +54,114 @@ const formatDueLabel = (task: TaskViewModel): string => {
   return '未設定';
 };
 
-const renderTaskCard = (
-  task: TaskViewModel,
-  onOpenBoard: () => void,
-  onChangeStatus: (target: TaskViewModel, status: TaskStatus) => void,
-) => (
-  <article key={task.taskId} className="review-fix-task-card">
-    <div className="review-fix-task-header">
-      <p className="review-fix-task-title">{task.taskName}</p>
-      <span className="pill">{task.status}</span>
-    </div>
-    <p className="meta">担当: {task.assignee} / プロジェクト: {task.projectName}</p>
-    <p className="meta">工程: {task.stageName ?? '未設定工程'} / 期限: {formatDueLabel(task)}</p>
-    {(task.reviewer || task.memo) ? (
-      <div className="review-fix-note-box">
-        {task.reviewer ? <p className="meta">reviewer: {task.reviewer}</p> : null}
-        {task.memo ? <p className="meta">memo: {task.memo}</p> : null}
+const ReviewFixTaskCard = ({
+  task,
+  stages,
+  onOpenBoard,
+  onChangeStatus,
+  onUpdateTaskDetails,
+}: {
+  task: TaskViewModel;
+  stages: WorkflowStage[];
+  onOpenBoard: () => void;
+  onChangeStatus: (target: TaskViewModel, status: TaskStatus) => void;
+  onUpdateTaskDetails: (target: TaskViewModel, patch: TaskDetailPatch) => void;
+}) => {
+  const [assignee, setAssignee] = useState(task.assignee);
+  const [taskName, setTaskName] = useState(task.taskName);
+  const [priority, setPriority] = useState<TaskPriority>(task.priority ?? '中');
+  const [stageId, setStageId] = useState(task.stageId ?? '');
+
+  const selectedStage = stages.find((stage) => stage.stageId === stageId);
+
+  return (
+    <article className="review-fix-task-card">
+      <div className="review-fix-task-header">
+        <p className="review-fix-task-title">{task.taskName}</p>
+        <span className="pill">{task.status}</span>
       </div>
-    ) : null}
-    <div className="status-row">
-      {task.isDelayed ? <span className="warning">遅延</span> : null}
-      {task.parseError ? <span className="warning">解析エラー</span> : null}
-      {task.isUnclassifiedProject ? <span className="warning">未分類プロジェクト</span> : null}
-      {getTodayReviewFixTasks([task], new Date()).length > 0 ? <span className="pill">今日対応</span> : null}
-    </div>
-    <div className="status-buttons">
-      {TASK_STATUSES.map((nextStatus) => (
+      <p className="meta">
+        担当: {task.assignee} / 工程: {task.stageName ?? '未設定'} / 期限: {formatDueLabel(task)}
+      </p>
+      <p className="meta">優先度: {task.priority ?? '中'}</p>
+      <div className="status-row">
+        {task.isDelayed ? <span className="warning">遅延</span> : null}
+        {task.parseError ? <span className="warning">解析エラー</span> : null}
+        {task.isUnclassifiedProject ? <span className="warning">未分類</span> : null}
+      </div>
+
+      <details className="task-edit-panel">
+        <summary>担当者・優先度・依存工程を修正</summary>
+        <div className="task-edit-grid">
+          <label>
+            担当者
+            <input value={assignee} onChange={(event) => setAssignee(event.target.value)} />
+          </label>
+          <label>
+            優先度
+            <select value={priority} onChange={(event) => setPriority(event.target.value as TaskPriority)}>
+              {TASK_PRIORITIES.map((nextPriority) => (
+                <option key={nextPriority} value={nextPriority}>
+                  {nextPriority}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            依存する工程
+            <select value={stageId} onChange={(event) => setStageId(event.target.value)}>
+              <option value="">未設定</option>
+              {stages.map((stage) => (
+                <option key={stage.stageId} value={stage.stageId}>
+                  {stage.order}. {stage.stageName}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+        <div className="task-edit-secondary">
+          <label>
+            タスク名（必要な場合だけ修正）
+            <input value={taskName} onChange={(event) => setTaskName(event.target.value)} />
+          </label>
+        </div>
         <button
-          key={nextStatus}
           type="button"
-          className={`status-button ${task.status === nextStatus ? 'active' : ''}`}
-          onClick={() => onChangeStatus(task, nextStatus)}
+          className="secondary"
+          onClick={() => onUpdateTaskDetails(task, {
+            assignee,
+            taskName,
+            priority,
+            stageId: stageId || undefined,
+            stageName: selectedStage?.stageName,
+          })}
         >
-          {nextStatus}
+          修正を保存
         </button>
-      ))}
-    </div>
-    <button type="button" className="secondary" onClick={onOpenBoard}>タスクボードで確認</button>
-  </article>
-);
+      </details>
+
+      <details className="board-status-menu">
+        <summary>状態を変える</summary>
+        <div className="status-buttons">
+          {TASK_STATUSES.map((nextStatus) => (
+            <button
+              key={nextStatus}
+              type="button"
+              className={`status-button ${task.status === nextStatus ? 'active' : ''}`}
+              onClick={() => onChangeStatus(task, nextStatus)}
+            >
+              {nextStatus}
+            </button>
+          ))}
+        </div>
+      </details>
+
+      <button type="button" className="secondary" onClick={onOpenBoard}>
+        タスクボードで見る
+      </button>
+    </article>
+  );
+};
 
 export const ReviewFixView = ({
   workspace,
@@ -91,9 +175,11 @@ export const ReviewFixView = ({
   onOpenBoard,
   onOpenBackup,
   onChangeStatus,
+  onUpdateTaskDetails,
   onCalendarWriteBackComplete,
 }: Props) => {
   const project = workspace.projects.find((item) => item.projectId === projectId);
+  const stages = useMemo(() => (project ? resolveProjectWorkflowStages(project) : []), [project]);
   if (!project) return null;
 
   const today = new Date();
@@ -121,8 +207,8 @@ export const ReviewFixView = ({
           <h1>{project.projectName}</h1>
           <span className="pill">確認・修正</span>
         </div>
-        <p>{workspace.workspaceName} / {project.projectName}（{project.projectType}）</p>
-        <p className="meta">Googleカレンダー正本 / ローカル保存 / 復元用ファイル / Drive共有対応</p>
+        <p>{workspace.workspaceName} / {project.projectName}</p>
+        <p className="meta">確認待ち・修正待ちのタスクを確認し、必要に応じて担当者・タスク名・工程を修正できます。</p>
         {storageWarning ? <p className="warning-text">{storageWarning}</p> : null}
       </section>
 
@@ -135,7 +221,16 @@ export const ReviewFixView = ({
             </div>
             <div className="review-fix-task-list">
               {summary.reviewWaiting.length === 0 ? <p className="empty-state">該当タスクなし</p> : null}
-              {summary.reviewWaiting.map((task) => renderTaskCard(task, onOpenBoard, onChangeStatus))}
+              {summary.reviewWaiting.map((task) => (
+                <ReviewFixTaskCard
+                  key={task.taskId}
+                  task={task}
+                  stages={stages}
+                  onOpenBoard={onOpenBoard}
+                  onChangeStatus={onChangeStatus}
+                  onUpdateTaskDetails={onUpdateTaskDetails}
+                />
+              ))}
             </div>
           </article>
 
@@ -146,7 +241,16 @@ export const ReviewFixView = ({
             </div>
             <div className="review-fix-task-list">
               {summary.fixWaiting.length === 0 ? <p className="empty-state">該当タスクなし</p> : null}
-              {summary.fixWaiting.map((task) => renderTaskCard(task, onOpenBoard, onChangeStatus))}
+              {summary.fixWaiting.map((task) => (
+                <ReviewFixTaskCard
+                  key={task.taskId}
+                  task={task}
+                  stages={stages}
+                  onOpenBoard={onOpenBoard}
+                  onChangeStatus={onChangeStatus}
+                  onUpdateTaskDetails={onUpdateTaskDetails}
+                />
+              ))}
             </div>
           </article>
         </div>

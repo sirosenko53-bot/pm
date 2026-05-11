@@ -1,4 +1,4 @@
-import type { TaskOverlay, TaskStatus } from '../../domain/taskTypes';
+import type { TaskOverlay, TaskStatus, TaskViewModel } from '../../domain/taskTypes';
 import { loadFromStorage, saveToStorage } from '../../storage/localStorageStore';
 
 const STORAGE_KEY = 'seisaku-pm:task-overlays';
@@ -57,6 +57,36 @@ export const upsertTaskOverlayStatus = (
     taskId,
     googleCalendarEventId,
     status,
+    updatedAt: new Date().toISOString(),
+  });
+};
+
+export const upsertTaskOverlayDetails = (
+  task: TaskViewModel,
+  patch: Pick<
+    TaskOverlay,
+    'assigneeOverride' | 'taskNameOverride' | 'stageOverride' | 'stageNameOverride' | 'priority'
+  >,
+): { warning?: string } => {
+  const existing = getTaskOverlay(task.taskId);
+  const normalizedPatch = {
+    ...patch,
+    assigneeOverride: patch.assigneeOverride?.trim() || undefined,
+    taskNameOverride: patch.taskNameOverride?.trim() || undefined,
+    stageOverride: patch.stageOverride?.trim() || undefined,
+    stageNameOverride: patch.stageNameOverride?.trim() || undefined,
+    priority: patch.priority,
+  };
+
+  if (existing) {
+    return updateTaskOverlay(task.taskId, normalizedPatch);
+  }
+
+  return saveTaskOverlay({
+    taskId: task.taskId,
+    googleCalendarEventId: task.googleCalendarEventId,
+    status: task.status,
+    ...normalizedPatch,
     updatedAt: new Date().toISOString(),
   });
 };
