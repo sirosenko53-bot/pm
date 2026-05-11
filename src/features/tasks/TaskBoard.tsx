@@ -1,7 +1,14 @@
-import { useMemo, useState } from 'react';
-import { TASK_STATUSES, type TaskPriority, type TaskStatus, type TaskViewModel } from '../../domain/taskTypes';
+import { useMemo, useState, type DragEventHandler } from 'react';
+import {
+  TASK_PRIORITIES,
+  TASK_STATUSES,
+  type TaskStatus,
+  type TaskViewModel,
+} from '../../domain/taskTypes';
 import type { Workspace } from '../../domain/workspaceTypes';
 import { CommonNav, type CommonNavItem } from '../navigation/CommonNav';
+
+type BoardGroupMode = 'status' | 'assignee' | 'stage' | 'assignee-stage';
 
 type Props = {
   workspace: Workspace;
@@ -55,16 +62,91 @@ const compareByBoardOrder = (a: TaskViewModel, b: TaskViewModel) => {
   return compareByNaturalOrder(a, b);
 };
 
-const STATUS_DESCRIPTION: Record<TaskStatus, string> = {
-  未着手: 'これから着手するタスク',
-  進行中: '現在進めているタスク',
-  確認待ち: 'レビュー・確認待ち',
-  修正待ち: '修正対応が必要',
-  完了: '完了済みタスク',
+const getGroupKey = (task: TaskViewModel, groupMode: BoardGroupMode) => {
+  if (groupMode === 'assignee') return task.assignee || '未設定';
+  if (groupMode === 'stage') return task.stageName || '未設定';
+  if (groupMode === 'assignee-stage') return `${task.assignee || '未設定'} / ${task.stageName || '未設定'}`;
+  return task.status;
 };
 
-const priorityClassName = (priority: TaskPriority) =>
-  `priority-pill priority-${priority === '高' ? 'high' : priority === '低' ? 'low' : 'normal'}`;
+const groupTasks = (tasks: TaskViewModel[], groupMode: BoardGroupMode) => {
+  const groups = new Map<string, TaskViewModel[]>();
+  tasks.forEach((task) => {
+    const key = getGroupKey(task, groupMode);
+    groups.set(key, [...(groups.get(key) ?? []), task]);
+  });
+  return [...groups.entries()]
+    .sort(([a], [b]) => a.localeCompare(b, 'ja'))
+    .map(([key, value]) => ({ key, tasks: value.sort(compareByNaturalOrder) }));
+};
+
+const BoardCard = ({
+  task,
+  selectedProjectId,
+  showStatus,
+  draggable,
+  dragging,
+  onDragStart,
+  onDragEnd,
+  onDragOver,
+  onDrop,
+  onChangeStatus,
+}: {
+  task: TaskViewModel;
+  selectedProjectId: string;
+  showStatus: boolean;
+  draggable: boolean;
+  dragging: boolean;
+  onDragStart?: DragEventHandler<HTMLDivElement>;
+  onDragEnd?: DragEventHandler<HTMLDivElement>;
+  onDragOver?: DragEventHandler<HTMLDivElement>;
+  onDrop?: DragEventHandler<HTMLDivElement>;
+  onChangeStatus: (task: TaskViewModel, status: TaskStatus) => void;
+}) => {
+  const priority = task.priority;
+  const shouldShowPriority = priority && priority !== TASK_PRIORITIES[1];
+
+  return (
+    <div
+      className={`board-card board-card-compact ${dragging ? 'dragging' : ''}`}
+      draggable={draggable}
+      onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
+      onDragOver={onDragOver}
+      onDrop={onDrop}
+    >
+      {draggable ? <p className="drag-handle" aria-label="ドラッグして移動">⋮⋮</p> : null}
+      <h3>{task.taskName}</h3>
+      <p className="meta board-card-brief">
+        {task.assignee || '担当未設定'} / {task.stageName ?? '工程未設定'} / {resolveDueText(task)}
+        {selectedProjectId === 'all' ? ` / ${task.projectName}` : ''}
+      </p>
+      <div className="status-row board-card-tags">
+        {showStatus ? <span className="pill">{task.status}</span> : null}
+        {shouldShowPriority ? <span className="priority-pill">優先度: {priority}</span> : null}
+        {task.isDelayed ? <span className="warning">遅延</span> : null}
+        {task.parseError ? <span className="warning">解析エラー</span> : null}
+        {task.isUnclassifiedProject ? <span className="warning">未分類</span> : null}
+      </div>
+
+      <details className="board-status-menu">
+        <summary>状態を変える</summary>
+        <div className="status-buttons">
+          {TASK_STATUSES.map((nextStatus) => (
+            <button
+              key={nextStatus}
+              type="button"
+              className={`status-button ${task.status === nextStatus ? 'active' : ''}`}
+              onClick={() => onChangeStatus(task, nextStatus)}
+            >
+              {nextStatus}
+            </button>
+          ))}
+        </div>
+      </details>
+    </div>
+  );
+};
 
 export const TaskBoard = ({
   workspace,
@@ -82,6 +164,7 @@ export const TaskBoard = ({
   onReorder,
 }: Props) => {
   const [selectedProjectId, setSelectedProjectId] = useState(initialProjectId ?? 'all');
+  const [groupMode, setGroupMode] = useState<BoardGroupMode>('status');
   const [draggingTaskId, setDraggingTaskId] = useState<string | null>(null);
   const [dragOverStatus, setDragOverStatus] = useState<TaskStatus | null>(null);
   const hasProjectContext = Boolean(projectContextId && onBackProject);
@@ -111,6 +194,7 @@ export const TaskBoard = ({
     return map;
   }, [visibleTasks]);
 
+  const groupedTasks = useMemo(() => groupTasks(visibleTasks, groupMode), [visibleTasks, groupMode]);
   const taskById = useMemo(() => new Map(visibleTasks.map((task) => [task.taskId, task])), [visibleTasks]);
   const selectedProject = workspace.projects.find((project) => project.projectId === selectedProjectId);
   const boardTitle = projectContextId
@@ -125,9 +209,8 @@ export const TaskBoard = ({
       sortOrder: (index + 1) * 1000,
     }));
 
-  // 同列drop時は、対象カード位置の直前へ挿入する。
   const handleDrop = (targetStatus: TaskStatus, targetTaskId?: string) => {
-    if (!draggingTaskId) return;
+    if (!draggingTaskId || groupMode !== 'status') return;
     const draggedTask = taskById.get(draggingTaskId);
     setDragOverStatus(null);
     setDraggingTaskId(null);
@@ -176,117 +259,132 @@ export const TaskBoard = ({
           <h1>{projectContextId ? boardTitle : 'タスクボード'}</h1>
           <span className="pill">タスク</span>
         </div>
-        <p>{workspace.workspaceName}</p>
         <p className="meta board-caption">
-          表示中: {selectedProjectId === 'all' ? '全プロジェクト' : selectedProject?.projectName ?? '不明'}
+          表示中: {selectedProjectId === 'all' ? '全プロジェクト' : selectedProject?.projectName ?? '不明'} / 見方: {
+            groupMode === 'status' ? '状態' : groupMode === 'assignee' ? '担当者' : groupMode === 'stage' ? '工程' : '担当者＋工程'
+          }
         </p>
-        <p className="meta board-caption">Googleカレンダー正本 / ローカル保存 / 復元用ファイル対応</p>
         {storageWarning ? <p className="warning-text">{storageWarning}</p> : null}
-        <div className="board-filter">
-          <label htmlFor="project-filter">表示プロジェクト</label>
-          <select
-            id="project-filter"
-            value={selectedProjectId}
-            onChange={(event) => setSelectedProjectId(event.target.value)}
-          >
-            <option value="all">全プロジェクト</option>
-            {workspace.projects.map((project) => (
-              <option key={project.projectId} value={project.projectId}>{project.projectName}</option>
-            ))}
-          </select>
+        <div className="board-view-controls">
+          <label htmlFor="project-filter">
+            表示範囲
+            <select
+              id="project-filter"
+              value={selectedProjectId}
+              onChange={(event) => setSelectedProjectId(event.target.value)}
+            >
+              <option value="all">全プロジェクト</option>
+              {workspace.projects.map((project) => (
+                <option key={project.projectId} value={project.projectId}>{project.projectName}</option>
+              ))}
+            </select>
+          </label>
+          <label htmlFor="board-group-mode">
+            見方
+            <select
+              id="board-group-mode"
+              value={groupMode}
+              onChange={(event) => setGroupMode(event.target.value as BoardGroupMode)}
+            >
+              <option value="status">状態</option>
+              <option value="assignee">担当者</option>
+              <option value="assignee-stage">担当者＋工程</option>
+              <option value="stage">工程</option>
+            </select>
+          </label>
         </div>
       </section>
 
       <section className="board-wrap">
-        <div className="board-columns">
-          {TASK_STATUSES.map((status) => {
-            const statusTasks = tasksByStatus.get(status) ?? [];
-            return (
-              <article
-                key={status}
-                className={`board-column card ${dragOverStatus === status ? 'drop-active' : ''}`}
-                onDragOver={(event) => {
-                  event.preventDefault();
-                  setDragOverStatus(status);
-                }}
-                onDragLeave={() => setDragOverStatus((current) => (current === status ? null : current))}
-                onDrop={(event) => {
-                  event.preventDefault();
-                  handleDrop(status);
-                }}
-              >
+        {groupMode === 'status' ? (
+          <div className="board-columns">
+            {TASK_STATUSES.map((status) => {
+              const statusTasks = tasksByStatus.get(status) ?? [];
+              return (
+                <article
+                  key={status}
+                  className={`board-column card ${dragOverStatus === status ? 'drop-active' : ''}`}
+                  onDragOver={(event) => {
+                    event.preventDefault();
+                    setDragOverStatus(status);
+                  }}
+                  onDragLeave={() => setDragOverStatus((current) => (current === status ? null : current))}
+                  onDrop={(event) => {
+                    event.preventDefault();
+                    handleDrop(status);
+                  }}
+                >
+                  <header className="board-column-header">
+                    <div>
+                      <h2>{status}</h2>
+                      <p className="meta">{statusTasks.length}件</p>
+                    </div>
+                  </header>
+
+                  <div className="board-cards">
+                    {statusTasks.length === 0 ? <p className="empty-state">該当タスクなし</p> : null}
+                    {statusTasks.map((task) => (
+                      <BoardCard
+                        key={task.taskId}
+                        task={task}
+                        selectedProjectId={selectedProjectId}
+                        showStatus={false}
+                        draggable
+                        dragging={draggingTaskId === task.taskId}
+                        onDragStart={(event) => {
+                          event.dataTransfer.setData('text/plain', task.taskId);
+                          event.dataTransfer.effectAllowed = 'move';
+                          setDraggingTaskId(task.taskId);
+                        }}
+                        onDragEnd={() => {
+                          setDraggingTaskId(null);
+                          setDragOverStatus(null);
+                        }}
+                        onDragOver={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          setDragOverStatus(status);
+                        }}
+                        onDrop={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          handleDrop(status, task.taskId);
+                        }}
+                        onChangeStatus={onChangeStatus}
+                      />
+                    ))}
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="board-columns board-columns-dynamic">
+            {groupedTasks.map((group) => (
+              <article key={group.key} className="board-column card">
                 <header className="board-column-header">
                   <div>
-                    <h2>{status}</h2>
-                    <p className="meta">{STATUS_DESCRIPTION[status]}</p>
+                    <h2>{group.key}</h2>
+                    <p className="meta">{group.tasks.length}件</p>
                   </div>
-                  <span className="pill">{statusTasks.length}件</span>
                 </header>
-
                 <div className="board-cards">
-                  {statusTasks.length === 0 ? <p className="empty-state">該当タスクなし</p> : null}
-                  {statusTasks.map((task) => (
-                    <div
+                  {group.tasks.map((task) => (
+                    <BoardCard
                       key={task.taskId}
-                      className={`board-card ${draggingTaskId === task.taskId ? 'dragging' : ''}`}
-                      draggable
-                      onDragStart={(event) => {
-                        event.dataTransfer.setData('text/plain', task.taskId);
-                        event.dataTransfer.effectAllowed = 'move';
-                        setDraggingTaskId(task.taskId);
-                      }}
-                      onDragEnd={() => {
-                        setDraggingTaskId(null);
-                        setDragOverStatus(null);
-                      }}
-                      onDragOver={(event) => {
-                        event.preventDefault();
-                        event.stopPropagation();
-                        setDragOverStatus(status);
-                      }}
-                      onDrop={(event) => {
-                        event.preventDefault();
-                        event.stopPropagation();
-                        handleDrop(status, task.taskId);
-                      }}
-                    >
-                      <p className="drag-handle" aria-hidden="true">⋮⋮</p>
-                      <h3>{task.taskName}</h3>
-                      <p className="meta board-card-brief">
-                        {task.assignee} / {resolveDueText(task)}
-                        {selectedProjectId === 'all' ? ` / ${task.projectName}` : ''}
-                      </p>
-                      {task.priority !== '中' || task.isDelayed || task.parseError || task.isUnclassifiedProject ? (
-                        <div className="status-row">
-                          {task.priority !== '中' ? <span className={priorityClassName(task.priority)}>優先 {task.priority}</span> : null}
-                          {task.isDelayed ? <span className="warning">遅延</span> : null}
-                          {task.parseError ? <span className="warning">解析エラー</span> : null}
-                          {task.isUnclassifiedProject ? <span className="warning">未分類</span> : null}
-                        </div>
-                      ) : null}
-
-                      <details className="board-status-menu">
-                        <summary>変更</summary>
-                        <div className="status-buttons">
-                          {TASK_STATUSES.map((nextStatus) => (
-                            <button
-                              key={nextStatus}
-                              type="button"
-                              className={`status-button ${task.status === nextStatus ? 'active' : ''}`}
-                              onClick={() => onChangeStatus(task, nextStatus)}
-                            >
-                              {nextStatus}
-                            </button>
-                          ))}
-                        </div>
-                      </details>
-                    </div>
+                      task={task}
+                      selectedProjectId={selectedProjectId}
+                      showStatus
+                      draggable={false}
+                      dragging={false}
+                      onChangeStatus={onChangeStatus}
+                    />
                   ))}
                 </div>
               </article>
-            );
-          })}
-        </div>
+            ))}
+          </div>
+        )}
       </section>
     </main>
   );

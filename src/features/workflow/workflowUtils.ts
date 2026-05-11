@@ -1,10 +1,15 @@
-import { getWorkflowTemplateByProjectType } from '../../config/workflowTemplates';
 import type { TaskViewModel } from '../../domain/taskTypes';
 import type { WorkflowStage, WorkflowTemplate } from '../../domain/workflowTypes';
 import type { Project } from '../../domain/workspaceTypes';
+import { resolveProjectWorkflowStages } from './customWorkflowStore';
 
 export const getWorkflowTemplateForProject = (project: Project): WorkflowTemplate | undefined =>
-  getWorkflowTemplateByProjectType(project.projectType);
+  ({
+    workflowTemplateId: project.workflowTemplateId,
+    projectType: project.projectType,
+    displayName: project.projectName,
+    stages: resolveProjectWorkflowStages(project),
+  });
 
 export const getCurrentStage = (project: Project, tasks: TaskViewModel[], template?: WorkflowTemplate): WorkflowStage | undefined => {
   if (!template) return undefined;

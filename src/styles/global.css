@@ -2714,6 +2714,127 @@ button:hover {
   font-size: 11px;
 }
 
+.board-view-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: end;
+}
+
+.board-view-controls label {
+  display: grid;
+  gap: 6px;
+  min-width: 190px;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.board-view-controls select {
+  min-height: 42px;
+  border: 1px solid rgba(148, 163, 184, 0.34);
+  border-radius: 12px;
+  background: #fff;
+  color: #172033;
+  padding: 8px 12px;
+}
+
+.board-columns-dynamic {
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  min-width: 0;
+}
+
+.board-card-compact {
+  gap: 8px;
+}
+
+.board-card-compact .drag-handle {
+  font-size: 14px;
+  height: 8px;
+  overflow: hidden;
+}
+
+.board-card-tags {
+  margin-top: 2px;
+}
+
+.board-status-menu {
+  margin-top: 2px;
+  border-top: 1px solid rgba(148, 163, 184, 0.16);
+  padding-top: 8px;
+}
+
+.board-status-menu summary,
+.task-edit-panel summary {
+  cursor: pointer;
+  color: #315fae;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.task-edit-panel {
+  display: grid;
+  gap: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 12px;
+  background: #fbfdff;
+  padding: 10px;
+}
+
+.task-edit-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  margin-top: 10px;
+}
+
+.task-edit-grid label {
+  display: grid;
+  gap: 6px;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.task-edit-grid input,
+.task-edit-grid select {
+  width: 100%;
+  min-height: 38px;
+  border: 1px solid rgba(148, 163, 184, 0.34);
+  border-radius: 10px;
+  background: #fff;
+  color: #172033;
+  padding: 8px 10px;
+}
+
+.workflow-editor-card {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: minmax(240px, 0.55fr) minmax(320px, 1fr);
+  align-items: start;
+}
+
+.workflow-editor-card textarea {
+  width: 100%;
+  min-height: 116px;
+  resize: vertical;
+  border: 1px solid rgba(148, 163, 184, 0.34);
+  border-radius: 14px;
+  background: #fff;
+  color: #172033;
+  padding: 12px 14px;
+  font: inherit;
+  line-height: 1.6;
+}
+
+.workflow-editor-actions {
+  grid-column: 2;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 .review-fix-dashboard {
   grid-template-columns: minmax(0, 1fr) minmax(280px, 320px);
 }

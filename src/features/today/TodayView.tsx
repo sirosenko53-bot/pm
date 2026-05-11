@@ -1,4 +1,4 @@
-import { TASK_STATUSES, type TaskStatus, type TaskViewModel } from '../../domain/taskTypes';
+import type { TaskViewModel } from '../../domain/taskTypes';
 import type { Workspace } from '../../domain/workspaceTypes';
 import { CommonNav } from '../navigation/CommonNav';
 import { calculateTaskSummary } from '../tasks/taskMetrics';
@@ -15,7 +15,6 @@ type Props = {
   onOpenReviewFix: () => void;
   onOpenBoard: () => void;
   onOpenBackup: () => void;
-  onChangeStatus: (task: TaskViewModel, status: TaskStatus) => void;
 };
 
 const formatCompactDateTime = (value?: string): string => {
@@ -39,7 +38,6 @@ export const TodayView = ({
   onOpenReviewFix,
   onOpenBoard,
   onOpenBackup,
-  onChangeStatus,
 }: Props) => {
   const project = workspace.projects.find((item) => item.projectId === projectId);
   const today = new Date();
@@ -95,18 +93,6 @@ export const TodayView = ({
                     {task.parseError ? <span className="warning">解析エラー</span> : null}
                     {task.isUnclassifiedProject ? <span className="warning">未分類</span> : null}
                   </p>
-                  <div className="status-buttons">
-                    {TASK_STATUSES.map((nextStatus) => (
-                      <button
-                        key={nextStatus}
-                        type="button"
-                        className={`status-button ${task.status === nextStatus ? 'active' : ''}`}
-                        onClick={() => onChangeStatus(task, nextStatus)}
-                      >
-                        {nextStatus}
-                      </button>
-                    ))}
-                  </div>
                 </div>
               </article>
             ))}

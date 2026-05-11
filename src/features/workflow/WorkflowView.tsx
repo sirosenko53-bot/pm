@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import type { TaskViewModel } from '../../domain/taskTypes';
 import type { Workspace } from '../../domain/workspaceTypes';
 import { CommonNav } from '../navigation/CommonNav';
+import { loadCustomStageNames, saveCustomStageNames } from './customWorkflowStore';
 import {
   calculateStageProgress,
   calculateStageSummary,
@@ -52,9 +53,16 @@ export const WorkflowView = ({
     return null;
   }
 
-  const template = getWorkflowTemplateForProject(project);
+  const [stageStoreVersion, setStageStoreVersion] = useState(0);
+  const template = useMemo(() => getWorkflowTemplateForProject(project), [project, stageStoreVersion]);
   const stages = sortStages(template?.stages ?? []);
   const currentStage = getCurrentStage(project, tasks, template);
+  const [stageEditorText, setStageEditorText] = useState(() => {
+    const customNames = loadCustomStageNames(project.projectId);
+    const sourceNames = customNames.length > 0 ? customNames : stages.map((stage) => stage.stageName);
+    return sourceNames.map((name, index) => `${index + 1}. ${name}`).join('\n');
+  });
+  const [stageEditorMessage, setStageEditorMessage] = useState('');
 
   const [selectedStageId, setSelectedStageId] = useState(currentStage?.stageId ?? stages[0]?.stageId ?? '');
 
@@ -78,6 +86,17 @@ export const WorkflowView = ({
   const stageSummary = calculateStageSummary(stageTasks);
   const progress = calculateStageProgress(stageTasks);
   const nextStage = stages.find((stage) => stage.order > selectedStage.order);
+
+  const handleSaveStages = () => {
+    const stageNames = stageEditorText
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean);
+    const result = saveCustomStageNames(project.projectId, stageNames);
+    setStageEditorMessage(result.warning ?? '工程を保存しました。タスクの工程は確認・修正画面で割り振れます。');
+    setStageStoreVersion((value) => value + 1);
+    setSelectedStageId(stageNames.length > 0 ? `custom-${project.projectId}-1` : '');
+  };
 
   return (
     <main className="page">
@@ -105,6 +124,23 @@ export const WorkflowView = ({
         <p className="meta">現在工程: {currentStage?.stageName ?? '未設定'}</p>
         <p className="meta">Googleカレンダー正本 / ローカル保存 / 復元用ファイル対応</p>
         {storageWarning ? <p className="warning-text">{storageWarning}</p> : null}
+      </section>
+
+      <section className="card workflow-editor-card">
+        <div>
+          <h2>工程を自分で決める</h2>
+          <p className="meta">1行に1工程を書いて保存してください。例: 1. 構成確認 / 2. 収録 / 3. 編集</p>
+        </div>
+        <textarea
+          value={stageEditorText}
+          onChange={(event) => setStageEditorText(event.target.value)}
+          rows={4}
+          aria-label="工程一覧"
+        />
+        <div className="workflow-editor-actions">
+          <button type="button" className="secondary" onClick={handleSaveStages}>工程を保存</button>
+          {stageEditorMessage ? <p className="meta">{stageEditorMessage}</p> : null}
+        </div>
       </section>
 
       <section className="workflow-layout">
