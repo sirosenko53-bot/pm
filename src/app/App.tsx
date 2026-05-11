@@ -5,7 +5,7 @@ import type { Workspace } from '../domain/workspaceTypes';
 import type { AppRoute } from './routes';
 import { JoinedProjectsView } from '../features/access/JoinedProjectsView';
 import { ProjectCodeEntry } from '../features/access/ProjectCodeEntry';
-import type { JoinedProject, ProjectAccessMode } from '../features/access/projectAccessTypes';
+import type { JoinedProject, ProjectAccessMode, ProjectJoinSetupInput } from '../features/access/projectAccessTypes';
 import {
   addJoinedProjectsByAccessCode,
   clearLastView,
@@ -30,6 +30,11 @@ import {
   type CalendarImportSummary,
 } from '../features/calendar/calendarDiagnostics';
 import {
+  applyCalendarSourceSettings,
+  loadCalendarSourceSettings,
+  saveCalendarIdForProject,
+} from '../features/calendar/calendarSourceSettings';
+import {
   fetchCalendarEvents,
   initializeGoogleClient,
   isUsingMockCalendar,
@@ -40,6 +45,7 @@ import {
   loadSharedStateMetadata,
   markLocalChangesAfterSharedRead,
   markSharedStateReadFailed,
+  saveSharedDriveFileSettings,
   setSharedStateSyncStatus,
 } from '../features/sharedState/sharedStateStore';
 import type { SharedStateMetadata } from '../features/sharedState/sharedStateTypes';
@@ -126,6 +132,7 @@ const createInitialRoute = (): AppRoute => {
 export const App = () => {
   const [route, setRoute] = useState<AppRoute>(createInitialRoute);
   const [workspace] = useState<Workspace>(WORKSPACE);
+  const [calendarSourceSettings, setCalendarSourceSettings] = useState(loadCalendarSourceSettings);
   const [joinedProjects, setJoinedProjects] = useState<JoinedProject[]>(loadJoinedProjects);
   const [accessMode, setAccessMode] = useState<ProjectAccessMode>(loadProjectAccessMode);
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -142,27 +149,32 @@ export const App = () => {
   const autoReadAttemptedWorkspaceRef = useRef<string | null>(null);
   const [lastProjectContextId, setLastProjectContextId] = useState<string | null>(null);
 
+  const configuredWorkspace = useMemo(
+    () => applyCalendarSourceSettings(workspace, calendarSourceSettings),
+    [workspace, calendarSourceSettings],
+  );
+
   const taskViewModels: TaskViewModel[] = useMemo(() => {
-    return buildTaskViewModels(tasks, overlays, workspace);
-  }, [tasks, overlays, workspace]);
+    return buildTaskViewModels(tasks, overlays, configuredWorkspace);
+  }, [tasks, overlays, configuredWorkspace]);
 
   const visibleProjectIds = useMemo(
-    () => getVisibleProjectIds(workspace.projects, joinedProjects, accessMode),
-    [workspace.projects, joinedProjects, accessMode],
+    () => getVisibleProjectIds(configuredWorkspace.projects, joinedProjects, accessMode),
+    [configuredWorkspace.projects, joinedProjects, accessMode],
   );
 
   const visibleProjectIdSet = useMemo(() => new Set(visibleProjectIds), [visibleProjectIds]);
 
   const visibleProjects = useMemo(
-    () => getVisibleProjects(workspace.projects, joinedProjects, accessMode),
-    [workspace.projects, joinedProjects, accessMode],
+    () => getVisibleProjects(configuredWorkspace.projects, joinedProjects, accessMode),
+    [configuredWorkspace.projects, joinedProjects, accessMode],
   );
 
   const visibleWorkspace = useMemo<Workspace>(() => ({
-    ...workspace,
+    ...configuredWorkspace,
     projects: visibleProjects,
-    calendarSources: workspace.calendarSources.filter((source) => visibleProjectIdSet.has(source.projectId)),
-  }), [workspace, visibleProjects, visibleProjectIdSet]);
+    calendarSources: configuredWorkspace.calendarSources.filter((source) => visibleProjectIdSet.has(source.projectId)),
+  }), [configuredWorkspace, visibleProjects, visibleProjectIdSet]);
 
   const calendarDiagnostics = useMemo(
     () => buildCalendarConnectionDiagnostic(visibleWorkspace),
@@ -279,13 +291,50 @@ export const App = () => {
     }
   };
 
+  const applyJoinSetupInput = (setupInput: ProjectJoinSetupInput, projectId?: string): string[] => {
+    const messages: string[] = [];
+
+    if (setupInput.calendarId?.trim()) {
+      if (projectId) {
+        const nextSettings = saveCalendarIdForProject(projectId, setupInput.calendarId);
+        setCalendarSourceSettings(nextSettings);
+        messages.push('GoogleカレンダーIDを保存しました。');
+      } else {
+        messages.push('GoogleカレンダーIDは、参加後に設定画面でプロジェクトごとに保存してください。');
+      }
+    }
+
+    if (setupInput.sharedFileId?.trim()) {
+      const result = saveSharedDriveFileSettings({
+        sharedFileId: setupInput.sharedFileId,
+      });
+
+      if (result.value) {
+        setSharedStateMetadata(result.value);
+        messages.push('チーム共有ファイルIDを保存しました。');
+      }
+
+      if (result.warning) {
+        setStorageWarning(result.warning);
+        if (!result.value) {
+          messages.push('チーム共有ファイルIDは保存できませんでした。');
+        }
+      }
+    }
+
+    return messages;
+  };
+
   const markProjectOpened = (projectId: string) => {
-    const project = workspace.projects.find((item) => item.projectId === projectId);
+    const project = configuredWorkspace.projects.find((item) => item.projectId === projectId);
     if (!project) return;
     setJoinedProjects(updateLastOpenedProject(getAccessProjectId(project)));
   };
 
-  const handleProjectCodeSubmit = (projectCode: string): { ok: true; message?: string } | { ok: false; error: string } => {
+  const handleProjectCodeSubmit = (
+    projectCode: string,
+    setupInput: ProjectJoinSetupInput,
+  ): { ok: true; message?: string } | { ok: false; error: string } => {
     const result = addJoinedProjectsByAccessCode(projectCode);
     if (!result.ok) return result;
 
@@ -293,21 +342,25 @@ export const App = () => {
     setAccessMode(result.accessMode);
 
     const defaultProject = result.defaultProjectId
-      ? findProjectByAccessProjectId(workspace.projects, result.defaultProjectId)
+      ? findProjectByAccessProjectId(configuredWorkspace.projects, result.defaultProjectId)
       : undefined;
+    const setupMessages = applyJoinSetupInput(setupInput, defaultProject?.projectId);
 
     if (defaultProject && !isAdminAccess(result.accessMode)) {
       markProjectOpened(defaultProject.projectId);
       setLastProjectContextId(defaultProject.projectId);
       setRoute({ name: 'project-overview', projectId: defaultProject.projectId });
-      return { ok: true, message: `${result.label}に参加しました。` };
+      return { ok: true, message: [`${result.label}に参加しました。`, ...setupMessages].join(' ') };
     }
 
     setRoute({ name: 'joined-projects' });
-    return { ok: true, message: `${result.label}を参加中プロジェクトに追加しました。` };
+    return { ok: true, message: [`${result.label}を参加中プロジェクトに追加しました。`, ...setupMessages].join(' ') };
   };
 
-  const handleAdditionalProjectCodeSubmit = (projectCode: string): { ok: true; message?: string } | { ok: false; error: string } => {
+  const handleAdditionalProjectCodeSubmit = (
+    projectCode: string,
+    setupInput: ProjectJoinSetupInput,
+  ): { ok: true; message?: string } | { ok: false; error: string } => {
     const result = addJoinedProjectsByAccessCode(projectCode);
     if (!result.ok) return result;
 
@@ -315,15 +368,20 @@ export const App = () => {
     setAccessMode(result.accessMode);
     setRoute({ name: 'joined-projects' });
 
+    const defaultProject = result.defaultProjectId
+      ? findProjectByAccessProjectId(configuredWorkspace.projects, result.defaultProjectId)
+      : undefined;
+    const setupMessages = applyJoinSetupInput(setupInput, defaultProject?.projectId);
+
     if (result.alreadyJoined) {
-      return { ok: true, message: 'このプロジェクトはすでに参加済みです。' };
+      return { ok: true, message: ['このプロジェクトはすでに参加済みです。', ...setupMessages].join(' ') };
     }
 
-    return { ok: true, message: `${result.label}を参加中プロジェクトに追加しました。` };
+    return { ok: true, message: [`${result.label}を参加中プロジェクトに追加しました。`, ...setupMessages].join(' ') };
   };
 
   const handleRemoveJoinedProject = (projectId: string) => {
-    const removedProject = findProjectByAccessProjectId(workspace.projects, projectId);
+    const removedProject = findProjectByAccessProjectId(configuredWorkspace.projects, projectId);
     const lastView = loadLastView();
     const next = removeJoinedProject(projectId);
     setJoinedProjects(next);
@@ -415,8 +473,8 @@ export const App = () => {
   };
 
   useEffect(() => {
-    if (autoReadAttemptedWorkspaceRef.current === workspace.workspaceId) return;
-    autoReadAttemptedWorkspaceRef.current = workspace.workspaceId;
+    if (autoReadAttemptedWorkspaceRef.current === configuredWorkspace.workspaceId) return;
+    autoReadAttemptedWorkspaceRef.current = configuredWorkspace.workspaceId;
 
     const shouldAutoRead =
       sharedStateMetadata.autoReadSharedStateOnEnter
@@ -445,7 +503,7 @@ export const App = () => {
 
       const readResult = await readSharedStateFromDrive({
         appVersion: APP_VERSION,
-        workspace,
+        workspace: configuredWorkspace,
         metadata: sharedStateMetadata,
         fileId: sharedStateMetadata.sharedFileId ?? '',
         accessToken: tokenResult.accessToken,
@@ -470,7 +528,7 @@ export const App = () => {
     sharedStateMetadata.autoReadSharedStateOnEnter,
     sharedStateMetadata.sharedFileId,
     sharedStateMetadata,
-    workspace,
+    configuredWorkspace,
   ]);
 
   if (joinedProjects.length === 0 || route.name === 'project-code') {
@@ -536,6 +594,7 @@ export const App = () => {
           if (warning) setStorageWarning(warning);
         }}
         onSharedStateApplied={handleSharedStateApplied}
+        onCalendarSourceSettingsUpdated={() => setCalendarSourceSettings(loadCalendarSourceSettings())}
       />
     );
   }

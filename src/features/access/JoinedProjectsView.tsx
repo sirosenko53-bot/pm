@@ -1,6 +1,6 @@
 import { FormEvent, useState } from 'react';
 import type { Project, Workspace } from '../../domain/workspaceTypes';
-import type { JoinedProject } from './projectAccessTypes';
+import type { JoinedProject, ProjectJoinSetupInput } from './projectAccessTypes';
 import { findProjectByAccessProjectId, getAccessProjectId } from './projectAccessStore';
 
 type Props = {
@@ -8,7 +8,10 @@ type Props = {
   joinedProjects: JoinedProject[];
   onOpenProject: (project: Project) => void;
   onRemoveProject: (projectId: string) => void;
-  onSubmitCode: (code: string) => { ok: true; message?: string } | { ok: false; error: string };
+  onSubmitCode: (
+    code: string,
+    setupInput: ProjectJoinSetupInput,
+  ) => { ok: true; message?: string } | { ok: false; error: string };
   onOpenBackup: () => void;
 };
 
@@ -23,6 +26,8 @@ export const JoinedProjectsView = ({
   onOpenBackup,
 }: Props) => {
   const [projectCode, setProjectCode] = useState('');
+  const [calendarId, setCalendarId] = useState('');
+  const [sharedFileId, setSharedFileId] = useState('');
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
 
@@ -42,7 +47,10 @@ export const JoinedProjectsView = ({
       return;
     }
 
-    const result = onSubmitCode(code);
+    const result = onSubmitCode(code, {
+      calendarId,
+      sharedFileId,
+    });
     if (!result.ok) {
       setError(result.error);
       setMessage('');
@@ -50,6 +58,8 @@ export const JoinedProjectsView = ({
     }
 
     setProjectCode('');
+    setCalendarId('');
+    setSharedFileId('');
     setError('');
     setMessage(result.message ?? 'プロジェクトコードを追加しました。');
   };
@@ -119,7 +129,16 @@ export const JoinedProjectsView = ({
               <button type="button" className="secondary" onClick={() => onOpenProject(project)}>
                 このプロジェクトを開く
               </button>
-              <button type="button" className="secondary danger" onClick={() => onRemoveProject(getAccessProjectId(project))}>
+              <button
+                type="button"
+                className="secondary danger"
+                onClick={() => {
+                  const ok = window.confirm(
+                    `${project.projectName}を参加中から外します。予定や進行状況は削除されません。`,
+                  );
+                  if (ok) onRemoveProject(getAccessProjectId(project));
+                }}
+              >
                 参加中から外す
               </button>
             </div>
@@ -138,6 +157,28 @@ export const JoinedProjectsView = ({
               placeholder="tokigire-audio"
             />
           </label>
+          <fieldset className="project-code-setup-fields compact">
+            <legend>追加設定（任意）</legend>
+            <p className="note">
+              共有されたIDがある場合は、コード追加と同時にこの端末へ保存できます。
+            </p>
+            <label>
+              GoogleカレンダーID
+              <input
+                value={calendarId}
+                onChange={(event) => setCalendarId(event.target.value)}
+                placeholder="project-calendar-id@group.calendar.google.com"
+              />
+            </label>
+            <label>
+              チーム共有ファイルID / URL
+              <input
+                value={sharedFileId}
+                onChange={(event) => setSharedFileId(event.target.value)}
+                placeholder="Google Driveの共有ファイルIDまたはURL"
+              />
+            </label>
+          </fieldset>
           {error ? <p className="error project-code-error">{error}</p> : null}
           {message ? <p className="note">{message}</p> : null}
           <button type="submit">プロジェクトコードを追加</button>

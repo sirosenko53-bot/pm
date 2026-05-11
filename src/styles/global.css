@@ -161,6 +161,24 @@ h1,h2,h3,p { margin: 0; }
   background: #fff1f2;
   padding: 8px 10px;
 }
+.project-code-setup-fields {
+  display: grid;
+  gap: 10px;
+  margin: 6px 0 2px;
+  padding: 14px;
+  border: 1px solid #dbe7f5;
+  border-radius: 12px;
+  background: #f8fbff;
+}
+.project-code-setup-fields.compact {
+  background: #fff;
+}
+.project-code-setup-fields legend {
+  padding: 0 6px;
+  color: #1e3a8a;
+  font-size: 13px;
+  font-weight: 800;
+}
 .project-code-notes {
   display: grid;
   gap: 4px;
@@ -193,6 +211,27 @@ h1,h2,h3,p { margin: 0; }
   gap: 8px;
   flex-wrap: wrap;
   margin-top: 4px;
+}
+.calendar-id-settings-grid {
+  display: grid;
+  gap: 10px;
+  margin: 14px 0;
+}
+.calendar-id-input-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.32fr) minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 700;
+}
+.calendar-id-input-row input {
+  min-width: 0;
+  width: 100%;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 10px;
 }
 
 .today-list { display: grid; gap: 8px; margin-top: 8px; }
@@ -2724,7 +2763,8 @@ button:hover {
   }
 
   .overview-status-grid,
-  .project-grid {
+  .project-grid,
+  .calendar-id-input-row {
     grid-template-columns: 1fr;
   }
 
