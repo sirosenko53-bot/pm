@@ -53,7 +53,10 @@ import { readSharedStateFromDrive } from '../features/sharedState/sharedStateRea
 import {
   addCustomMember,
   loadCustomMembers,
+  loadHiddenMemberIds,
   mergeMembers,
+  removeMemberCandidate,
+  restoreMemberCandidate,
 } from '../features/members/memberStore';
 import { TaskBoard } from '../features/tasks/TaskBoard';
 import { TodayView } from '../features/today/TodayView';
@@ -139,6 +142,7 @@ export const App = () => {
   const [workspace] = useState<Workspace>(WORKSPACE);
   const [calendarSourceSettings, setCalendarSourceSettings] = useState(loadCalendarSourceSettings);
   const [customMembers, setCustomMembers] = useState(loadCustomMembers);
+  const [hiddenMemberIds, setHiddenMemberIds] = useState(loadHiddenMemberIds);
   const [joinedProjects, setJoinedProjects] = useState<JoinedProject[]>(loadJoinedProjects);
   const [accessMode, setAccessMode] = useState<ProjectAccessMode>(loadProjectAccessMode);
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -160,8 +164,13 @@ export const App = () => {
 
   const workspaceWithMembers = useMemo<Workspace>(() => ({
     ...workspace,
-    members: mergeMembers(workspace.members, customMembers),
-  }), [workspace, customMembers]);
+    members: mergeMembers(workspace.members, customMembers, hiddenMemberIds),
+  }), [workspace, customMembers, hiddenMemberIds]);
+
+  const hiddenMembers = useMemo(
+    () => workspace.members.filter((member) => hiddenMemberIds.includes(member.memberId)),
+    [workspace.members, hiddenMemberIds],
+  );
 
   const configuredWorkspace = useMemo(
     () => applyCalendarSourceSettings(workspaceWithMembers, calendarSourceSettings),
@@ -486,8 +495,25 @@ export const App = () => {
   };
 
   const handleAddMember = (displayName: string) => {
-    const result = addCustomMember(workspace.members, customMembers, displayName);
+    const result = addCustomMember(workspace.members, customMembers, displayName, hiddenMemberIds);
     setCustomMembers(result.members);
+    setHiddenMemberIds(result.hiddenMemberIds);
+    if (result.warning) setStorageWarning(result.warning);
+    return result;
+  };
+
+  const handleRemoveMember = (memberId: string) => {
+    const result = removeMemberCandidate(workspace.members, customMembers, hiddenMemberIds, memberId);
+    setCustomMembers(result.members);
+    setHiddenMemberIds(result.hiddenMemberIds);
+    if (result.warning) setStorageWarning(result.warning);
+    return result;
+  };
+
+  const handleRestoreMember = (memberId: string) => {
+    const result = restoreMemberCandidate(workspace.members, customMembers, hiddenMemberIds, memberId);
+    setCustomMembers(result.members);
+    setHiddenMemberIds(result.hiddenMemberIds);
     if (result.warning) setStorageWarning(result.warning);
     return result;
   };
@@ -627,7 +653,10 @@ export const App = () => {
         }
         onConnectGoogleCalendar={() => void handleConnectGoogleCalendar()}
         onReloadCalendar={() => void loadTasks(visibleWorkspace)}
+        hiddenMembers={hiddenMembers}
         onAddMember={handleAddMember}
+        onRemoveMember={handleRemoveMember}
+        onRestoreMember={handleRestoreMember}
         onRestored={handleBackupRestored}
         sharedStateMetadata={sharedStateMetadata}
         onSharedStateMetadataUpdated={(metadata, warning) => {

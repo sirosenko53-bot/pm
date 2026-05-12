@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { WORKFLOW_TEMPLATES } from '../../config/workflowTemplates';
-import type { Workspace } from '../../domain/workspaceTypes';
+import type { Member, Workspace } from '../../domain/workspaceTypes';
 import type {
   CalendarConnectionDiagnostic,
   CalendarImportSummary,
@@ -31,7 +31,7 @@ import {
 import type { SharedStateMetadata } from '../sharedState/sharedStateTypes';
 import { getAllTaskOverlays } from '../tasks/taskOverlayStore';
 import { readSharedStateFromDrive } from '../sharedState/sharedStateReadService';
-import type { AddMemberResult } from '../members/memberStore';
+import type { AddMemberResult, MemberChangeResult } from '../members/memberStore';
 import {
   createBackupPackage,
   exportBackupToFile,
@@ -61,7 +61,10 @@ type Props = {
   onBackProject?: () => void;
   onConnectGoogleCalendar: () => void;
   onReloadCalendar: () => void;
+  hiddenMembers: Member[];
   onAddMember: (displayName: string) => AddMemberResult;
+  onRemoveMember: (memberId: string) => MemberChangeResult;
+  onRestoreMember: (memberId: string) => MemberChangeResult;
   onRestored: (message: string, warning?: string) => void;
   onSharedStateMetadataUpdated: (metadata: SharedStateMetadata, warning?: string) => void;
   onSharedStateApplied: (message: string, warning?: string) => void;
@@ -101,7 +104,10 @@ export const BackupPanel = ({
   onBackProject,
   onConnectGoogleCalendar,
   onReloadCalendar,
+  hiddenMembers,
   onAddMember,
+  onRemoveMember,
+  onRestoreMember,
   onRestored,
   onSharedStateMetadataUpdated,
   onSharedStateApplied,
@@ -166,6 +172,29 @@ export const BackupPanel = ({
     if (result.warning) {
       setPanelError(result.warning);
     }
+  };
+
+  const handleMemberChangeResult = (result: MemberChangeResult) => {
+    setPanelMessage(undefined);
+    setPanelError(undefined);
+
+    if (result.ok) {
+      setPanelMessage(result.message);
+    } else {
+      setPanelError(result.message);
+    }
+
+    if (result.warning) {
+      setPanelError(result.warning);
+    }
+  };
+
+  const handleRemoveMember = (memberId: string) => {
+    handleMemberChangeResult(onRemoveMember(memberId));
+  };
+
+  const handleRestoreMember = (memberId: string) => {
+    handleMemberChangeResult(onRestoreMember(memberId));
   };
 
   const handleExport = () => {
@@ -534,15 +563,37 @@ export const BackupPanel = ({
       <section className="card shared-state-card">
         <h2>担当者候補</h2>
         <p className="note">
-          タスク編集で選べる担当者をこの端末に追加します。Googleカレンダー予定や共有ファイルは変更しません。
+          タスク編集で選べる担当者をこの端末で管理します。候補から外しても既存タスク、Googleカレンダー予定、共有ファイルは削除しません。
         </p>
-        <div className="status-row member-list">
-          {workspace.members.map((member) => (
-            <span key={member.memberId} className="pill">
-              {member.displayName}
-            </span>
-          ))}
+        <div className="member-list" aria-label="現在の担当者候補">
+          {workspace.members.length > 0 ? workspace.members.map((member) => (
+            <div key={member.memberId} className="member-chip">
+              <span className="member-color-dot" style={{ backgroundColor: member.color }} aria-hidden="true" />
+              <span>{member.displayName}</span>
+              <button type="button" className="member-remove-button" onClick={() => handleRemoveMember(member.memberId)}>
+                候補から外す
+              </button>
+            </div>
+          )) : (
+            <p className="empty-state">担当者候補がありません。</p>
+          )}
         </div>
+        {hiddenMembers.length > 0 ? (
+          <div className="member-restore-panel">
+            <p className="member-restore-title">候補から外した担当者</p>
+            <div className="member-list" aria-label="候補から外した担当者">
+              {hiddenMembers.map((member) => (
+                <div key={member.memberId} className="member-chip member-chip-muted">
+                  <span className="member-color-dot" style={{ backgroundColor: member.color }} aria-hidden="true" />
+                  <span>{member.displayName}</span>
+                  <button type="button" className="member-restore-button" onClick={() => handleRestoreMember(member.memberId)}>
+                    戻す
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
         <div className="shared-settings-form member-settings-form">
           <label>
             追加する担当者名

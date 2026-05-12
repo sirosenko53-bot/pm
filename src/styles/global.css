@@ -412,7 +412,80 @@ h1,h2,h3,p { margin: 0; }
 }
 
 .member-list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
   margin: 12px 0 4px;
+}
+
+.member-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+  min-height: 34px;
+  padding: 5px 7px 5px 10px;
+  border: 1px solid #dbeafe;
+  border-radius: 999px;
+  background: #f8fbff;
+  color: #0f172a;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.member-chip-muted {
+  border-color: #e2e8f0;
+  background: #f8fafc;
+  color: #475569;
+}
+
+.member-color-dot {
+  width: 9px;
+  height: 9px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  box-shadow: 0 0 0 3px rgba(226, 232, 240, 0.65);
+}
+
+.member-remove-button,
+.member-restore-button {
+  border: 0;
+  border-left: 1px solid #e2e8f0;
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 3px 6px 3px 10px;
+}
+
+.member-remove-button:hover,
+.member-remove-button:focus-visible {
+  color: #be123c;
+}
+
+.member-restore-button:hover,
+.member-restore-button:focus-visible {
+  color: #1d4ed8;
+}
+
+.member-restore-panel {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 14px;
+  background: #f8fafc;
+}
+
+.member-restore-title {
+  margin: 0;
+  color: #475569;
+  font-size: 13px;
+  font-weight: 800;
 }
 
 .member-settings-form {
