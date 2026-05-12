@@ -449,7 +449,8 @@ h1,h2,h3,p { margin: 0; }
 }
 
 .member-remove-button,
-.member-restore-button {
+.member-restore-button,
+.member-delete-button {
   border: 0;
   border-left: 1px solid #e2e8f0;
   background: transparent;
@@ -469,6 +470,16 @@ h1,h2,h3,p { margin: 0; }
 .member-restore-button:hover,
 .member-restore-button:focus-visible {
   color: #1d4ed8;
+}
+
+.member-delete-button {
+  color: #b91c1c;
+}
+
+.member-delete-button:hover,
+.member-delete-button:focus-visible {
+  color: #7f1d1d;
+  text-decoration: underline;
 }
 
 .member-restore-panel {

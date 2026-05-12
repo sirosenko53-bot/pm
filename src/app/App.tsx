@@ -52,7 +52,9 @@ import { tryGetDriveReadAccessTokenSilently } from '../features/sharedState/goog
 import { readSharedStateFromDrive } from '../features/sharedState/sharedStateReadService';
 import {
   addCustomMember,
+  deleteMemberCandidate,
   loadCustomMembers,
+  loadDeletedMemberIds,
   loadHiddenMemberIds,
   mergeMembers,
   removeMemberCandidate,
@@ -143,6 +145,7 @@ export const App = () => {
   const [calendarSourceSettings, setCalendarSourceSettings] = useState(loadCalendarSourceSettings);
   const [customMembers, setCustomMembers] = useState(loadCustomMembers);
   const [hiddenMemberIds, setHiddenMemberIds] = useState(loadHiddenMemberIds);
+  const [deletedMemberIds, setDeletedMemberIds] = useState(loadDeletedMemberIds);
   const [joinedProjects, setJoinedProjects] = useState<JoinedProject[]>(loadJoinedProjects);
   const [accessMode, setAccessMode] = useState<ProjectAccessMode>(loadProjectAccessMode);
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -164,12 +167,14 @@ export const App = () => {
 
   const workspaceWithMembers = useMemo<Workspace>(() => ({
     ...workspace,
-    members: mergeMembers(workspace.members, customMembers, hiddenMemberIds),
-  }), [workspace, customMembers, hiddenMemberIds]);
+    members: mergeMembers(workspace.members, customMembers, hiddenMemberIds, deletedMemberIds),
+  }), [workspace, customMembers, hiddenMemberIds, deletedMemberIds]);
 
   const hiddenMembers = useMemo(
-    () => workspace.members.filter((member) => hiddenMemberIds.includes(member.memberId)),
-    [workspace.members, hiddenMemberIds],
+    () => workspace.members.filter((member) =>
+      hiddenMemberIds.includes(member.memberId) && !deletedMemberIds.includes(member.memberId),
+    ),
+    [workspace.members, hiddenMemberIds, deletedMemberIds],
   );
 
   const configuredWorkspace = useMemo(
@@ -495,25 +500,37 @@ export const App = () => {
   };
 
   const handleAddMember = (displayName: string) => {
-    const result = addCustomMember(workspace.members, customMembers, displayName, hiddenMemberIds);
+    const result = addCustomMember(workspace.members, customMembers, displayName, hiddenMemberIds, deletedMemberIds);
     setCustomMembers(result.members);
     setHiddenMemberIds(result.hiddenMemberIds);
+    setDeletedMemberIds(result.deletedMemberIds);
     if (result.warning) setStorageWarning(result.warning);
     return result;
   };
 
   const handleRemoveMember = (memberId: string) => {
-    const result = removeMemberCandidate(workspace.members, customMembers, hiddenMemberIds, memberId);
+    const result = removeMemberCandidate(workspace.members, customMembers, hiddenMemberIds, deletedMemberIds, memberId);
     setCustomMembers(result.members);
     setHiddenMemberIds(result.hiddenMemberIds);
+    setDeletedMemberIds(result.deletedMemberIds);
+    if (result.warning) setStorageWarning(result.warning);
+    return result;
+  };
+
+  const handleDeleteMember = (memberId: string) => {
+    const result = deleteMemberCandidate(workspace.members, customMembers, hiddenMemberIds, deletedMemberIds, memberId);
+    setCustomMembers(result.members);
+    setHiddenMemberIds(result.hiddenMemberIds);
+    setDeletedMemberIds(result.deletedMemberIds);
     if (result.warning) setStorageWarning(result.warning);
     return result;
   };
 
   const handleRestoreMember = (memberId: string) => {
-    const result = restoreMemberCandidate(workspace.members, customMembers, hiddenMemberIds, memberId);
+    const result = restoreMemberCandidate(workspace.members, customMembers, hiddenMemberIds, deletedMemberIds, memberId);
     setCustomMembers(result.members);
     setHiddenMemberIds(result.hiddenMemberIds);
+    setDeletedMemberIds(result.deletedMemberIds);
     if (result.warning) setStorageWarning(result.warning);
     return result;
   };
@@ -656,6 +673,7 @@ export const App = () => {
         hiddenMembers={hiddenMembers}
         onAddMember={handleAddMember}
         onRemoveMember={handleRemoveMember}
+        onDeleteMember={handleDeleteMember}
         onRestoreMember={handleRestoreMember}
         onRestored={handleBackupRestored}
         sharedStateMetadata={sharedStateMetadata}

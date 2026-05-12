@@ -64,6 +64,7 @@ type Props = {
   hiddenMembers: Member[];
   onAddMember: (displayName: string) => AddMemberResult;
   onRemoveMember: (memberId: string) => MemberChangeResult;
+  onDeleteMember: (memberId: string) => MemberChangeResult;
   onRestoreMember: (memberId: string) => MemberChangeResult;
   onRestored: (message: string, warning?: string) => void;
   onSharedStateMetadataUpdated: (metadata: SharedStateMetadata, warning?: string) => void;
@@ -107,6 +108,7 @@ export const BackupPanel = ({
   hiddenMembers,
   onAddMember,
   onRemoveMember,
+  onDeleteMember,
   onRestoreMember,
   onRestored,
   onSharedStateMetadataUpdated,
@@ -191,6 +193,14 @@ export const BackupPanel = ({
 
   const handleRemoveMember = (memberId: string) => {
     handleMemberChangeResult(onRemoveMember(memberId));
+  };
+
+  const handleDeleteMember = (memberId: string, displayName: string) => {
+    const confirmed = window.confirm(
+      `${displayName}を担当者候補から削除します。既存タスクの担当者名、Googleカレンダー予定、共有ファイルは削除されません。よろしいですか？`,
+    );
+    if (!confirmed) return;
+    handleMemberChangeResult(onDeleteMember(memberId));
   };
 
   const handleRestoreMember = (memberId: string) => {
@@ -563,7 +573,7 @@ export const BackupPanel = ({
       <section className="card shared-state-card">
         <h2>担当者候補</h2>
         <p className="note">
-          タスク編集で選べる担当者をこの端末で管理します。候補から外しても既存タスク、Googleカレンダー予定、共有ファイルは削除しません。
+          タスク編集で選べる担当者をこの端末で管理します。候補から外すと戻せます。削除しても既存タスク、Googleカレンダー予定、共有ファイルは削除しません。
         </p>
         <div className="member-list" aria-label="現在の担当者候補">
           {workspace.members.length > 0 ? workspace.members.map((member) => (
@@ -572,6 +582,13 @@ export const BackupPanel = ({
               <span>{member.displayName}</span>
               <button type="button" className="member-remove-button" onClick={() => handleRemoveMember(member.memberId)}>
                 候補から外す
+              </button>
+              <button
+                type="button"
+                className="member-delete-button"
+                onClick={() => handleDeleteMember(member.memberId, member.displayName)}
+              >
+                削除
               </button>
             </div>
           )) : (
@@ -588,6 +605,13 @@ export const BackupPanel = ({
                   <span>{member.displayName}</span>
                   <button type="button" className="member-restore-button" onClick={() => handleRestoreMember(member.memberId)}>
                     戻す
+                  </button>
+                  <button
+                    type="button"
+                    className="member-delete-button"
+                    onClick={() => handleDeleteMember(member.memberId, member.displayName)}
+                  >
+                    削除
                   </button>
                 </div>
               ))}
