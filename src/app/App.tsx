@@ -29,6 +29,7 @@ import {
   isPlaceholderCalendarId,
   type CalendarImportSummary,
 } from '../features/calendar/calendarDiagnostics';
+import { loadCalendarTaskCache, saveCalendarTaskCache } from '../features/calendar/calendarTaskCache';
 import {
   applyCalendarSourceSettings,
   loadCalendarSourceSettings,
@@ -142,23 +143,32 @@ const createInitialRoute = (): AppRoute => {
 export const App = () => {
   const [route, setRoute] = useState<AppRoute>(createInitialRoute);
   const [workspace] = useState<Workspace>(WORKSPACE);
+  const [initialCalendarTaskCache] = useState(() => loadCalendarTaskCache(WORKSPACE.workspaceId));
   const [calendarSourceSettings, setCalendarSourceSettings] = useState(loadCalendarSourceSettings);
   const [customMembers, setCustomMembers] = useState(loadCustomMembers);
   const [hiddenMemberIds, setHiddenMemberIds] = useState(loadHiddenMemberIds);
   const [deletedMemberIds, setDeletedMemberIds] = useState(loadDeletedMemberIds);
   const [joinedProjects, setJoinedProjects] = useState<JoinedProject[]>(loadJoinedProjects);
   const [accessMode, setAccessMode] = useState<ProjectAccessMode>(loadProjectAccessMode);
-  const [tasks, setTasks] = useState<Task[]>([]);
+  const [tasks, setTasks] = useState<Task[]>(() => initialCalendarTaskCache.value?.tasks ?? []);
   const [overlays, setOverlays] = useState(getAllTaskOverlays());
-  const [calendarStatus, setCalendarStatus] = useState('未取り込み');
+  const [calendarStatus, setCalendarStatus] = useState(() =>
+    initialCalendarTaskCache.value
+      ? `${initialCalendarTaskCache.value.calendarStatus}（前回取り込みを表示中）`
+      : '未取り込み',
+  );
   const [calendarError, setCalendarError] = useState<string | undefined>();
-  const [calendarImportSummary, setCalendarImportSummary] = useState<CalendarImportSummary | undefined>();
+  const [calendarImportSummary, setCalendarImportSummary] = useState<CalendarImportSummary | undefined>(
+    () => initialCalendarTaskCache.value?.calendarImportSummary,
+  );
   const [isLoadingTasks, setIsLoadingTasks] = useState(false);
   const [isConnectingGoogleCalendar, setIsConnectingGoogleCalendar] = useState(false);
   const [calendarReadAccessToken, setCalendarReadAccessToken] = useState<string | undefined>();
   const [calendarAuthStatus, setCalendarAuthStatus] = useState('未接続');
-  const [storageWarning, setStorageWarning] = useState<string | undefined>();
-  const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
+  const [storageWarning, setStorageWarning] = useState<string | undefined>(() => initialCalendarTaskCache.warning);
+  const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(
+    () => initialCalendarTaskCache.value?.cachedAt ?? null,
+  );
   const [sharedStateMetadata, setSharedStateMetadata] = useState<SharedStateMetadata>(
     loadSharedStateMetadata().value,
   );
@@ -298,23 +308,31 @@ export const App = () => {
       const nextTasks = sourceResults.flatMap((result) => result.tasks);
       const updatedAt = new Date().toISOString();
       const skippedSourceCount = sourceResults.filter((result) => result.skipped).length;
+      const nextCalendarStatus = useMockCalendar
+        ? 'モック表示中（Googleカレンダー差し替え可能）'
+        : skippedSourceCount > 0
+          ? 'Googleカレンダー読取済み（一部未設定）'
+          : 'Googleカレンダー読取済み';
+      const nextCalendarImportSummary = buildCalendarImportSummary({
+        useMockCalendar,
+        sourceResults,
+        updatedAt,
+      });
       setTasks(nextTasks);
       setOverlays(getAllTaskOverlays());
-      setCalendarStatus(
-        useMockCalendar
-          ? 'モック表示中（Googleカレンダー差し替え可能）'
-          : skippedSourceCount > 0
-            ? 'Googleカレンダー読取済み（一部未設定）'
-            : 'Googleカレンダー読取済み',
-      );
-      setCalendarImportSummary(
-        buildCalendarImportSummary({
-          useMockCalendar,
-          sourceResults,
-          updatedAt,
-        }),
-      );
+      setCalendarStatus(nextCalendarStatus);
+      setCalendarImportSummary(nextCalendarImportSummary);
       setLastSyncedAt(updatedAt);
+      const cacheResult = saveCalendarTaskCache({
+        workspaceId: nextWorkspace.workspaceId,
+        tasks: nextTasks,
+        calendarStatus: nextCalendarStatus,
+        calendarImportSummary: nextCalendarImportSummary,
+        cachedAt: updatedAt,
+      });
+      if (cacheResult.warning) {
+        setStorageWarning(cacheResult.warning);
+      }
       setCalendarError(undefined);
     } catch (error) {
       setCalendarStatus('取得失敗');
