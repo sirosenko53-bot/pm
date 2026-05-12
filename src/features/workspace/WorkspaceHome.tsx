@@ -114,64 +114,6 @@ export const WorkspaceHome = ({
             ) : null}
           </div>
         </div>
-        <div className="quick-setup-card" aria-label="初回セットアップ">
-          <div className="quick-setup-heading">
-            <p className="meta">初回はここだけ確認</p>
-            <h2>3ステップで使い始める</h2>
-          </div>
-          <ol className="quick-setup-steps">
-            <li>
-              <span className="setup-step-number">1</span>
-              <div>
-                <strong>プロジェクト参加</strong>
-                <p>{workspace.projects.length}件の参加中プロジェクトを表示しています。</p>
-              </div>
-              <button type="button" className="setup-step-action" onClick={onOpenJoinedProjects}>
-                参加を確認
-              </button>
-            </li>
-            <li>
-              <span className="setup-step-number">2</span>
-              <div>
-                <strong>Googleアカウントで接続</strong>
-                <p>カレンダーIDだけでは読めません。共有権限のあるGoogleアカウントで接続します。</p>
-              </div>
-              <button
-                type="button"
-                className="setup-step-action"
-                onClick={onConnectGoogleCalendar}
-                disabled={isConnectingGoogle || calendarDiagnostics.isMockMode}
-              >
-                {isConnectingGoogle ? '接続中' : 'Googleに接続'}
-              </button>
-            </li>
-            <li>
-              <span className="setup-step-number">3</span>
-              <div>
-                <strong>Googleカレンダーを取り込む</strong>
-                <p>
-                  予定を最新にします。状態: {calendarStatus}
-                  {calendarImportSummary?.skippedSourceCount
-                    ? ` / 未設定 ${calendarImportSummary.skippedSourceCount}件を読み飛ばし`
-                    : ''}
-                </p>
-              </div>
-              <button type="button" className="setup-step-action primary-lite" onClick={onReloadCalendar} disabled={isReloadingCalendar}>
-                {isReloadingCalendar ? '取り込み中' : '予定を更新'}
-              </button>
-            </li>
-            <li>
-              <span className="setup-step-number">4</span>
-              <div>
-                <strong>チーム共有を確認</strong>
-                <p>他の端末で保存された進行状況が必要なときだけ開きます。</p>
-              </div>
-              <button type="button" className="setup-step-action" onClick={onOpenBackup}>
-                共有設定へ
-              </button>
-            </li>
-          </ol>
-        </div>
         <div className="overview-nav">
           <button type="button" className="secondary" onClick={onReloadCalendar} disabled={isReloadingCalendar}>
             {isReloadingCalendar ? '取り込み中' : 'Googleカレンダーを取り込む'}
