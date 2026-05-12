@@ -24,11 +24,17 @@ export const CommonNav = ({
         <strong>制作PM</strong>
       </div>
       <div className="common-nav-context-row" aria-label="現在の階層">
-        <span className="common-nav-context">{workspaceName}</span>
+        <span className="common-nav-level">
+          <span className="common-nav-level-label">ワークスペース</span>
+          <strong className="common-nav-current">{workspaceName}</strong>
+        </span>
         {projectName ? (
           <>
             <span className="common-nav-separator" aria-hidden="true">/</span>
-            <span className="common-nav-context">{projectName}</span>
+            <span className="common-nav-level">
+              <span className="common-nav-level-label">プロジェクト</span>
+              <strong className="common-nav-current">{projectName}</strong>
+            </span>
           </>
         ) : (
           <span className="common-nav-scope">ワークスペース</span>
