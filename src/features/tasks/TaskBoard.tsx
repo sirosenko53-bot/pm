@@ -7,7 +7,7 @@ import {
   type TaskViewModel,
 } from '../../domain/taskTypes';
 import type { WorkflowStage } from '../../domain/workflowTypes';
-import type { Workspace } from '../../domain/workspaceTypes';
+import type { Member, Workspace } from '../../domain/workspaceTypes';
 import { CommonNav, type CommonNavItem } from '../navigation/CommonNav';
 import { resolveProjectWorkflowStages } from '../workflow/customWorkflowStore';
 
@@ -91,11 +91,20 @@ const groupTasks = (tasks: TaskViewModel[], groupMode: BoardGroupMode) => {
     .map(([key, value]) => ({ key, tasks: value.sort(compareByNaturalOrder) }));
 };
 
+const resolveAssigneeOptions = (members: Member[], currentAssignee?: string): string[] => {
+  const options = members.map((member) => member.displayName).filter(Boolean);
+  if (currentAssignee && !options.includes(currentAssignee)) {
+    options.push(currentAssignee);
+  }
+  return options;
+};
+
 const BoardCard = ({
   task,
   selectedProjectId,
   showStatus,
   stages,
+  members,
   draggable,
   dragging,
   onDragStart,
@@ -109,6 +118,7 @@ const BoardCard = ({
   selectedProjectId: string;
   showStatus: boolean;
   stages: WorkflowStage[];
+  members: Member[];
   draggable: boolean;
   dragging: boolean;
   onDragStart?: DragEventHandler<HTMLDivElement>;
@@ -125,6 +135,7 @@ const BoardCard = ({
   const [editPriority, setEditPriority] = useState<TaskPriority>(task.priority ?? '中');
   const [stageId, setStageId] = useState(task.stageId ?? '');
 
+  const assigneeOptions = resolveAssigneeOptions(members, task.assignee);
   const selectedStage = stages.find((stage) => stage.stageId === stageId);
   const handleSaveDetails = () => {
     onUpdateTaskDetails(task, {
@@ -178,7 +189,14 @@ const BoardCard = ({
         <div className="task-edit-grid board-card-edit-grid">
           <label>
             担当者
-            <input value={assignee} onChange={(event) => setAssignee(event.target.value)} />
+            <select value={assignee} onChange={(event) => setAssignee(event.target.value)}>
+              <option value="">未設定</option>
+              {assigneeOptions.map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+            </select>
           </label>
           <label>
             優先度
@@ -404,6 +422,7 @@ export const TaskBoard = ({
                         selectedProjectId={selectedProjectId}
                         showStatus={false}
                         stages={stagesByProjectId.get(task.projectId) ?? []}
+                        members={workspace.members}
                         draggable
                         dragging={draggingTaskId === task.taskId}
                         onDragStart={(event) => {
@@ -452,6 +471,7 @@ export const TaskBoard = ({
                       selectedProjectId={selectedProjectId}
                       showStatus
                       stages={stagesByProjectId.get(task.projectId) ?? []}
+                      members={workspace.members}
                       draggable={false}
                       dragging={false}
                       onChangeStatus={onChangeStatus}

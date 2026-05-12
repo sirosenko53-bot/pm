@@ -403,11 +403,21 @@ h1,h2,h3,p { margin: 0; }
   color: #334155;
   font-weight: 600;
 }
-.shared-settings-form input {
+.shared-settings-form input,
+.shared-settings-form select {
   border: 1px solid #cbd5e1;
   border-radius: 8px;
   padding: 10px;
   font-size: 14px;
+}
+
+.member-list {
+  margin: 12px 0 4px;
+}
+
+.member-settings-form {
+  margin-top: 14px;
+  max-width: 420px;
 }
 
 .shared-debug {
@@ -668,6 +678,7 @@ button:hover {
 
 .form input,
 .shared-settings-form input,
+.shared-settings-form select,
 .board-filter select {
   min-height: 46px;
   border: 1px solid rgba(100, 116, 139, 0.28);

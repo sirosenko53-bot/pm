@@ -31,6 +31,7 @@ import {
 import type { SharedStateMetadata } from '../sharedState/sharedStateTypes';
 import { getAllTaskOverlays } from '../tasks/taskOverlayStore';
 import { readSharedStateFromDrive } from '../sharedState/sharedStateReadService';
+import type { AddMemberResult } from '../members/memberStore';
 import {
   createBackupPackage,
   exportBackupToFile,
@@ -60,6 +61,7 @@ type Props = {
   onBackProject?: () => void;
   onConnectGoogleCalendar: () => void;
   onReloadCalendar: () => void;
+  onAddMember: (displayName: string) => AddMemberResult;
   onRestored: (message: string, warning?: string) => void;
   onSharedStateMetadataUpdated: (metadata: SharedStateMetadata, warning?: string) => void;
   onSharedStateApplied: (message: string, warning?: string) => void;
@@ -99,6 +101,7 @@ export const BackupPanel = ({
   onBackProject,
   onConnectGoogleCalendar,
   onReloadCalendar,
+  onAddMember,
   onRestored,
   onSharedStateMetadataUpdated,
   onSharedStateApplied,
@@ -113,6 +116,7 @@ export const BackupPanel = ({
   const [calendarIdInputs, setCalendarIdInputs] = useState<CalendarSourceSettings>(() =>
     Object.fromEntries(workspace.calendarSources.map((source) => [source.projectId, source.calendarId])),
   );
+  const [memberNameInput, setMemberNameInput] = useState('');
   const [driveAccessToken, setDriveAccessToken] = useState('');
   const [conflictState, setConflictState] = useState<ConflictState | null>(null);
 
@@ -145,6 +149,23 @@ export const BackupPanel = ({
     saveCalendarSourceSettings(nextSettings);
     onCalendarSourceSettingsUpdated();
     setPanelMessage('GoogleカレンダーIDを保存しました。');
+  };
+
+  const handleAddMember = () => {
+    setPanelMessage(undefined);
+    setPanelError(undefined);
+
+    const result = onAddMember(memberNameInput);
+    if (result.ok) {
+      setMemberNameInput('');
+      setPanelMessage(result.message);
+    } else {
+      setPanelError(result.message);
+    }
+
+    if (result.warning) {
+      setPanelError(result.warning);
+    }
   };
 
   const handleExport = () => {
@@ -504,6 +525,36 @@ export const BackupPanel = ({
             <p>作業前後の控えを手元に残します。Googleカレンダー予定そのものは含みません。</p>
           </li>
         </ol>
+      </section>
+
+      <section className="card shared-state-card">
+        <h2>担当者候補</h2>
+        <p className="note">
+          タスク編集で選べる担当者をこの端末に追加します。Googleカレンダー予定や共有ファイルは変更しません。
+        </p>
+        <div className="status-row member-list">
+          {workspace.members.map((member) => (
+            <span key={member.memberId} className="pill">
+              {member.displayName}
+            </span>
+          ))}
+        </div>
+        <div className="shared-settings-form member-settings-form">
+          <label>
+            追加する担当者名
+            <input
+              type="text"
+              value={memberNameInput}
+              onChange={(event) => setMemberNameInput(event.target.value)}
+              placeholder="例: 田中"
+            />
+          </label>
+        </div>
+        <div className="overview-nav">
+          <button type="button" className="secondary" onClick={handleAddMember}>
+            担当者を追加
+          </button>
+        </div>
       </section>
 
       <section className="card shared-state-card">
