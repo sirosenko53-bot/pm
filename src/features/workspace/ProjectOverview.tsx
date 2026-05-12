@@ -116,42 +116,25 @@ export const ProjectOverview = ({
         {storageWarning ? <p className="warning-text">{storageWarning}</p> : null}
       </section>
 
-      <section className="quick-setup-card project-quick-setup" aria-label="初回セットアップ">
-        <div className="quick-setup-heading">
-          <p className="meta">迷ったらこの順番</p>
-          <h2>入室後の3ステップ</h2>
+      <section className="card page-action-strip" aria-label="ページ内操作">
+        <div>
+          <p className="meta">ページ内操作</p>
+          <h2>概要で確認すること</h2>
         </div>
-        <ol className="quick-setup-steps">
-          <li>
-            <span className="setup-step-number">1</span>
-            <div>
-              <strong>このプロジェクトを開く</strong>
-              <p>{project.projectName}に参加済みです。</p>
-            </div>
-          </li>
-          <li>
-            <span className="setup-step-number">2</span>
-            <div>
-              <strong>予定を更新</strong>
-              <p>Googleカレンダーの状態: {calendarStatus}</p>
-            </div>
-            {onReloadCalendar ? (
-              <button type="button" className="setup-step-action primary-lite" onClick={onReloadCalendar} disabled={isReloadingCalendar}>
-                {isReloadingCalendar ? '取り込み中' : 'Googleカレンダーを取り込む'}
-              </button>
-            ) : null}
-          </li>
-          <li>
-            <span className="setup-step-number">3</span>
-            <div>
-              <strong>チーム共有を確認</strong>
-              <p>共有された進行状況が必要なときだけ設定を開きます。</p>
-            </div>
-            <button type="button" className="setup-step-action" onClick={onOpenBackup}>
-              共有設定へ
+        <div className="page-action-copy">
+          <span>現在工程、今日やること、遅延、確認待ちをこの画面で確認します。</span>
+          <span>Googleカレンダーの状態: {calendarStatus}</span>
+        </div>
+        <div className="page-action-buttons">
+          {onReloadCalendar ? (
+            <button type="button" className="setup-step-action primary-lite" onClick={onReloadCalendar} disabled={isReloadingCalendar}>
+              {isReloadingCalendar ? '取り込み中' : '予定を更新'}
             </button>
-          </li>
-        </ol>
+          ) : null}
+          <button type="button" className="setup-step-action" onClick={onOpenBackup}>
+            共有設定へ
+          </button>
+        </div>
       </section>
 
       <section className="overview-feature-grid">

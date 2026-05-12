@@ -75,8 +75,12 @@ export const WorkspaceHome = ({
             <span className="app-mark" aria-hidden="true" />
             <strong>制作PM</strong>
           </div>
+          <div className="workspace-topbar-context" aria-label="現在の階層">
+            <strong>{workspace.workspaceName}</strong>
+            <span>ワークスペース</span>
+          </div>
           <div className="workspace-tools" aria-label="補助情報">
-            <span>共有は手動</span>
+            <span>同期状態: {calendarStatus}</span>
             <button type="button" className="text-action" onClick={onOpenBackup}>設定</button>
           </div>
         </div>

@@ -3108,3 +3108,172 @@ button:hover {
     flex-direction: column;
   }
 }
+
+/* UI比較案の評価結果: A案を主軸にした階層整理 */
+.common-nav.common-nav-layered {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0;
+  padding: 0;
+}
+
+.common-nav-topline {
+  display: grid;
+  grid-template-columns: minmax(190px, 1fr) minmax(260px, auto) minmax(240px, 1fr);
+  align-items: center;
+  min-height: 66px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.16);
+}
+
+.common-nav-layered .common-nav-brand {
+  padding: 0 22px;
+}
+
+.common-nav-layered .common-nav-context-row {
+  min-height: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  min-width: 0;
+  padding: 0 18px;
+}
+
+.common-nav-layered .common-nav-context {
+  min-width: 0;
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.common-nav-scope {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.common-nav-layered .common-nav-secondary {
+  padding: 0 22px;
+}
+
+.common-nav-layered .common-nav-primary {
+  min-height: 52px;
+  display: flex;
+  justify-content: center;
+  align-items: stretch;
+  gap: 30px;
+  width: 100%;
+  border: 0;
+  background: rgba(255, 255, 255, 0.76);
+}
+
+.common-nav-layered .common-nav-item {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 72px;
+  padding: 14px 2px 13px;
+}
+
+.workspace-topbar,
+.settings-topbar {
+  display: grid;
+  grid-template-columns: minmax(190px, 1fr) minmax(260px, auto) minmax(240px, 1fr);
+  align-items: center;
+}
+
+.workspace-topbar-context,
+.settings-topbar-context {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  min-width: 0;
+  color: #172033;
+}
+
+.workspace-topbar-context strong,
+.settings-topbar-context strong {
+  min-width: 0;
+  max-width: 300px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 16px;
+}
+
+.workspace-topbar-context span,
+.settings-topbar-context span {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.workspace-tools {
+  justify-content: flex-end;
+  gap: 14px;
+  font-size: 13px;
+}
+
+.page-action-strip {
+  display: grid;
+  grid-template-columns: minmax(190px, 0.55fr) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 18px;
+  padding: 16px 20px;
+  border-color: rgba(37, 99, 235, 0.14);
+  background: linear-gradient(135deg, rgba(248, 251, 255, 0.98), rgba(255, 255, 255, 0.94));
+}
+
+.page-action-strip h2 {
+  margin-top: 2px;
+  font-size: 20px;
+}
+
+.page-action-copy {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  color: #475569;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.page-action-buttons {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+@media (max-width: 1120px) {
+  .common-nav-topline,
+  .workspace-topbar,
+  .settings-topbar,
+  .page-action-strip {
+    grid-template-columns: 1fr;
+  }
+
+  .common-nav-layered .common-nav-brand,
+  .common-nav-layered .common-nav-secondary,
+  .workspace-tools,
+  .page-action-buttons {
+    justify-content: flex-start;
+  }
+
+  .workspace-topbar-context,
+  .settings-topbar-context {
+    justify-items: start;
+  }
+
+  .common-nav-layered .common-nav-context-row {
+    justify-content: flex-start;
+    padding: 0 22px 12px;
+  }
+
+  .common-nav-layered .common-nav-primary {
+    justify-content: flex-start;
+    overflow-x: auto;
+    padding: 0 18px;
+  }
+}

@@ -482,6 +482,10 @@ export const BackupPanel = ({
             <span className="app-mark" aria-hidden="true" />
             <strong>制作PM</strong>
           </div>
+          <div className="settings-topbar-context" aria-label="現在の階層">
+            <strong>{workspace.workspaceName}</strong>
+            <span>全体設定</span>
+          </div>
           <div className="common-nav-secondary">
             <button className="common-nav-action" onClick={onBackHome}>ワークスペースホーム</button>
             {onBackProject ? <button className="common-nav-action" onClick={onBackProject}>プロジェクト画面へ戻る</button> : null}
