@@ -7,7 +7,7 @@ import {
   type TaskViewModel,
 } from '../../domain/taskTypes';
 import type { WorkflowStage } from '../../domain/workflowTypes';
-import type { Workspace } from '../../domain/workspaceTypes';
+import type { Member, Workspace } from '../../domain/workspaceTypes';
 import { CalendarMaintenancePanel } from '../calendar/CalendarMaintenancePanel';
 import { CommonNav } from '../navigation/CommonNav';
 import { resolveProjectWorkflowStages } from '../workflow/customWorkflowStore';
@@ -54,15 +54,25 @@ const formatDueLabel = (task: TaskViewModel): string => {
   return '未設定';
 };
 
+const resolveAssigneeOptions = (members: Member[], currentAssignee?: string): string[] => {
+  const options = members.map((member) => member.displayName).filter(Boolean);
+  if (currentAssignee && !options.includes(currentAssignee)) {
+    options.push(currentAssignee);
+  }
+  return options;
+};
+
 const ReviewFixTaskCard = ({
   task,
   stages,
+  members,
   onOpenBoard,
   onChangeStatus,
   onUpdateTaskDetails,
 }: {
   task: TaskViewModel;
   stages: WorkflowStage[];
+  members: Member[];
   onOpenBoard: () => void;
   onChangeStatus: (target: TaskViewModel, status: TaskStatus) => void;
   onUpdateTaskDetails: (target: TaskViewModel, patch: TaskDetailPatch) => void;
@@ -72,6 +82,7 @@ const ReviewFixTaskCard = ({
   const [priority, setPriority] = useState<TaskPriority>(task.priority ?? '中');
   const [stageId, setStageId] = useState(task.stageId ?? '');
 
+  const assigneeOptions = resolveAssigneeOptions(members, task.assignee);
   const selectedStage = stages.find((stage) => stage.stageId === stageId);
 
   return (
@@ -95,7 +106,14 @@ const ReviewFixTaskCard = ({
         <div className="task-edit-grid">
           <label>
             担当者
-            <input value={assignee} onChange={(event) => setAssignee(event.target.value)} />
+            <select value={assignee} onChange={(event) => setAssignee(event.target.value)}>
+              <option value="">未設定</option>
+              {assigneeOptions.map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+            </select>
           </label>
           <label>
             優先度
@@ -226,6 +244,7 @@ export const ReviewFixView = ({
                   key={task.taskId}
                   task={task}
                   stages={stages}
+                  members={workspace.members}
                   onOpenBoard={onOpenBoard}
                   onChangeStatus={onChangeStatus}
                   onUpdateTaskDetails={onUpdateTaskDetails}
@@ -246,6 +265,7 @@ export const ReviewFixView = ({
                   key={task.taskId}
                   task={task}
                   stages={stages}
+                  members={workspace.members}
                   onOpenBoard={onOpenBoard}
                   onChangeStatus={onChangeStatus}
                   onUpdateTaskDetails={onUpdateTaskDetails}

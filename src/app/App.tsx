@@ -50,6 +50,11 @@ import {
 import type { SharedStateMetadata } from '../features/sharedState/sharedStateTypes';
 import { tryGetDriveReadAccessTokenSilently } from '../features/sharedState/googleDriveAuth';
 import { readSharedStateFromDrive } from '../features/sharedState/sharedStateReadService';
+import {
+  addCustomMember,
+  loadCustomMembers,
+  mergeMembers,
+} from '../features/members/memberStore';
 import { TaskBoard } from '../features/tasks/TaskBoard';
 import { TodayView } from '../features/today/TodayView';
 import { WorkflowView } from '../features/workflow/WorkflowView';
@@ -133,6 +138,7 @@ export const App = () => {
   const [route, setRoute] = useState<AppRoute>(createInitialRoute);
   const [workspace] = useState<Workspace>(WORKSPACE);
   const [calendarSourceSettings, setCalendarSourceSettings] = useState(loadCalendarSourceSettings);
+  const [customMembers, setCustomMembers] = useState(loadCustomMembers);
   const [joinedProjects, setJoinedProjects] = useState<JoinedProject[]>(loadJoinedProjects);
   const [accessMode, setAccessMode] = useState<ProjectAccessMode>(loadProjectAccessMode);
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -152,9 +158,14 @@ export const App = () => {
   const autoReadAttemptedWorkspaceRef = useRef<string | null>(null);
   const [lastProjectContextId, setLastProjectContextId] = useState<string | null>(null);
 
+  const workspaceWithMembers = useMemo<Workspace>(() => ({
+    ...workspace,
+    members: mergeMembers(workspace.members, customMembers),
+  }), [workspace, customMembers]);
+
   const configuredWorkspace = useMemo(
-    () => applyCalendarSourceSettings(workspace, calendarSourceSettings),
-    [workspace, calendarSourceSettings],
+    () => applyCalendarSourceSettings(workspaceWithMembers, calendarSourceSettings),
+    [workspaceWithMembers, calendarSourceSettings],
   );
 
   const taskViewModels: TaskViewModel[] = useMemo(() => {
@@ -474,6 +485,13 @@ export const App = () => {
     setOverlays(getAllTaskOverlays());
   };
 
+  const handleAddMember = (displayName: string) => {
+    const result = addCustomMember(workspace.members, customMembers, displayName);
+    setCustomMembers(result.members);
+    if (result.warning) setStorageWarning(result.warning);
+    return result;
+  };
+
   const handleSharedStateApplied = (message: string, warning?: string) => {
     setStorageWarning(warning ?? message);
     setOverlays(getAllTaskOverlays());
@@ -609,6 +627,7 @@ export const App = () => {
         }
         onConnectGoogleCalendar={() => void handleConnectGoogleCalendar()}
         onReloadCalendar={() => void loadTasks(visibleWorkspace)}
+        onAddMember={handleAddMember}
         onRestored={handleBackupRestored}
         sharedStateMetadata={sharedStateMetadata}
         onSharedStateMetadataUpdated={(metadata, warning) => {
