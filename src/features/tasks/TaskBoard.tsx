@@ -20,6 +20,16 @@ type TaskDetailPatch = {
   stageName?: string;
 };
 
+const ALL_FILTER = 'all';
+const UNASSIGNED_ASSIGNEE_FILTER = '__unassigned_assignee__';
+const UNSET_STAGE_FILTER = '__unset_stage__';
+
+type SelectOption = {
+  value: string;
+  label: string;
+  order?: number;
+};
+
 type Props = {
   workspace: Workspace;
   tasks: TaskViewModel[];
@@ -97,6 +107,77 @@ const resolveAssigneeOptions = (members: Member[], currentAssignee?: string): st
     options.push(currentAssignee);
   }
   return options;
+};
+
+const resolveAssigneeFilterValue = (assignee?: string) => {
+  const trimmed = assignee?.trim();
+  return trimmed ? `assignee:${trimmed}` : UNASSIGNED_ASSIGNEE_FILTER;
+};
+
+const resolveStageFilterValue = (task: TaskViewModel) => {
+  if (task.stageId) return `stage:${task.projectId}:${task.stageId}`;
+  const stageName = task.stageName?.trim();
+  return stageName ? `stage-name:${task.projectId}:${stageName}` : UNSET_STAGE_FILTER;
+};
+
+const resolveStageOptionValue = (projectId: string, stage: WorkflowStage) => `stage:${projectId}:${stage.stageId}`;
+
+const buildAssigneeFilterOptions = (tasks: TaskViewModel[], members: Member[]): SelectOption[] => {
+  const options = new Map<string, string>();
+
+  members.forEach((member) => {
+    const name = member.displayName?.trim();
+    if (name) options.set(resolveAssigneeFilterValue(name), name);
+  });
+
+  tasks.forEach((task) => {
+    const label = task.assignee?.trim() || '担当未設定';
+    options.set(resolveAssigneeFilterValue(task.assignee), label);
+  });
+
+  return [...options.entries()]
+    .map(([value, label]) => ({ value, label }))
+    .sort((a, b) => a.label.localeCompare(b.label, 'ja'));
+};
+
+const buildStageFilterOptions = (
+  tasks: TaskViewModel[],
+  workspace: Workspace,
+  stagesByProjectId: Map<string, WorkflowStage[]>,
+  selectedProjectId: string,
+): SelectOption[] => {
+  const options = new Map<string, SelectOption>();
+  const projects =
+    selectedProjectId === ALL_FILTER
+      ? workspace.projects
+      : workspace.projects.filter((project) => project.projectId === selectedProjectId);
+
+  projects.forEach((project) => {
+    stagesByProjectId.get(project.projectId)?.forEach((stage) => {
+      const label = selectedProjectId === ALL_FILTER ? `${stage.stageName}（${project.projectName}）` : stage.stageName;
+      const value = resolveStageOptionValue(project.projectId, stage);
+      options.set(value, { value, label, order: stage.order });
+    });
+  });
+
+  tasks.forEach((task) => {
+    const value = resolveStageFilterValue(task);
+    if (options.has(value)) return;
+    const label =
+      selectedProjectId === ALL_FILTER && task.stageName?.trim()
+        ? `${task.stageName.trim()}（${task.projectName}）`
+        : task.stageName?.trim() || '工程未設定';
+    options.set(value, {
+      value,
+      label,
+      order: Number.MAX_SAFE_INTEGER,
+    });
+  });
+
+  return [...options.values()].sort((a, b) => {
+    const orderDiff = (a.order ?? Number.MAX_SAFE_INTEGER) - (b.order ?? Number.MAX_SAFE_INTEGER);
+    return orderDiff || a.label.localeCompare(b.label, 'ja');
+  });
 };
 
 const BoardCard = ({
@@ -251,7 +332,9 @@ export const TaskBoard = ({
   onUpdateTaskDetails,
   onReorder,
 }: Props) => {
-  const [selectedProjectId, setSelectedProjectId] = useState(initialProjectId ?? 'all');
+  const [selectedProjectId, setSelectedProjectId] = useState(initialProjectId ?? ALL_FILTER);
+  const [selectedAssigneeFilter, setSelectedAssigneeFilter] = useState(ALL_FILTER);
+  const [selectedStageFilter, setSelectedStageFilter] = useState(ALL_FILTER);
   const [groupMode, setGroupMode] = useState<BoardGroupMode>('status');
   const [draggingTaskId, setDraggingTaskId] = useState<string | null>(null);
   const [dragOverStatus, setDragOverStatus] = useState<TaskStatus | null>(null);
@@ -267,10 +350,37 @@ export const TaskBoard = ({
       ]
     : [{ label: 'タスク', onClick: () => undefined, active: true }];
 
-  const visibleTasks = useMemo(() => {
-    if (selectedProjectId === 'all') return tasks;
+  const stagesByProjectId = useMemo(
+    () => new Map(workspace.projects.map((project) => [project.projectId, resolveProjectWorkflowStages(project)])),
+    [workspace.projects],
+  );
+
+  const projectFilteredTasks = useMemo(() => {
+    if (selectedProjectId === ALL_FILTER) return tasks;
     return tasks.filter((task) => task.projectId === selectedProjectId);
   }, [tasks, selectedProjectId]);
+
+  const assigneeFilterOptions = useMemo(
+    () => buildAssigneeFilterOptions(projectFilteredTasks, workspace.members),
+    [projectFilteredTasks, workspace.members],
+  );
+
+  const stageFilterOptions = useMemo(
+    () => buildStageFilterOptions(projectFilteredTasks, workspace, stagesByProjectId, selectedProjectId),
+    [projectFilteredTasks, selectedProjectId, stagesByProjectId, workspace],
+  );
+
+  const visibleTasks = useMemo(
+    () =>
+      projectFilteredTasks.filter((task) => {
+        const matchesAssignee =
+          selectedAssigneeFilter === ALL_FILTER || resolveAssigneeFilterValue(task.assignee) === selectedAssigneeFilter;
+        const matchesStage =
+          selectedStageFilter === ALL_FILTER || resolveStageFilterValue(task) === selectedStageFilter;
+        return matchesAssignee && matchesStage;
+      }),
+    [projectFilteredTasks, selectedAssigneeFilter, selectedStageFilter],
+  );
 
   const tasksByStatus = useMemo(() => {
     const map = new Map<TaskStatus, TaskViewModel[]>();
@@ -284,11 +394,23 @@ export const TaskBoard = ({
 
   const groupedTasks = useMemo(() => groupTasks(visibleTasks, groupMode), [visibleTasks, groupMode]);
   const taskById = useMemo(() => new Map(visibleTasks.map((task) => [task.taskId, task])), [visibleTasks]);
-  const stagesByProjectId = useMemo(
-    () => new Map(workspace.projects.map((project) => [project.projectId, resolveProjectWorkflowStages(project)])),
-    [workspace.projects],
-  );
   const selectedProject = workspace.projects.find((project) => project.projectId === selectedProjectId);
+  const selectedAssigneeLabel =
+    selectedAssigneeFilter === ALL_FILTER
+      ? 'すべて'
+      : assigneeFilterOptions.find((option) => option.value === selectedAssigneeFilter)?.label ?? '不明';
+  const selectedStageLabel =
+    selectedStageFilter === ALL_FILTER
+      ? 'すべて'
+      : stageFilterOptions.find((option) => option.value === selectedStageFilter)?.label ?? '不明';
+  const groupModeLabel =
+    groupMode === 'status'
+      ? '状態'
+      : groupMode === 'assignee'
+        ? '担当者'
+        : groupMode === 'stage'
+          ? '工程'
+          : '担当者＋工程';
   const boardTitle = projectContextId
     ? workspace.projects.find((project) => project.projectId === projectContextId)?.projectName ?? 'タスクボード'
     : 'タスクボード';
@@ -352,22 +474,51 @@ export const TaskBoard = ({
           <span className="pill">タスク</span>
         </div>
         <p className="meta board-caption">
-          表示中: {selectedProjectId === 'all' ? '全プロジェクト' : selectedProject?.projectName ?? '不明'} / 見方: {
-            groupMode === 'status' ? '状態' : groupMode === 'assignee' ? '担当者' : groupMode === 'stage' ? '工程' : '担当者＋工程'
-          }
+          表示中: {selectedProjectId === ALL_FILTER ? '全プロジェクト' : selectedProject?.projectName ?? '不明'} / 担当者: {selectedAssigneeLabel} / 工程: {selectedStageLabel} / 見方: {groupModeLabel}
         </p>
         {storageWarning ? <p className="warning-text">{storageWarning}</p> : null}
         <div className="board-view-controls">
           <label htmlFor="project-filter">
-            表示範囲
+            プロジェクト
             <select
               id="project-filter"
               value={selectedProjectId}
-              onChange={(event) => setSelectedProjectId(event.target.value)}
+              onChange={(event) => {
+                setSelectedProjectId(event.target.value);
+                setSelectedAssigneeFilter(ALL_FILTER);
+                setSelectedStageFilter(ALL_FILTER);
+                setDragOverStatus(null);
+              }}
             >
-              <option value="all">全プロジェクト</option>
+              <option value={ALL_FILTER}>全プロジェクト</option>
               {workspace.projects.map((project) => (
                 <option key={project.projectId} value={project.projectId}>{project.projectName}</option>
+              ))}
+            </select>
+          </label>
+          <label htmlFor="assignee-filter">
+            担当者
+            <select
+              id="assignee-filter"
+              value={selectedAssigneeFilter}
+              onChange={(event) => setSelectedAssigneeFilter(event.target.value)}
+            >
+              <option value={ALL_FILTER}>すべての担当者</option>
+              {assigneeFilterOptions.map((option) => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
+            </select>
+          </label>
+          <label htmlFor="stage-filter">
+            工程
+            <select
+              id="stage-filter"
+              value={selectedStageFilter}
+              onChange={(event) => setSelectedStageFilter(event.target.value)}
+            >
+              <option value={ALL_FILTER}>すべての工程</option>
+              {stageFilterOptions.map((option) => (
+                <option key={option.value} value={option.value}>{option.label}</option>
               ))}
             </select>
           </label>
@@ -455,6 +606,11 @@ export const TaskBoard = ({
           </div>
         ) : (
           <div className="board-columns board-columns-dynamic">
+            {groupedTasks.length === 0 ? (
+              <article className="board-column card board-column-empty">
+                <p className="empty-state">条件に合うタスクはありません</p>
+              </article>
+            ) : null}
             {groupedTasks.map((group) => (
               <article key={group.key} className="board-column card">
                 <header className="board-column-header">
