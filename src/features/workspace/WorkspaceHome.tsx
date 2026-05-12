@@ -84,6 +84,10 @@ export const WorkspaceHome = ({
           <h1>ワークスペースホーム</h1>
           <p className="meta">{workspace.workspaceName}</p>
         </div>
+        <div className="scope-strip" aria-label="現在の操作範囲">
+          <span className="scope-chip active">ワークスペース全体</span>
+          <span>参加中プロジェクトの一覧、Google接続、全体の取り込みを扱います。</span>
+        </div>
         <p>コードに紐づくプロジェクトを表示しています</p>
         <p className="meta">Googleカレンダー連携状態: {calendarStatus}</p>
         <p className="meta">ローカル保存 / 復元用ファイル対応</p>

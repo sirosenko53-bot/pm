@@ -470,6 +470,10 @@ export const BackupPanel = ({
           <h1>設定・バックアップ</h1>
           <span className="pill">設定</span>
         </div>
+        <div className="scope-strip" aria-label="現在の操作範囲">
+          <span className="scope-chip active">全体設定</span>
+          <span>Googleカレンダー接続、共有ファイル、復元用ファイルを管理します。</span>
+        </div>
         <p>ローカル保存された状態を、復元用ファイルとして書き出し・復元します。</p>
         <p>現在のワークスペース: {workspace.workspaceName}</p>
         <p>保存済みの進行状況: {overlayCount}件</p>

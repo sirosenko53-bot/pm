@@ -2,13 +2,23 @@ import { useMemo, useState, type DragEventHandler } from 'react';
 import {
   TASK_PRIORITIES,
   TASK_STATUSES,
+  type TaskPriority,
   type TaskStatus,
   type TaskViewModel,
 } from '../../domain/taskTypes';
+import type { WorkflowStage } from '../../domain/workflowTypes';
 import type { Workspace } from '../../domain/workspaceTypes';
 import { CommonNav, type CommonNavItem } from '../navigation/CommonNav';
+import { resolveProjectWorkflowStages } from '../workflow/customWorkflowStore';
 
 type BoardGroupMode = 'status' | 'assignee' | 'stage' | 'assignee-stage';
+type TaskDetailPatch = {
+  assignee: string;
+  taskName: string;
+  priority: TaskPriority;
+  stageId?: string;
+  stageName?: string;
+};
 
 type Props = {
   workspace: Workspace;
@@ -23,6 +33,7 @@ type Props = {
   onOpenReviewFix?: () => void;
   onOpenBackup?: () => void;
   onChangeStatus: (task: TaskViewModel, status: TaskStatus) => void;
+  onUpdateTaskDetails: (task: TaskViewModel, patch: TaskDetailPatch) => void;
   onReorder: (
     updates: Array<{ taskId: string; googleCalendarEventId: string; status: TaskStatus; sortOrder: number }>,
   ) => void;
@@ -84,6 +95,7 @@ const BoardCard = ({
   task,
   selectedProjectId,
   showStatus,
+  stages,
   draggable,
   dragging,
   onDragStart,
@@ -91,10 +103,12 @@ const BoardCard = ({
   onDragOver,
   onDrop,
   onChangeStatus,
+  onUpdateTaskDetails,
 }: {
   task: TaskViewModel;
   selectedProjectId: string;
   showStatus: boolean;
+  stages: WorkflowStage[];
   draggable: boolean;
   dragging: boolean;
   onDragStart?: DragEventHandler<HTMLDivElement>;
@@ -102,9 +116,25 @@ const BoardCard = ({
   onDragOver?: DragEventHandler<HTMLDivElement>;
   onDrop?: DragEventHandler<HTMLDivElement>;
   onChangeStatus: (task: TaskViewModel, status: TaskStatus) => void;
+  onUpdateTaskDetails: (task: TaskViewModel, patch: TaskDetailPatch) => void;
 }) => {
   const priority = task.priority;
   const shouldShowPriority = priority && priority !== TASK_PRIORITIES[1];
+  const [assignee, setAssignee] = useState(task.assignee ?? '');
+  const [taskName, setTaskName] = useState(task.taskName ?? '');
+  const [editPriority, setEditPriority] = useState<TaskPriority>(task.priority ?? '中');
+  const [stageId, setStageId] = useState(task.stageId ?? '');
+
+  const selectedStage = stages.find((stage) => stage.stageId === stageId);
+  const handleSaveDetails = () => {
+    onUpdateTaskDetails(task, {
+      assignee: assignee.trim(),
+      taskName: taskName.trim() || task.taskName,
+      priority: editPriority,
+      stageId: stageId || undefined,
+      stageName: selectedStage?.stageName,
+    });
+  };
 
   return (
     <div
@@ -142,6 +172,47 @@ const BoardCard = ({
           ))}
         </select>
       </label>
+
+      <details className="board-card-edit-panel">
+        <summary>担当・優先度・工程を編集</summary>
+        <div className="task-edit-grid board-card-edit-grid">
+          <label>
+            担当者
+            <input value={assignee} onChange={(event) => setAssignee(event.target.value)} />
+          </label>
+          <label>
+            優先度
+            <select
+              value={editPriority}
+              onChange={(event) => setEditPriority(event.target.value as TaskPriority)}
+            >
+              {TASK_PRIORITIES.map((nextPriority) => (
+                <option key={nextPriority} value={nextPriority}>
+                  {nextPriority}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            依存する工程
+            <select value={stageId} onChange={(event) => setStageId(event.target.value)}>
+              <option value="">工程未設定</option>
+              {stages.map((stage) => (
+                <option key={stage.stageId} value={stage.stageId}>
+                  {stage.order}. {stage.stageName}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="task-edit-secondary">
+            タスク名（必要な場合だけ修正）
+            <input value={taskName} onChange={(event) => setTaskName(event.target.value)} />
+          </label>
+        </div>
+        <button type="button" className="secondary" onClick={handleSaveDetails}>
+          変更を保存
+        </button>
+      </details>
     </div>
   );
 };
@@ -159,6 +230,7 @@ export const TaskBoard = ({
   onOpenReviewFix,
   onOpenBackup,
   onChangeStatus,
+  onUpdateTaskDetails,
   onReorder,
 }: Props) => {
   const [selectedProjectId, setSelectedProjectId] = useState(initialProjectId ?? 'all');
@@ -194,6 +266,10 @@ export const TaskBoard = ({
 
   const groupedTasks = useMemo(() => groupTasks(visibleTasks, groupMode), [visibleTasks, groupMode]);
   const taskById = useMemo(() => new Map(visibleTasks.map((task) => [task.taskId, task])), [visibleTasks]);
+  const stagesByProjectId = useMemo(
+    () => new Map(workspace.projects.map((project) => [project.projectId, resolveProjectWorkflowStages(project)])),
+    [workspace.projects],
+  );
   const selectedProject = workspace.projects.find((project) => project.projectId === selectedProjectId);
   const boardTitle = projectContextId
     ? workspace.projects.find((project) => project.projectId === projectContextId)?.projectName ?? 'タスクボード'
@@ -327,6 +403,7 @@ export const TaskBoard = ({
                         task={task}
                         selectedProjectId={selectedProjectId}
                         showStatus={false}
+                        stages={stagesByProjectId.get(task.projectId) ?? []}
                         draggable
                         dragging={draggingTaskId === task.taskId}
                         onDragStart={(event) => {
@@ -349,6 +426,7 @@ export const TaskBoard = ({
                           handleDrop(status, task.taskId);
                         }}
                         onChangeStatus={onChangeStatus}
+                        onUpdateTaskDetails={onUpdateTaskDetails}
                       />
                     ))}
                   </div>
@@ -373,9 +451,11 @@ export const TaskBoard = ({
                       task={task}
                       selectedProjectId={selectedProjectId}
                       showStatus
+                      stages={stagesByProjectId.get(task.projectId) ?? []}
                       draggable={false}
                       dragging={false}
                       onChangeStatus={onChangeStatus}
+                      onUpdateTaskDetails={onUpdateTaskDetails}
                     />
                   ))}
                 </div>

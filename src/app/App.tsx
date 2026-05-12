@@ -583,6 +583,7 @@ export const App = () => {
         onOpenReviewFix={route.projectId || route.fromProjectId ? () => openReviewFix((route.projectId ?? route.fromProjectId)!) : undefined}
         onOpenBackup={() => openBackup(route.projectId ?? route.fromProjectId)}
         onChangeStatus={handleChangeStatus}
+        onUpdateTaskDetails={handleUpdateTaskDetails}
         onReorder={handleReorder}
       />
     );
