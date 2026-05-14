@@ -1,3 +1,5 @@
+import { AppSidebar } from './AppSidebar';
+
 export type CommonNavItem = {
   label: string;
   onClick: () => void;
@@ -11,63 +13,61 @@ type CommonNavProps = {
   projectName?: string;
 };
 
+const pickAction = (items: CommonNavItem[], patterns: string[]) =>
+  items.find((item) => patterns.some((pattern) => item.label.includes(pattern)))?.onClick;
+
 export const CommonNav = ({
   primaryItems,
   secondaryItems = [],
   workspaceName = '途切れ制作管理',
   projectName,
-}: CommonNavProps) => (
-  <nav className="common-nav common-nav-layered" aria-label="プロジェクト内ナビゲーション">
-    <div className="common-nav-topline">
-      <div className="common-nav-brand">
-        <span className="app-mark" aria-hidden="true" />
-        <strong>制作PM</strong>
-      </div>
-      <div className="common-nav-context-row" aria-label="現在の階層">
-        <span className="common-nav-level">
-          <span className="common-nav-level-label">ワークスペース</span>
-          <strong className="common-nav-current">{workspaceName}</strong>
-        </span>
-        {projectName ? (
-          <>
-            <span className="common-nav-separator" aria-hidden="true">/</span>
-            <span className="common-nav-level">
-              <span className="common-nav-level-label">プロジェクト</span>
-              <strong className="common-nav-current">{projectName}</strong>
-            </span>
-          </>
-        ) : (
-          <span className="common-nav-scope">ワークスペース</span>
-        )}
-      </div>
-      {secondaryItems.length > 0 ? (
-        <div className="common-nav-secondary">
-          {secondaryItems.map((item) => (
-            <button
-              key={item.label}
-              type="button"
-              className={`common-nav-action ${item.active ? 'active' : ''}`}
-              aria-current={item.active ? 'page' : undefined}
-              onClick={item.onClick}
-            >
-              {item.label}
-            </button>
-          ))}
+}: CommonNavProps) => {
+  const homeAction = pickAction(secondaryItems, ['ワークスペース', 'ホーム']);
+  const backupAction = pickAction(secondaryItems, ['設定', 'バックアップ']);
+  const settingsAction = backupAction;
+
+  return (
+    <div className="common-nav common-nav-reference" aria-label="プロジェクト内ナビゲーション">
+      <AppSidebar
+        workspaceName={workspaceName}
+        activeKey="project"
+        calendarStatus="正本"
+        onHome={homeAction}
+        onProjects={homeAction}
+        onCalendar={backupAction}
+        onBackup={backupAction}
+        onSettings={settingsAction}
+      />
+
+      <header className="project-app-header">
+        <div className="project-header-context" aria-label="現在の階層">
+          <span>{workspaceName}</span>
+          {projectName ? (
+            <>
+              <span aria-hidden="true">/</span>
+              <strong>{projectName}</strong>
+            </>
+          ) : null}
         </div>
-      ) : <span />}
+        <div className="project-header-tools" aria-label="補助情報">
+          <span className="project-sync-label">同期状態: ローカル保存</span>
+          <span className="project-avatar" aria-hidden="true">PM</span>
+        </div>
+      </header>
+
+      <nav className="project-tabbar" aria-label="主要画面">
+        {primaryItems.map((item) => (
+          <button
+            key={item.label}
+            type="button"
+            className={`project-tab ${item.active ? 'active' : ''}`}
+            aria-current={item.active ? 'page' : undefined}
+            onClick={item.onClick}
+          >
+            {item.label}
+          </button>
+        ))}
+      </nav>
     </div>
-    <div className="common-nav-primary" aria-label="主要タブ">
-      {primaryItems.map((item) => (
-        <button
-          key={item.label}
-          type="button"
-          className={`common-nav-item ${item.active ? 'active' : ''}`}
-          aria-current={item.active ? 'page' : undefined}
-          onClick={item.onClick}
-        >
-          {item.label}
-        </button>
-      ))}
-    </div>
-  </nav>
-);
+  );
+};

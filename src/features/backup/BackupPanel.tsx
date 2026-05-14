@@ -32,6 +32,7 @@ import type { SharedStateMetadata } from '../sharedState/sharedStateTypes';
 import { getAllTaskOverlays } from '../tasks/taskOverlayStore';
 import { readSharedStateFromDrive } from '../sharedState/sharedStateReadService';
 import type { AddMemberResult, MemberChangeResult } from '../members/memberStore';
+import { AppSidebar } from '../navigation/AppSidebar';
 import {
   createBackupPackage,
   exportBackupToFile,
@@ -514,7 +515,18 @@ export const BackupPanel = ({
   };
 
   return (
-    <main className="page">
+    <main className="page settings-reference-page">
+      <AppSidebar
+        workspaceName={workspace.workspaceName}
+        activeKey="settings"
+        calendarStatus={calendarStatus}
+        lastUpdatedText={lastImportText}
+        onHome={onBackHome}
+        onProjects={onBackProject ?? onBackHome}
+        onCalendar={onReloadCalendar}
+        onBackup={() => undefined}
+        onSettings={() => undefined}
+      />
       <section className="card board-header">
         <div className="settings-topbar">
           <div className="workspace-brand">

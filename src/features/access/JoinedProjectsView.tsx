@@ -1,5 +1,6 @@
 import { FormEvent, useState } from 'react';
 import type { Project, Workspace } from '../../domain/workspaceTypes';
+import { AppSidebar } from '../navigation/AppSidebar';
 import type { JoinedProject } from './projectAccessTypes';
 import { findProjectByAccessProjectId, getAccessProjectId } from './projectAccessStore';
 
@@ -55,7 +56,15 @@ export const JoinedProjectsView = ({
   };
 
   return (
-    <main className="page">
+    <main className="page joined-reference-page">
+      <AppSidebar
+        workspaceName={workspace.workspaceName}
+        activeKey="project"
+        calendarStatus="ローカル保存"
+        onProjects={() => undefined}
+        onBackup={onOpenBackup}
+        onSettings={onOpenBackup}
+      />
       <section className="card joined-projects-header">
         <div>
           <div className="workspace-brand">

@@ -4,6 +4,7 @@ import type {
   CalendarConnectionDiagnostic,
   CalendarImportSummary,
 } from '../calendar/calendarDiagnostics';
+import { AppSidebar } from '../navigation/AppSidebar';
 import { calculateTaskSummary, filterTasksByProject } from '../tasks/taskMetrics';
 
 type Props = {
@@ -68,7 +69,18 @@ export const WorkspaceHome = ({
     : '未実施';
 
   return (
-    <main className="page">
+    <main className="page workspace-reference-page">
+      <AppSidebar
+        workspaceName={workspace.workspaceName}
+        activeKey="home"
+        calendarStatus={calendarStatus}
+        lastUpdatedText={lastImportText}
+        onHome={() => undefined}
+        onProjects={onOpenJoinedProjects}
+        onCalendar={onReloadCalendar}
+        onBackup={onOpenBackup}
+        onSettings={onOpenBackup}
+      />
       <section className="card workspace-home-header">
         <div className="workspace-topbar">
           <div className="workspace-brand">
