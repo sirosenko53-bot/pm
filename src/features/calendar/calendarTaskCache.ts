@@ -1,4 +1,4 @@
-import type { Task } from '../../domain/taskTypes';
+import { TASK_PRIORITIES, type Task, type TaskPriority } from '../../domain/taskTypes';
 import { loadFromStorage, saveToStorage } from '../../storage/localStorageStore';
 import type { CalendarImportSummary } from './calendarDiagnostics';
 
@@ -12,21 +12,52 @@ export type CalendarTaskCache = {
   cachedAt: string;
 };
 
-const isTask = (value: unknown): value is Task => {
-  if (!value || typeof value !== 'object') return false;
+const isString = (value: unknown): value is string => typeof value === 'string';
+
+const isOptionalString = (value: unknown): value is string | undefined =>
+  value === undefined || typeof value === 'string';
+
+const isTaskPriority = (value: unknown): value is TaskPriority =>
+  typeof value === 'string' && TASK_PRIORITIES.includes(value as TaskPriority);
+
+const normalizeCachedTask = (value: unknown): Task | null => {
+  if (!value || typeof value !== 'object') return null;
 
   const task = value as Partial<Task>;
-  return (
-    typeof task.taskId === 'string' &&
-    typeof task.googleCalendarEventId === 'string' &&
-    typeof task.calendarId === 'string' &&
-    typeof task.titleRaw === 'string' &&
-    typeof task.assignee === 'string' &&
-    typeof task.taskName === 'string' &&
-    typeof task.projectName === 'string' &&
-    typeof task.projectId === 'string' &&
-    typeof task.startDateTime === 'string'
-  );
+  if (
+    !isString(task.taskId) ||
+    !isString(task.googleCalendarEventId) ||
+    !isString(task.calendarId) ||
+    !isString(task.titleRaw) ||
+    !isString(task.taskName) ||
+    !isString(task.projectId) ||
+    !isOptionalString(task.assignee) ||
+    !isOptionalString(task.projectName) ||
+    !isOptionalString(task.stageId) ||
+    !isOptionalString(task.startDateTime) ||
+    !isOptionalString(task.endDateTime) ||
+    !isOptionalString(task.dueDate) ||
+    !isOptionalString(task.parseError)
+  ) {
+    return null;
+  }
+
+  return {
+    taskId: task.taskId,
+    googleCalendarEventId: task.googleCalendarEventId,
+    calendarId: task.calendarId,
+    titleRaw: task.titleRaw,
+    assignee: task.assignee ?? '未設定',
+    taskName: task.taskName,
+    priority: isTaskPriority(task.priority) ? task.priority : '中',
+    projectName: task.projectName ?? '未分類',
+    projectId: task.projectId,
+    stageId: task.stageId,
+    startDateTime: task.startDateTime ?? '',
+    endDateTime: task.endDateTime,
+    dueDate: task.dueDate,
+    parseError: task.parseError,
+  };
 };
 
 const isCalendarTaskCache = (value: unknown): value is CalendarTaskCache => {
@@ -36,7 +67,6 @@ const isCalendarTaskCache = (value: unknown): value is CalendarTaskCache => {
   return (
     typeof cache.workspaceId === 'string' &&
     Array.isArray(cache.tasks) &&
-    cache.tasks.every(isTask) &&
     typeof cache.calendarStatus === 'string' &&
     typeof cache.cachedAt === 'string'
   );
@@ -58,7 +88,15 @@ export const loadCalendarTaskCache = (
     return {};
   }
 
-  return { value: result.value };
+  const tasks = result.value.tasks
+    .map(normalizeCachedTask)
+    .filter((task): task is Task => Boolean(task));
+  const warning =
+    tasks.length < result.value.tasks.length
+      ? '前回取り込みの一部を読み込めませんでした。有効な予定だけ復元しています。'
+      : undefined;
+
+  return { value: { ...result.value, tasks }, warning };
 };
 
 export const saveCalendarTaskCache = (cache: CalendarTaskCache): { ok: boolean; warning?: string } =>

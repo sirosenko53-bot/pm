@@ -15,6 +15,7 @@ type AppSidebarProps = {
 type SidebarItem = {
   key: AppSidebarKey;
   label: string;
+  description: string;
   icon: string;
   onClick?: () => void;
 };
@@ -31,11 +32,11 @@ export const AppSidebar = ({
   onSettings,
 }: AppSidebarProps) => {
   const items: SidebarItem[] = [
-    { key: 'home', label: 'ホーム', icon: '⌂', onClick: onHome },
-    { key: 'project', label: 'プロジェクト', icon: '□', onClick: onProjects ?? onHome },
-    { key: 'calendar', label: 'カレンダー連携', icon: '◷', onClick: onCalendar ?? onBackup },
-    { key: 'backup', label: 'バックアップ', icon: '⇩', onClick: onBackup },
-    { key: 'settings', label: '設定・同期', icon: '⚙', onClick: onSettings ?? onBackup },
+    { key: 'home', label: 'ホーム', description: 'ワークスペース全体へ戻る', icon: '⌂', onClick: onHome },
+    { key: 'project', label: 'プロジェクト一覧', description: '参加中プロジェクトを選ぶ', icon: '□', onClick: onProjects },
+    { key: 'calendar', label: 'カレンダー連携', description: 'Google接続と取り込み設定', icon: '◷', onClick: onCalendar },
+    { key: 'backup', label: 'バックアップ', description: '復元用ファイルの保存・読込', icon: '⇩', onClick: onBackup },
+    { key: 'settings', label: '設定・同期', description: '共有ファイルと担当者設定', icon: '⚙', onClick: onSettings },
   ];
 
   return (
@@ -62,9 +63,13 @@ export const AppSidebar = ({
             aria-current={activeKey === item.key ? 'page' : undefined}
             onClick={item.onClick}
             disabled={!item.onClick}
+            title={item.description}
           >
             <span aria-hidden="true">{item.icon}</span>
-            {item.label}
+            <span className="app-side-nav-text">
+              <strong>{item.label}</strong>
+              <small>{item.description}</small>
+            </span>
           </button>
         ))}
       </nav>

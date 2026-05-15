@@ -10,11 +10,14 @@ type Props = {
   tasks: TaskViewModel[];
   storageWarning?: string;
   onBackHome: () => void;
+  onOpenProjects: () => void;
   onBackProject: () => void;
   onOpenWorkflow: () => void;
   onOpenReviewFix: () => void;
   onOpenBoard: () => void;
+  onOpenCalendarSettings: () => void;
   onOpenBackup: () => void;
+  onOpenSettings: () => void;
 };
 
 const formatCompactDateTime = (value?: string): string => {
@@ -33,11 +36,14 @@ export const TodayView = ({
   tasks,
   storageWarning,
   onBackHome,
+  onOpenProjects,
   onBackProject,
   onOpenWorkflow,
   onOpenReviewFix,
   onOpenBoard,
+  onOpenCalendarSettings,
   onOpenBackup,
+  onOpenSettings,
 }: Props) => {
   const project = workspace.projects.find((item) => item.projectId === projectId);
   const today = new Date();
@@ -64,6 +70,10 @@ export const TodayView = ({
             { label: 'ワークスペースホームへ戻る', onClick: onBackHome },
             { label: '設定・バックアップ', onClick: onOpenBackup },
           ]}
+          onOpenProjects={onOpenProjects}
+          onOpenCalendar={onOpenCalendarSettings}
+          onOpenBackup={onOpenBackup}
+          onOpenSettings={onOpenSettings}
         />
         <div className="page-title-row">
           <h1>{project?.projectName ?? 'プロジェクト未選択'}</h1>
@@ -79,7 +89,18 @@ export const TodayView = ({
         <article className="card">
           <h2>今日の予定タイムライン</h2>
           <div className="today-list">
-            {todayTasks.length === 0 ? <p className="empty-state">今日の予定はありません。</p> : null}
+            {todayTasks.length === 0 ? (
+              <div className="today-empty-panel">
+                <p className="empty-state">今日の予定はありません。</p>
+                <p className="meta">次に確認できること</p>
+                <div className="today-empty-actions">
+                  <button type="button" className="card-link-button" onClick={onOpenBoard}>遅延タスクを見る</button>
+                  <button type="button" className="card-link-button" onClick={onOpenBoard}>未着手タスクを見る</button>
+                  <button type="button" className="card-link-button" onClick={onOpenCalendarSettings}>カレンダー連携を確認</button>
+                  <button type="button" className="card-link-button" onClick={onOpenReviewFix}>確認待ちを見る</button>
+                </div>
+              </div>
+            ) : null}
             {todayTasks.map((task) => (
               <article key={task.taskId} className="today-item">
                 <p className="today-time">{formatTaskTime(task)}</p>

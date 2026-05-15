@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import type { SettingsSection } from '../../app/routes';
 import { WORKFLOW_TEMPLATES } from '../../config/workflowTemplates';
 import type { Member, Workspace } from '../../domain/workspaceTypes';
 import type {
@@ -71,6 +72,7 @@ type Props = {
   onSharedStateMetadataUpdated: (metadata: SharedStateMetadata, warning?: string) => void;
   onSharedStateApplied: (message: string, warning?: string) => void;
   onCalendarSourceSettingsUpdated: () => void;
+  initialSection?: SettingsSection;
 };
 
 const formatDateTime = (value: string | null): string => (value ? new Date(value).toLocaleString() : '未記録');
@@ -115,6 +117,7 @@ export const BackupPanel = ({
   onSharedStateMetadataUpdated,
   onSharedStateApplied,
   onCalendarSourceSettingsUpdated,
+  initialSection = 'backup',
 }: Props) => {
   const [panelMessage, setPanelMessage] = useState<string | undefined>();
   const [panelError, setPanelError] = useState<string | undefined>();
@@ -134,6 +137,20 @@ export const BackupPanel = ({
   const lastImportText = calendarImportSummary
     ? new Date(calendarImportSummary.updatedAt).toLocaleString('ja-JP')
     : '未実施';
+
+  useEffect(() => {
+    const target = document.getElementById(`settings-section-${initialSection}`);
+    if (!target) return;
+    window.requestAnimationFrame(() => {
+      target.scrollIntoView({ block: 'start' });
+    });
+  }, [initialSection]);
+
+  const scrollToSettingsSection = (section: SettingsSection) => {
+    const target = document.getElementById(`settings-section-${section}`);
+    if (!target) return;
+    target.scrollIntoView({ block: 'start', behavior: 'smooth' });
+  };
 
   useEffect(() => {
     setCalendarIdInputs(
@@ -523,9 +540,9 @@ export const BackupPanel = ({
         lastUpdatedText={lastImportText}
         onHome={onBackHome}
         onProjects={onBackProject ?? onBackHome}
-        onCalendar={onReloadCalendar}
-        onBackup={() => undefined}
-        onSettings={() => undefined}
+        onCalendar={() => scrollToSettingsSection('calendar')}
+        onBackup={() => scrollToSettingsSection('backup')}
+        onSettings={() => scrollToSettingsSection('shared')}
       />
       <section className="card board-header">
         <div className="settings-topbar">
@@ -561,28 +578,73 @@ export const BackupPanel = ({
         {panelError ? <p className="error preserve-line-break">{panelError}</p> : null}
       </section>
 
-      <section className="share-guide-card backup-guide-card" aria-label="設定画面でやること">
-        <div>
-          <p className="meta">設定で迷ったら</p>
-          <h2>普段使うのはこの3つだけです</h2>
-        </div>
-        <ol className="share-guide-steps">
-          <li>
-            <strong>チームの状態を読む</strong>
-            <p>他の人が保存した進行状況を、この端末に取り込みます。</p>
-          </li>
-          <li>
-            <strong>チームへ保存する</strong>
-            <p>この端末の進行状況を、共有ファイルへ反映します。</p>
-          </li>
-          <li>
-            <strong>復元用ファイルを保存する</strong>
-            <p>作業前後の控えを手元に残します。Googleカレンダー予定そのものは含みません。</p>
-          </li>
-        </ol>
+      <section className="settings-status-grid" aria-label="現在の状態">
+        <article className="card settings-status-card">
+          <span>ローカル保存</span>
+          <strong>有効</strong>
+          <small>この端末に保存</small>
+        </article>
+        <article className="card settings-status-card">
+          <span>Googleカレンダー</span>
+          <strong>{calendarAuthStatus}</strong>
+          <small>{calendarStatus}</small>
+        </article>
+        <article className="card settings-status-card">
+          <span>共有ファイル</span>
+          <strong>{hasSharedFileId ? '設定済み' : '未設定'}</strong>
+          <small>{sharedStateMetadata.sharedFileName ?? 'DriveファイルIDが必要'}</small>
+        </article>
+        <article className="card settings-status-card">
+          <span>最終同期</span>
+          <strong>{lastSyncedAt ? new Date(lastSyncedAt).toLocaleString('ja-JP') : '未記録'}</strong>
+          <small>前回の取り込み・同期</small>
+        </article>
       </section>
 
-      <section className="card shared-state-card">
+      <section className="card settings-quick-actions-card">
+        <div className="settings-section-heading">
+          <div>
+            <p className="meta">普段使う操作</p>
+            <h2>必要な操作だけをここに集約</h2>
+          </div>
+          <span className="pill">手動運用</span>
+        </div>
+        <div className="settings-quick-action-grid">
+          <button
+            type="button"
+            className="settings-quick-action"
+            onClick={onReloadCalendar}
+            disabled={isReloadingCalendar}
+          >
+            <strong>{isReloadingCalendar ? '取り込み中' : 'Googleカレンダーを取り込む'}</strong>
+            <span>正本カレンダーから予定を再取得します。</span>
+          </button>
+          <button
+            type="button"
+            className="settings-quick-action"
+            onClick={() => void handleManualReadWithOAuth()}
+            disabled={!hasSharedFileId || sharedStateMetadata.syncStatus === 'loading'}
+          >
+            <strong>共有ファイルを読む</strong>
+            <span>チームの進行状況をこの端末へ反映します。</span>
+          </button>
+          <button
+            type="button"
+            className="settings-quick-action"
+            onClick={() => void handleManualSaveSharedState()}
+            disabled={!hasSharedFileId || sharedStateMetadata.syncStatus === 'saving'}
+          >
+            <strong>共有ファイルへ保存</strong>
+            <span>この端末の進行状況を共有ファイルへ保存します。</span>
+          </button>
+          <button type="button" className="settings-quick-action" onClick={handleExport}>
+            <strong>復元用ファイルを作成</strong>
+            <span>この端末の状態をファイルとして保存します。</span>
+          </button>
+        </div>
+      </section>
+
+      <section id="settings-section-settings" className="card shared-state-card">
         <h2>担当者候補</h2>
         <p className="note">
           タスク編集で選べる担当者をこの端末で管理します。候補から外すと戻せます。削除しても既存タスク、Googleカレンダー予定、共有ファイルは削除しません。
@@ -648,7 +710,7 @@ export const BackupPanel = ({
         </div>
       </section>
 
-      <section className="card shared-state-card">
+      <section id="settings-section-calendar" className="card shared-state-card">
         <h2>GoogleカレンダーID</h2>
         <p className="note">
           Googleカレンダーの「設定と共有」から取得したカレンダーIDを、プロジェクトごとに登録します。
@@ -768,7 +830,7 @@ export const BackupPanel = ({
         <p className="note">{calendarDiagnostics.nextAction}</p>
       </section>
 
-      <section className="card shared-state-card">
+      <section id="settings-section-shared" className="card shared-state-card">
         <h2>共有データの状態</h2>
         <p className="note">Google Drive上の共有ファイルを手動で読み書きします。自動保存、ポーリング同期、Driveファイル作成は未実装です。OAuthトークンは保存しません。</p>
         <div className="shared-state-grid">
@@ -938,7 +1000,7 @@ export const BackupPanel = ({
         </details>
       </section>
 
-      <section className="card backup-actions">
+      <section id="settings-section-backup" className="card backup-actions">
         <h2>この端末の状態を保存</h2>
         <p className="note">現在の進行状況や画面設定を、復元用ファイルとして書き出します。</p>
         <button type="button" className="secondary" onClick={handleExport}>この端末の状態をファイルに保存</button>

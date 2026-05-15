@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { WORKSPACE } from '../config/workspaceConfig';
 import type { Task, TaskPriority, TaskStatus, TaskViewModel } from '../domain/taskTypes';
 import type { Workspace } from '../domain/workspaceTypes';
-import type { AppRoute } from './routes';
+import type { AppRoute, SettingsSection } from './routes';
 import { JoinedProjectsView } from '../features/access/JoinedProjectsView';
 import { ProjectCodeEntry } from '../features/access/ProjectCodeEntry';
 import type { JoinedProject, ProjectAccessMode } from '../features/access/projectAccessTypes';
@@ -465,9 +465,17 @@ export const App = () => {
     setRoute({ name: 'task-board', projectId, fromProjectId });
   };
 
-  const openBackup = (projectId?: string) => {
+  const openBackup = (projectId?: string, section: SettingsSection = 'backup') => {
     if (projectId) setLastProjectContextId(projectId);
-    setRoute({ name: 'backup-settings', projectId: projectId ?? lastProjectContextId ?? undefined });
+    setRoute({ name: 'backup-settings', projectId: projectId ?? lastProjectContextId ?? undefined, section });
+  };
+
+  const openCalendarSettings = (projectId?: string) => {
+    openBackup(projectId, 'calendar');
+  };
+
+  const openSharedSettings = (projectId?: string) => {
+    openBackup(projectId, 'shared');
   };
 
   const handleChangeStatus = (task: TaskViewModel, status: TaskStatus) => {
@@ -638,7 +646,10 @@ export const App = () => {
         onOpenProject={(project) => openProjectOverview(project.projectId)}
         onRemoveProject={handleRemoveJoinedProject}
         onSubmitCode={handleAdditionalProjectCodeSubmit}
+        onOpenHome={() => setRoute({ name: 'workspace-home' })}
         onOpenBackup={() => openBackup()}
+        onOpenCalendarSettings={() => openCalendarSettings()}
+        onOpenSharedSettings={() => openSharedSettings()}
       />
     );
   }
@@ -652,6 +663,7 @@ export const App = () => {
         projectContextId={route.projectId ?? route.fromProjectId}
         storageWarning={storageWarning}
         onBackHome={() => setRoute({ name: 'workspace-home' })}
+        onOpenProjects={() => setRoute({ name: 'joined-projects' })}
         onBackProject={
           route.fromProjectId
             ? () => openProjectOverview(route.fromProjectId!)
@@ -660,7 +672,9 @@ export const App = () => {
         onOpenToday={route.projectId || route.fromProjectId ? () => openToday((route.projectId ?? route.fromProjectId)!) : undefined}
         onOpenWorkflow={route.projectId || route.fromProjectId ? () => openWorkflow((route.projectId ?? route.fromProjectId)!) : undefined}
         onOpenReviewFix={route.projectId || route.fromProjectId ? () => openReviewFix((route.projectId ?? route.fromProjectId)!) : undefined}
+        onOpenCalendarSettings={() => openCalendarSettings(route.projectId ?? route.fromProjectId)}
         onOpenBackup={() => openBackup(route.projectId ?? route.fromProjectId)}
+        onOpenSettings={() => openSharedSettings(route.projectId ?? route.fromProjectId)}
         onChangeStatus={handleChangeStatus}
         onUpdateTaskDetails={handleUpdateTaskDetails}
         onReorder={handleReorder}
@@ -681,6 +695,7 @@ export const App = () => {
         calendarAuthStatus={calendarAuthStatus}
         isConnectingGoogle={isConnectingGoogleCalendar}
         isReloadingCalendar={isLoadingTasks}
+        initialSection={route.section}
         storageWarning={storageWarning}
         onBackHome={() => setRoute({ name: 'workspace-home' })}
         onBackProject={
@@ -715,7 +730,10 @@ export const App = () => {
           onOpenProject={(item) => openProjectOverview(item.projectId)}
           onRemoveProject={handleRemoveJoinedProject}
           onSubmitCode={handleAdditionalProjectCodeSubmit}
+          onOpenHome={() => setRoute({ name: 'workspace-home' })}
           onOpenBackup={() => openBackup()}
+          onOpenCalendarSettings={() => openCalendarSettings()}
+          onOpenSharedSettings={() => openSharedSettings()}
         />
       );
     }
@@ -727,11 +745,14 @@ export const App = () => {
         tasks={visibleTaskViewModels.filter((task) => task.projectId === project.projectId)}
         storageWarning={storageWarning}
         onBackHome={() => setRoute({ name: 'workspace-home' })}
+        onOpenProjects={() => setRoute({ name: 'joined-projects' })}
         onBackProject={() => openProjectOverview(project.projectId)}
         onOpenWorkflow={() => openWorkflow(project.projectId)}
         onOpenReviewFix={() => openReviewFix(project.projectId)}
         onOpenBoard={() => openTaskBoard(project.projectId, project.projectId)}
+        onOpenCalendarSettings={() => openCalendarSettings(project.projectId)}
         onOpenBackup={() => openBackup(project.projectId)}
+        onOpenSettings={() => openSharedSettings(project.projectId)}
       />
     );
   }
@@ -746,7 +767,10 @@ export const App = () => {
           onOpenProject={(item) => openProjectOverview(item.projectId)}
           onRemoveProject={handleRemoveJoinedProject}
           onSubmitCode={handleAdditionalProjectCodeSubmit}
+          onOpenHome={() => setRoute({ name: 'workspace-home' })}
           onOpenBackup={() => openBackup()}
+          onOpenCalendarSettings={() => openCalendarSettings()}
+          onOpenSharedSettings={() => openSharedSettings()}
         />
       );
     }
@@ -758,11 +782,14 @@ export const App = () => {
         tasks={visibleTaskViewModels.filter((task) => task.projectId === project.projectId)}
         storageWarning={storageWarning}
         onBackHome={() => setRoute({ name: 'workspace-home' })}
+        onOpenProjects={() => setRoute({ name: 'joined-projects' })}
         onBackProject={() => openProjectOverview(project.projectId)}
         onOpenToday={() => openToday(project.projectId)}
         onOpenReviewFix={() => openReviewFix(project.projectId)}
         onOpenBoard={() => openTaskBoard(project.projectId, project.projectId)}
+        onOpenCalendarSettings={() => openCalendarSettings(project.projectId)}
         onOpenBackup={() => openBackup(project.projectId)}
+        onOpenSettings={() => openSharedSettings(project.projectId)}
       />
     );
   }
@@ -777,7 +804,10 @@ export const App = () => {
           onOpenProject={(item) => openProjectOverview(item.projectId)}
           onRemoveProject={handleRemoveJoinedProject}
           onSubmitCode={handleAdditionalProjectCodeSubmit}
+          onOpenHome={() => setRoute({ name: 'workspace-home' })}
           onOpenBackup={() => openBackup()}
+          onOpenCalendarSettings={() => openCalendarSettings()}
+          onOpenSharedSettings={() => openSharedSettings()}
         />
       );
     }
@@ -789,11 +819,14 @@ export const App = () => {
         tasks={visibleTaskViewModels.filter((task) => task.projectId === project.projectId)}
         storageWarning={storageWarning}
         onBackHome={() => setRoute({ name: 'workspace-home' })}
+        onOpenProjects={() => setRoute({ name: 'joined-projects' })}
         onBackProject={() => openProjectOverview(project.projectId)}
         onOpenToday={() => openToday(project.projectId)}
         onOpenWorkflow={() => openWorkflow(project.projectId)}
         onOpenBoard={() => openTaskBoard(project.projectId, project.projectId)}
+        onOpenCalendarSettings={() => openCalendarSettings(project.projectId)}
         onOpenBackup={() => openBackup(project.projectId)}
+        onOpenSettings={() => openSharedSettings(project.projectId)}
         onChangeStatus={handleChangeStatus}
         onUpdateTaskDetails={handleUpdateTaskDetails}
         onCalendarWriteBackComplete={() => void loadTasks(visibleWorkspace)}
@@ -811,7 +844,10 @@ export const App = () => {
           onOpenProject={(item) => openProjectOverview(item.projectId)}
           onRemoveProject={handleRemoveJoinedProject}
           onSubmitCode={handleAdditionalProjectCodeSubmit}
+          onOpenHome={() => setRoute({ name: 'workspace-home' })}
           onOpenBackup={() => openBackup()}
+          onOpenCalendarSettings={() => openCalendarSettings()}
+          onOpenSharedSettings={() => openSharedSettings()}
         />
       );
     }
@@ -825,8 +861,11 @@ export const App = () => {
         isReloadingCalendar={isLoadingTasks}
         storageWarning={storageWarning}
         onBack={() => setRoute({ name: 'workspace-home' })}
+        onOpenProjects={() => setRoute({ name: 'joined-projects' })}
         onOpenBoard={() => openTaskBoard(project.projectId, project.projectId)}
+        onOpenCalendarSettings={() => openCalendarSettings(project.projectId)}
         onOpenBackup={() => openBackup(project.projectId)}
+        onOpenSettings={() => openSharedSettings(project.projectId)}
         onOpenToday={() => openToday(project.projectId)}
         onOpenWorkflow={() => openWorkflow(project.projectId)}
         onOpenReviewFix={() => openReviewFix(project.projectId)}
@@ -850,6 +889,8 @@ export const App = () => {
       onSelectProject={openProjectOverview}
       onOpenBoard={() => openTaskBoard()}
       onOpenBackup={() => openBackup()}
+      onOpenCalendarSettings={() => openCalendarSettings()}
+      onOpenSharedSettings={() => openSharedSettings()}
       onOpenJoinedProjects={() => setRoute({ name: 'joined-projects' })}
       onConnectGoogleCalendar={() => void handleConnectGoogleCalendar()}
       onReloadCalendar={() => void loadTasks(visibleWorkspace)}

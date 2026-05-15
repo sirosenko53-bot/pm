@@ -11,6 +11,10 @@ type CommonNavProps = {
   secondaryItems?: CommonNavItem[];
   workspaceName?: string;
   projectName?: string;
+  onOpenProjects?: () => void;
+  onOpenCalendar?: () => void;
+  onOpenBackup?: () => void;
+  onOpenSettings?: () => void;
 };
 
 const pickAction = (items: CommonNavItem[], patterns: string[]) =>
@@ -21,10 +25,17 @@ export const CommonNav = ({
   secondaryItems = [],
   workspaceName = '途切れ制作管理',
   projectName,
+  onOpenProjects,
+  onOpenCalendar,
+  onOpenBackup,
+  onOpenSettings,
 }: CommonNavProps) => {
   const homeAction = pickAction(secondaryItems, ['ワークスペース', 'ホーム']);
   const backupAction = pickAction(secondaryItems, ['設定', 'バックアップ']);
-  const settingsAction = backupAction;
+  const projectsAction = onOpenProjects;
+  const calendarAction = onOpenCalendar;
+  const resolvedBackupAction = onOpenBackup ?? backupAction;
+  const settingsAction = onOpenSettings ?? backupAction;
 
   return (
     <div className="common-nav common-nav-reference" aria-label="プロジェクト内ナビゲーション">
@@ -33,9 +44,9 @@ export const CommonNav = ({
         activeKey="project"
         calendarStatus="正本"
         onHome={homeAction}
-        onProjects={homeAction}
-        onCalendar={backupAction}
-        onBackup={backupAction}
+        onProjects={projectsAction}
+        onCalendar={calendarAction}
+        onBackup={resolvedBackupAction}
         onSettings={settingsAction}
       />
 

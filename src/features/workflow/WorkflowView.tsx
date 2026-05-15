@@ -19,11 +19,14 @@ type Props = {
   tasks: TaskViewModel[];
   storageWarning?: string;
   onBackHome: () => void;
+  onOpenProjects: () => void;
   onBackProject: () => void;
   onOpenToday: () => void;
   onOpenReviewFix: () => void;
   onOpenBoard: () => void;
+  onOpenCalendarSettings: () => void;
   onOpenBackup: () => void;
+  onOpenSettings: () => void;
 };
 
 const formatCompactDateTime = (value?: string): string => {
@@ -42,11 +45,14 @@ export const WorkflowView = ({
   tasks,
   storageWarning,
   onBackHome,
+  onOpenProjects,
   onBackProject,
   onOpenToday,
   onOpenReviewFix,
   onOpenBoard,
+  onOpenCalendarSettings,
   onOpenBackup,
+  onOpenSettings,
 }: Props) => {
   const project = workspace.projects.find((item) => item.projectId === projectId);
   if (!project) {
@@ -65,6 +71,7 @@ export const WorkflowView = ({
   const [stageEditorMessage, setStageEditorMessage] = useState('');
 
   const [selectedStageId, setSelectedStageId] = useState(currentStage?.stageId ?? stages[0]?.stageId ?? '');
+  const [showAllRelatedTasks, setShowAllRelatedTasks] = useState(false);
 
   const selectedStage = useMemo(
     () => stages.find((stage) => stage.stageId === selectedStageId) ?? currentStage ?? stages[0],
@@ -86,6 +93,14 @@ export const WorkflowView = ({
   const stageSummary = calculateStageSummary(stageTasks);
   const progress = calculateStageProgress(stageTasks);
   const nextStage = stages.find((stage) => stage.order > selectedStage.order);
+  const prioritizedStageTasks = [...stageTasks].sort((a, b) => {
+    if (a.isDelayed !== b.isDelayed) return a.isDelayed ? -1 : 1;
+    if (Boolean(a.parseError) !== Boolean(b.parseError)) return a.parseError ? -1 : 1;
+    const aDate = new Date(a.dueDate || a.endDateTime || a.startDateTime || 0).getTime();
+    const bDate = new Date(b.dueDate || b.endDateTime || b.startDateTime || 0).getTime();
+    return aDate - bDate;
+  });
+  const visibleStageTasks = showAllRelatedTasks ? prioritizedStageTasks : prioritizedStageTasks.slice(0, 6);
 
   const handleSaveStages = () => {
     const stageNames = stageEditorText
@@ -115,6 +130,10 @@ export const WorkflowView = ({
             { label: 'ワークスペースホームへ戻る', onClick: onBackHome },
             { label: '設定・バックアップ', onClick: onOpenBackup },
           ]}
+          onOpenProjects={onOpenProjects}
+          onOpenCalendar={onOpenCalendarSettings}
+          onOpenBackup={onOpenBackup}
+          onOpenSettings={onOpenSettings}
         />
         <div className="page-title-row">
           <h1>{project.projectName}</h1>
@@ -144,7 +163,10 @@ export const WorkflowView = ({
                   type="button"
                   key={stage.stageId}
                   className={`workflow-stage-item ${isSelected ? 'active' : ''} ${isComplete ? 'complete' : ''} ${isCurrent ? 'current' : ''}`}
-                  onClick={() => setSelectedStageId(stage.stageId)}
+                  onClick={() => {
+                    setSelectedStageId(stage.stageId);
+                    setShowAllRelatedTasks(false);
+                  }}
                 >
                   <span
                     className={`workflow-step-marker ${isComplete ? 'complete' : isCurrent ? 'current' : ''}`}
@@ -207,10 +229,26 @@ export const WorkflowView = ({
             <span className="pill">遅延 {stageSummary.delayed}件</span>
           </div>
 
-          <h3>関連タスク</h3>
-          <div className="today-list">
+          <div className="workflow-related-header">
+            <div>
+              <h3>関連タスク</h3>
+              {stageTasks.length > 6 && !showAllRelatedTasks ? (
+                <p className="meta">遅延・解析エラーを優先して6件だけ表示しています。</p>
+              ) : null}
+            </div>
+            {stageTasks.length > 6 ? (
+              <button
+                type="button"
+                className="card-link-button"
+                onClick={() => setShowAllRelatedTasks((current) => !current)}
+              >
+                {showAllRelatedTasks ? '少なく表示' : 'すべて表示'}
+              </button>
+            ) : null}
+          </div>
+          <div className="today-list workflow-task-list-scroll">
             {stageTasks.length === 0 ? <p className="empty-state">関連タスクがありません。</p> : null}
-            {stageTasks.map((task) => (
+            {visibleStageTasks.map((task) => (
               <article className="today-item" key={task.taskId}>
                 <p className="today-time">{formatCompactDateTime(task.dueDate || task.endDateTime)}</p>
                 <div>

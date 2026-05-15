@@ -12,8 +12,11 @@ type Props = {
   isReloadingCalendar?: boolean;
   storageWarning?: string;
   onBack: () => void;
+  onOpenProjects: () => void;
   onOpenBoard: () => void;
+  onOpenCalendarSettings: () => void;
   onOpenBackup: () => void;
+  onOpenSettings: () => void;
   onOpenToday: () => void;
   onOpenWorkflow: () => void;
   onOpenReviewFix: () => void;
@@ -46,8 +49,11 @@ export const ProjectOverview = ({
   isReloadingCalendar = false,
   storageWarning,
   onBack,
+  onOpenProjects,
   onOpenBoard,
+  onOpenCalendarSettings,
   onOpenBackup,
+  onOpenSettings,
   onOpenToday,
   onOpenWorkflow,
   onOpenReviewFix,
@@ -100,6 +106,10 @@ export const ProjectOverview = ({
           { label: 'ワークスペースホームへ戻る', onClick: onBack },
           { label: '設定・バックアップ', onClick: onOpenBackup },
         ]}
+        onOpenProjects={onOpenProjects}
+        onOpenCalendar={onOpenCalendarSettings}
+        onOpenBackup={onOpenBackup}
+        onOpenSettings={onOpenSettings}
       />
 
       <section className="card project-overview-header">
@@ -135,6 +145,39 @@ export const ProjectOverview = ({
             共有設定へ
           </button>
         </div>
+      </section>
+
+      <section className="overview-kpi-grid" aria-label="プロジェクトの主要指標">
+        <article className="card overview-kpi-card">
+          <span>現在工程</span>
+          <strong>{currentStageLabel}</strong>
+          <small>進捗 {progress}%</small>
+        </article>
+        <article className="card overview-kpi-card">
+          <span>次のマイルストーン</span>
+          <strong>{project.milestones[0] ?? '未設定'}</strong>
+          <small>直近の区切り</small>
+        </article>
+        <article className="card overview-kpi-card">
+          <span>今日の予定</span>
+          <strong>{todayTasks.length}件</strong>
+          <small>今日動かすもの</small>
+        </article>
+        <article className={`card overview-kpi-card ${delayedTasks.length > 0 ? 'danger' : ''}`}>
+          <span>遅延</span>
+          <strong>{delayedTasks.length}件</strong>
+          <small>確認が必要</small>
+        </article>
+        <article className="card overview-kpi-card">
+          <span>確認待ち</span>
+          <strong>{summary.reviewWaiting}件</strong>
+          <small>レビュー待ち</small>
+        </article>
+        <article className="card overview-kpi-card">
+          <span>修正待ち</span>
+          <strong>{summary.revisionWaiting}件</strong>
+          <small>対応待ち</small>
+        </article>
       </section>
 
       <section className="overview-feature-grid">

@@ -21,6 +21,8 @@ type Props = {
   onSelectProject: (projectId: string) => void;
   onOpenBoard: () => void;
   onOpenBackup: () => void;
+  onOpenCalendarSettings: () => void;
+  onOpenSharedSettings: () => void;
   onOpenJoinedProjects: () => void;
   onConnectGoogleCalendar: () => void;
   onReloadCalendar: () => void;
@@ -40,6 +42,8 @@ export const WorkspaceHome = ({
   onSelectProject,
   onOpenBoard,
   onOpenBackup,
+  onOpenCalendarSettings,
+  onOpenSharedSettings,
   onOpenJoinedProjects,
   onConnectGoogleCalendar,
   onReloadCalendar,
@@ -75,11 +79,11 @@ export const WorkspaceHome = ({
         activeKey="home"
         calendarStatus={calendarStatus}
         lastUpdatedText={lastImportText}
-        onHome={() => undefined}
+        onHome={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
         onProjects={onOpenJoinedProjects}
-        onCalendar={onReloadCalendar}
+        onCalendar={onOpenCalendarSettings}
         onBackup={onOpenBackup}
-        onSettings={onOpenBackup}
+        onSettings={onOpenSharedSettings}
       />
       <section className="card workspace-home-header">
         <div className="workspace-topbar">

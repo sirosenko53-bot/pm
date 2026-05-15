@@ -37,11 +37,14 @@ type Props = {
   projectContextId?: string;
   storageWarning?: string;
   onBackHome: () => void;
+  onOpenProjects?: () => void;
   onBackProject?: () => void;
   onOpenToday?: () => void;
   onOpenWorkflow?: () => void;
   onOpenReviewFix?: () => void;
+  onOpenCalendarSettings?: () => void;
   onOpenBackup?: () => void;
+  onOpenSettings?: () => void;
   onChangeStatus: (task: TaskViewModel, status: TaskStatus) => void;
   onUpdateTaskDetails: (task: TaskViewModel, patch: TaskDetailPatch) => void;
   onReorder: (
@@ -323,11 +326,14 @@ export const TaskBoard = ({
   projectContextId,
   storageWarning,
   onBackHome,
+  onOpenProjects,
   onBackProject,
   onOpenToday,
   onOpenWorkflow,
   onOpenReviewFix,
+  onOpenCalendarSettings,
   onOpenBackup,
+  onOpenSettings,
   onChangeStatus,
   onUpdateTaskDetails,
   onReorder,
@@ -468,6 +474,10 @@ export const TaskBoard = ({
             { label: 'ワークスペースホームへ戻る', onClick: onBackHome },
             ...(onOpenBackup ? [{ label: '設定・バックアップ', onClick: onOpenBackup }] : []),
           ]}
+          onOpenProjects={onOpenProjects}
+          onOpenCalendar={onOpenCalendarSettings}
+          onOpenBackup={onOpenBackup}
+          onOpenSettings={onOpenSettings}
         />
         <div className="page-title-row">
           <h1>{projectContextId ? boardTitle : 'タスクボード'}</h1>
