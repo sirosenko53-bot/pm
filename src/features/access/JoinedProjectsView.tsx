@@ -1,5 +1,6 @@
 import { FormEvent, useState } from 'react';
 import type { Project, Workspace } from '../../domain/workspaceTypes';
+import { AppSidebar } from '../navigation/AppSidebar';
 import type { JoinedProject } from './projectAccessTypes';
 import { findProjectByAccessProjectId, getAccessProjectId } from './projectAccessStore';
 
@@ -9,7 +10,10 @@ type Props = {
   onOpenProject: (project: Project) => void;
   onRemoveProject: (projectId: string) => void;
   onSubmitCode: (code: string) => { ok: true; message?: string } | { ok: false; error: string };
+  onOpenHome: () => void;
   onOpenBackup: () => void;
+  onOpenCalendarSettings?: () => void;
+  onOpenSharedSettings?: () => void;
 };
 
 const formatDateTime = (value?: string) => value ? new Date(value).toLocaleString('ja-JP') : '未閲覧';
@@ -20,7 +24,10 @@ export const JoinedProjectsView = ({
   onOpenProject,
   onRemoveProject,
   onSubmitCode,
+  onOpenHome,
   onOpenBackup,
+  onOpenCalendarSettings,
+  onOpenSharedSettings,
 }: Props) => {
   const [projectCode, setProjectCode] = useState('');
   const [error, setError] = useState('');
@@ -55,7 +62,17 @@ export const JoinedProjectsView = ({
   };
 
   return (
-    <main className="page">
+    <main className="page joined-reference-page">
+      <AppSidebar
+        workspaceName={workspace.workspaceName}
+        activeKey="project"
+        calendarStatus="ローカル保存"
+        onHome={onOpenHome}
+        onProjects={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+        onCalendar={onOpenCalendarSettings}
+        onBackup={onOpenBackup}
+        onSettings={onOpenSharedSettings}
+      />
       <section className="card joined-projects-header">
         <div>
           <div className="workspace-brand">
@@ -66,27 +83,6 @@ export const JoinedProjectsView = ({
           <p className="meta">この端末で参加済みのプロジェクトです。</p>
         </div>
         <button type="button" className="secondary" onClick={onOpenBackup}>設定・バックアップ</button>
-      </section>
-
-      <section className="share-guide-card" aria-label="共有された人向けの使い方">
-        <div>
-          <p className="meta">共有された人向け</p>
-          <h2>まずはこの順番で進めます</h2>
-        </div>
-        <ol className="share-guide-steps">
-          <li>
-            <strong>1. プロジェクトを開く</strong>
-            <p>参加中カードの「このプロジェクトを開く」から作業画面へ進みます。</p>
-          </li>
-          <li>
-            <strong>2. 予定を更新する</strong>
-            <p>ホームまたはプロジェクト概要でGoogleカレンダーを取り込みます。</p>
-          </li>
-          <li>
-            <strong>3. 必要なら共有を読む</strong>
-            <p>他の人の進行状況が必要なときだけ、設定画面からチーム共有を読み込みます。</p>
-          </li>
-        </ol>
       </section>
 
       <section className="joined-projects-layout">

@@ -27,11 +27,14 @@ type Props = {
   tasks: TaskViewModel[];
   storageWarning?: string;
   onBackHome: () => void;
+  onOpenProjects: () => void;
   onBackProject: () => void;
   onOpenToday: () => void;
   onOpenWorkflow: () => void;
   onOpenBoard: () => void;
+  onOpenCalendarSettings: () => void;
   onOpenBackup: () => void;
+  onOpenSettings: () => void;
   onChangeStatus: (task: TaskViewModel, status: TaskStatus) => void;
   onUpdateTaskDetails: (task: TaskViewModel, patch: TaskDetailPatch) => void;
   onCalendarWriteBackComplete: () => void;
@@ -187,11 +190,14 @@ export const ReviewFixView = ({
   tasks,
   storageWarning,
   onBackHome,
+  onOpenProjects,
   onBackProject,
   onOpenToday,
   onOpenWorkflow,
   onOpenBoard,
+  onOpenCalendarSettings,
   onOpenBackup,
+  onOpenSettings,
   onChangeStatus,
   onUpdateTaskDetails,
   onCalendarWriteBackComplete,
@@ -220,6 +226,10 @@ export const ReviewFixView = ({
             { label: 'ワークスペースホームへ戻る', onClick: onBackHome },
             { label: '設定・バックアップ', onClick: onOpenBackup },
           ]}
+          onOpenProjects={onOpenProjects}
+          onOpenCalendar={onOpenCalendarSettings}
+          onOpenBackup={onOpenBackup}
+          onOpenSettings={onOpenSettings}
         />
         <div className="page-title-row">
           <h1>{project.projectName}</h1>
@@ -285,6 +295,20 @@ export const ReviewFixView = ({
           </div>
         </aside>
       </section>
+
+      {summary.reviewWaiting.length === 0 && summary.fixWaiting.length === 0 ? (
+        <section className="card review-fix-next-actions">
+          <div>
+            <h2>今できる確認</h2>
+            <p className="meta">確認待ち・修正待ちがない場合は、遅延や今日の作業から次の対応を確認します。</p>
+          </div>
+          <div className="today-empty-actions">
+            <button type="button" className="card-link-button" onClick={onOpenBoard}>遅延タスクを見る</button>
+            <button type="button" className="card-link-button" onClick={onOpenToday}>今日画面を見る</button>
+            <button type="button" className="card-link-button" onClick={onOpenCalendarSettings}>カレンダー整備へ</button>
+          </div>
+        </section>
+      ) : null}
 
       <section className="card review-fix-insight-card">
         <h2>集計</h2>

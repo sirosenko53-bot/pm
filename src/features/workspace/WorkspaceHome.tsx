@@ -4,6 +4,7 @@ import type {
   CalendarConnectionDiagnostic,
   CalendarImportSummary,
 } from '../calendar/calendarDiagnostics';
+import { AppSidebar } from '../navigation/AppSidebar';
 import { calculateTaskSummary, filterTasksByProject } from '../tasks/taskMetrics';
 
 type Props = {
@@ -20,6 +21,8 @@ type Props = {
   onSelectProject: (projectId: string) => void;
   onOpenBoard: () => void;
   onOpenBackup: () => void;
+  onOpenCalendarSettings: () => void;
+  onOpenSharedSettings: () => void;
   onOpenJoinedProjects: () => void;
   onConnectGoogleCalendar: () => void;
   onReloadCalendar: () => void;
@@ -39,6 +42,8 @@ export const WorkspaceHome = ({
   onSelectProject,
   onOpenBoard,
   onOpenBackup,
+  onOpenCalendarSettings,
+  onOpenSharedSettings,
   onOpenJoinedProjects,
   onConnectGoogleCalendar,
   onReloadCalendar,
@@ -68,7 +73,18 @@ export const WorkspaceHome = ({
     : '未実施';
 
   return (
-    <main className="page">
+    <main className="page workspace-reference-page">
+      <AppSidebar
+        workspaceName={workspace.workspaceName}
+        activeKey="home"
+        calendarStatus={calendarStatus}
+        lastUpdatedText={lastImportText}
+        onHome={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+        onProjects={onOpenJoinedProjects}
+        onCalendar={onOpenCalendarSettings}
+        onBackup={onOpenBackup}
+        onSettings={onOpenSharedSettings}
+      />
       <section className="card workspace-home-header">
         <div className="workspace-topbar">
           <div className="workspace-brand">
@@ -113,64 +129,6 @@ export const WorkspaceHome = ({
               </span>
             ) : null}
           </div>
-        </div>
-        <div className="quick-setup-card" aria-label="初回セットアップ">
-          <div className="quick-setup-heading">
-            <p className="meta">初回はここだけ確認</p>
-            <h2>3ステップで使い始める</h2>
-          </div>
-          <ol className="quick-setup-steps">
-            <li>
-              <span className="setup-step-number">1</span>
-              <div>
-                <strong>プロジェクト参加</strong>
-                <p>{workspace.projects.length}件の参加中プロジェクトを表示しています。</p>
-              </div>
-              <button type="button" className="setup-step-action" onClick={onOpenJoinedProjects}>
-                参加を確認
-              </button>
-            </li>
-            <li>
-              <span className="setup-step-number">2</span>
-              <div>
-                <strong>Googleアカウントで接続</strong>
-                <p>カレンダーIDだけでは読めません。共有権限のあるGoogleアカウントで接続します。</p>
-              </div>
-              <button
-                type="button"
-                className="setup-step-action"
-                onClick={onConnectGoogleCalendar}
-                disabled={isConnectingGoogle || calendarDiagnostics.isMockMode}
-              >
-                {isConnectingGoogle ? '接続中' : 'Googleに接続'}
-              </button>
-            </li>
-            <li>
-              <span className="setup-step-number">3</span>
-              <div>
-                <strong>Googleカレンダーを取り込む</strong>
-                <p>
-                  予定を最新にします。状態: {calendarStatus}
-                  {calendarImportSummary?.skippedSourceCount
-                    ? ` / 未設定 ${calendarImportSummary.skippedSourceCount}件を読み飛ばし`
-                    : ''}
-                </p>
-              </div>
-              <button type="button" className="setup-step-action primary-lite" onClick={onReloadCalendar} disabled={isReloadingCalendar}>
-                {isReloadingCalendar ? '取り込み中' : '予定を更新'}
-              </button>
-            </li>
-            <li>
-              <span className="setup-step-number">4</span>
-              <div>
-                <strong>チーム共有を確認</strong>
-                <p>他の端末で保存された進行状況が必要なときだけ開きます。</p>
-              </div>
-              <button type="button" className="setup-step-action" onClick={onOpenBackup}>
-                共有設定へ
-              </button>
-            </li>
-          </ol>
         </div>
         <div className="overview-nav">
           <button type="button" className="secondary" onClick={onReloadCalendar} disabled={isReloadingCalendar}>

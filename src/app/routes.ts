@@ -1,3 +1,5 @@
+export type SettingsSection = 'calendar' | 'backup' | 'shared' | 'settings';
+
 export type AppRoute =
   | { name: 'project-code' }
   | { name: 'joined-projects' }
@@ -7,4 +9,4 @@ export type AppRoute =
   | { name: 'today'; projectId: string }
   | { name: 'workflow'; projectId: string }
   | { name: 'review-fix'; projectId: string }
-  | { name: 'backup-settings'; projectId?: string };
+  | { name: 'backup-settings'; projectId?: string; section?: SettingsSection };
