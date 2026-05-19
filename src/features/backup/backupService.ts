@@ -3,6 +3,11 @@ import type { Project, Workspace } from '../../domain/workspaceTypes';
 import type { WorkflowTemplate } from '../../domain/workflowTypes';
 import { loadFromStorage, saveToStorage } from '../../storage/localStorageStore';
 import { replaceAllTaskOverlays } from '../tasks/taskOverlayStore';
+import {
+  restoreCustomWorkflowSettings,
+  type CustomWorkflowMap,
+  type CustomWorkflowStageDetailMap,
+} from '../workflow/customWorkflowStore';
 import type { BackupPackage, RestoreResult, ViewPreference } from './backupTypes';
 
 const LAST_BACKUP_AT_KEY = 'seisaku-pm:last-backup-at';
@@ -15,6 +20,8 @@ type BackupCreateParams = {
   workflowTemplates: WorkflowTemplate[];
   taskOverlays: TaskOverlay[];
   viewPreference: ViewPreference;
+  customWorkflowStageNames?: CustomWorkflowMap;
+  customWorkflowStageDetails?: CustomWorkflowStageDetailMap;
   lastSyncedAt: string | null;
 };
 
@@ -50,6 +57,8 @@ export const createBackupPackage = ({
   workflowTemplates,
   taskOverlays,
   viewPreference,
+  customWorkflowStageNames,
+  customWorkflowStageDetails,
   lastSyncedAt,
 }: BackupCreateParams): BackupPackage => ({
   app: 'seisaku-pm',
@@ -65,6 +74,8 @@ export const createBackupPackage = ({
   workflowTemplates,
   taskOverlays,
   viewPreference,
+  customWorkflowStageNames,
+  customWorkflowStageDetails,
   lastSyncedAt,
 });
 
@@ -163,11 +174,25 @@ export const restoreBackupPackage = (backup: BackupPackage): RestoreResult => {
   }
 
   const backupAtResult = saveLastBackupAt(new Date().toISOString());
+  const workflowWarnings: string[] = [];
+
+  if (backup.customWorkflowStageNames || backup.customWorkflowStageDetails) {
+    const workflowResult = restoreCustomWorkflowSettings(
+      backup.customWorkflowStageNames ?? {},
+      backup.customWorkflowStageDetails ?? {},
+    );
+
+    if (workflowResult.warning) {
+      workflowWarnings.push(workflowResult.warning);
+    }
+  }
+
+  const warning = [backupAtResult.warning, ...workflowWarnings].filter(Boolean).join('\n') || undefined;
 
   return {
     ok: true,
     message: `バックアップを上書き復元しました（${backup.taskOverlays.length}件）。`,
-    warning: backupAtResult.warning,
+    warning,
     restoredOverlayCount: backup.taskOverlays.length,
   };
 };

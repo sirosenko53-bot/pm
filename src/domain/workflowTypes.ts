@@ -5,6 +5,8 @@ export type WorkflowStage = {
   stageName: string;
   order: number;
   keywordRules: string[];
+  objective?: string;
+  doneConditions?: string[];
 };
 
 export type WorkflowTemplate = {

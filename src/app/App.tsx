@@ -175,6 +175,14 @@ export const App = () => {
   const autoReadAttemptedWorkspaceRef = useRef<string | null>(null);
   const [lastProjectContextId, setLastProjectContextId] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (route.name !== 'backup-settings') {
+      return;
+    }
+
+    window.requestAnimationFrame(() => window.scrollTo({ top: 0 }));
+  }, [route]);
+
   const workspaceWithMembers = useMemo<Workspace>(() => ({
     ...workspace,
     members: mergeMembers(workspace.members, customMembers, hiddenMemberIds, deletedMemberIds),
@@ -468,6 +476,7 @@ export const App = () => {
   const openBackup = (projectId?: string, section: SettingsSection = 'backup') => {
     if (projectId) setLastProjectContextId(projectId);
     setRoute({ name: 'backup-settings', projectId: projectId ?? lastProjectContextId ?? undefined, section });
+    window.requestAnimationFrame(() => window.scrollTo({ top: 0 }));
   };
 
   const openCalendarSettings = (projectId?: string) => {
@@ -716,6 +725,9 @@ export const App = () => {
         }}
         onSharedStateApplied={handleSharedStateApplied}
         onCalendarSourceSettingsUpdated={() => setCalendarSourceSettings(loadCalendarSourceSettings())}
+        onOpenCalendarSettings={() => openCalendarSettings(route.projectId)}
+        onOpenBackupSettings={() => openBackup(route.projectId, 'backup')}
+        onOpenSharedSettings={() => openSharedSettings(route.projectId)}
       />
     );
   }

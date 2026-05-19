@@ -11,7 +11,7 @@ import type { Member, Workspace } from '../../domain/workspaceTypes';
 import { CalendarMaintenancePanel } from '../calendar/CalendarMaintenancePanel';
 import { CommonNav } from '../navigation/CommonNav';
 import { resolveProjectWorkflowStages } from '../workflow/customWorkflowStore';
-import { calculateReviewFixSummary } from './reviewFixUtils';
+import { calculateReviewFixSummary, sortReviewFixTasks } from './reviewFixUtils';
 
 type TaskDetailPatch = {
   assignee: string;
@@ -65,18 +65,32 @@ const resolveAssigneeOptions = (members: Member[], currentAssignee?: string): st
   return options;
 };
 
+const isBulkEditableTask = (task: TaskViewModel): boolean =>
+  task.status === '確認待ち'
+  || task.status === '修正待ち'
+  || task.isDelayed
+  || Boolean(task.parseError)
+  || task.isUnclassifiedProject
+  || !task.assignee
+  || task.assignee === '未設定'
+  || !task.stageId;
+
 const ReviewFixTaskCard = ({
   task,
   stages,
   members,
+  selected,
   onOpenBoard,
+  onToggleSelected,
   onChangeStatus,
   onUpdateTaskDetails,
 }: {
   task: TaskViewModel;
   stages: WorkflowStage[];
   members: Member[];
+  selected: boolean;
   onOpenBoard: () => void;
+  onToggleSelected: (taskId: string, selected: boolean) => void;
   onChangeStatus: (target: TaskViewModel, status: TaskStatus) => void;
   onUpdateTaskDetails: (target: TaskViewModel, patch: TaskDetailPatch) => void;
 }) => {
@@ -91,6 +105,14 @@ const ReviewFixTaskCard = ({
   return (
     <article className="review-fix-task-card">
       <div className="review-fix-task-header">
+        <label className="review-fix-select-task">
+          <input
+            type="checkbox"
+            checked={selected}
+            onChange={(event) => onToggleSelected(task.taskId, event.target.checked)}
+          />
+          <span>選択</span>
+        </label>
         <p className="review-fix-task-title">{task.taskName}</p>
         <span className="pill">{task.status}</span>
       </div>
@@ -204,10 +226,72 @@ export const ReviewFixView = ({
 }: Props) => {
   const project = workspace.projects.find((item) => item.projectId === projectId);
   const stages = useMemo(() => (project ? resolveProjectWorkflowStages(project) : []), [project]);
+  const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([]);
+  const [bulkAssignee, setBulkAssignee] = useState('');
+  const [bulkPriority, setBulkPriority] = useState<TaskPriority | ''>('');
+  const [bulkStageId, setBulkStageId] = useState('');
+  const [bulkMessage, setBulkMessage] = useState<string | null>(null);
+  const editableTasks = useMemo(() => {
+    const seen = new Set<string>();
+    return sortReviewFixTasks(tasks.filter(isBulkEditableTask)).filter((task) => {
+      if (seen.has(task.taskId)) return false;
+      seen.add(task.taskId);
+      return true;
+    });
+  }, [tasks]);
   if (!project) return null;
 
   const today = new Date();
   const summary = calculateReviewFixSummary(tasks, today);
+  const selectedTasks = editableTasks.filter((task) => selectedTaskIds.includes(task.taskId));
+  const selectedBulkStage = stages.find((stage) => stage.stageId === bulkStageId);
+  const hasBulkPatch = bulkAssignee !== '' || bulkPriority !== '' || bulkStageId !== '';
+  const assigneeOptions = Array.from(
+    new Set([
+      ...workspace.members.map((member) => member.displayName).filter((name): name is string => Boolean(name)),
+      ...editableTasks.map((task) => task.assignee).filter((name): name is string => Boolean(name)),
+    ]),
+  );
+
+  const handleToggleSelectedTask = (taskId: string, isSelected: boolean) => {
+    setBulkMessage(null);
+    setSelectedTaskIds((current) => {
+      if (isSelected) {
+        return current.includes(taskId) ? current : [...current, taskId];
+      }
+      return current.filter((id) => id !== taskId);
+    });
+  };
+
+  const handleToggleAllEditableTasks = (isSelected: boolean) => {
+    setBulkMessage(null);
+    setSelectedTaskIds(isSelected ? editableTasks.map((task) => task.taskId) : []);
+  };
+
+  const handleApplyBulkUpdate = () => {
+    if (selectedTasks.length === 0) {
+      setBulkMessage('変更するタスクを選択してください。');
+      return;
+    }
+
+    if (!hasBulkPatch) {
+      setBulkMessage('変更する項目を選択してください。');
+      return;
+    }
+
+    selectedTasks.forEach((task) => {
+      onUpdateTaskDetails(task, {
+        assignee: bulkAssignee || task.assignee,
+        taskName: task.taskName,
+        priority: (bulkPriority || task.priority || '中') as TaskPriority,
+        stageId: bulkStageId || task.stageId,
+        stageName: bulkStageId ? selectedBulkStage?.stageName : task.stageName,
+      });
+    });
+
+    setBulkMessage(`${selectedTasks.length}件のタスクを一括変更しました。`);
+    setSelectedTaskIds([]);
+  };
 
   return (
     <main className="page review-fix-page">
@@ -240,6 +324,100 @@ export const ReviewFixView = ({
         {storageWarning ? <p className="warning-text">{storageWarning}</p> : null}
       </section>
 
+      <section className="card review-fix-bulk-card">
+        <div>
+          <h2>選択したタスクをまとめて変更</h2>
+          <p className="meta">遅延、解析エラー、確認待ち、修正待ちなど整備が必要なタスクを選び、担当者・優先度・工程をまとめて更新します。</p>
+        </div>
+        <div className="review-fix-selectable-list">
+          <div className="review-fix-selectable-heading">
+            <strong>選択できるタスク</strong>
+            <span className="pill">{editableTasks.length}件</span>
+          </div>
+          {editableTasks.length === 0 ? (
+            <p className="empty-state">一括変更できる整備対象タスクはありません。</p>
+          ) : null}
+          {editableTasks.map((task) => (
+            <label key={task.taskId} className="review-fix-selectable-item">
+              <input
+                type="checkbox"
+                checked={selectedTaskIds.includes(task.taskId)}
+                onChange={(event) => handleToggleSelectedTask(task.taskId, event.target.checked)}
+              />
+              <span className="review-fix-selectable-main">
+                <strong>{task.taskName}</strong>
+                <small>
+                  担当: {task.assignee || '未設定'} / 工程: {task.stageName ?? '未設定'} / 期限: {formatDueLabel(task)}
+                </small>
+              </span>
+              <span className="status-row review-fix-selectable-tags">
+                {task.isDelayed ? <span className="warning">遅延</span> : null}
+                {task.parseError ? <span className="warning">解析エラー</span> : null}
+                {task.isUnclassifiedProject ? <span className="warning">未分類</span> : null}
+                {task.status === '確認待ち' || task.status === '修正待ち' ? <span className="pill">{task.status}</span> : null}
+              </span>
+            </label>
+          ))}
+        </div>
+        <div className="review-fix-bulk-grid">
+          <label>
+            担当者
+            <select value={bulkAssignee} onChange={(event) => setBulkAssignee(event.target.value)}>
+              <option value="">変更しない</option>
+              {assigneeOptions.map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            優先度
+            <select value={bulkPriority} onChange={(event) => setBulkPriority(event.target.value as TaskPriority | '')}>
+              <option value="">変更しない</option>
+              {TASK_PRIORITIES.map((nextPriority) => (
+                <option key={nextPriority} value={nextPriority}>
+                  {nextPriority}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            工程
+            <select value={bulkStageId} onChange={(event) => setBulkStageId(event.target.value)}>
+              <option value="">変更しない</option>
+              {stages.map((stage) => (
+                <option key={stage.stageId} value={stage.stageId}>
+                  {stage.order}. {stage.stageName}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+        <div className="review-fix-bulk-actions">
+          <label className="review-fix-select-all">
+            <input
+              type="checkbox"
+              checked={editableTasks.length > 0 && selectedTasks.length === editableTasks.length}
+              disabled={editableTasks.length === 0}
+              onChange={(event) => handleToggleAllEditableTasks(event.target.checked)}
+            />
+            <span>表示中の整備対象タスクをすべて選択</span>
+          </label>
+          <button
+            type="button"
+            className="primary"
+            disabled={selectedTasks.length === 0 || !hasBulkPatch}
+            onClick={handleApplyBulkUpdate}
+          >
+            選択した{selectedTasks.length}件を変更
+          </button>
+        </div>
+        {bulkMessage ? (
+          <p className={bulkMessage.includes('しました') ? 'success-text' : 'warning-text'}>{bulkMessage}</p>
+        ) : null}
+      </section>
+
       <section className="review-fix-dashboard">
         <div className="review-fix-main-grid">
           <article className="card review-fix-column review-fix-column-review">
@@ -255,7 +433,9 @@ export const ReviewFixView = ({
                   task={task}
                   stages={stages}
                   members={workspace.members}
+                  selected={selectedTaskIds.includes(task.taskId)}
                   onOpenBoard={onOpenBoard}
+                  onToggleSelected={handleToggleSelectedTask}
                   onChangeStatus={onChangeStatus}
                   onUpdateTaskDetails={onUpdateTaskDetails}
                 />
@@ -276,7 +456,9 @@ export const ReviewFixView = ({
                   task={task}
                   stages={stages}
                   members={workspace.members}
+                  selected={selectedTaskIds.includes(task.taskId)}
                   onOpenBoard={onOpenBoard}
+                  onToggleSelected={handleToggleSelectedTask}
                   onChangeStatus={onChangeStatus}
                   onUpdateTaskDetails={onUpdateTaskDetails}
                 />

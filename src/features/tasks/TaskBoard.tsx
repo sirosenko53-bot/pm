@@ -464,7 +464,7 @@ export const TaskBoard = ({
   };
 
   return (
-    <main className="page">
+    <main className="page task-board-page">
       <section className="card board-header">
         <CommonNav
           workspaceName={workspace.workspaceName}

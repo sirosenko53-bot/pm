@@ -34,6 +34,7 @@ import { getAllTaskOverlays } from '../tasks/taskOverlayStore';
 import { readSharedStateFromDrive } from '../sharedState/sharedStateReadService';
 import type { AddMemberResult, MemberChangeResult } from '../members/memberStore';
 import { AppSidebar } from '../navigation/AppSidebar';
+import { loadCustomWorkflowStageDetails, loadCustomWorkflowStageNames } from '../workflow/customWorkflowStore';
 import {
   createBackupPackage,
   exportBackupToFile,
@@ -72,6 +73,9 @@ type Props = {
   onSharedStateMetadataUpdated: (metadata: SharedStateMetadata, warning?: string) => void;
   onSharedStateApplied: (message: string, warning?: string) => void;
   onCalendarSourceSettingsUpdated: () => void;
+  onOpenCalendarSettings?: () => void;
+  onOpenBackupSettings?: () => void;
+  onOpenSharedSettings?: () => void;
   initialSection?: SettingsSection;
 };
 
@@ -117,6 +121,9 @@ export const BackupPanel = ({
   onSharedStateMetadataUpdated,
   onSharedStateApplied,
   onCalendarSourceSettingsUpdated,
+  onOpenCalendarSettings,
+  onOpenBackupSettings,
+  onOpenSharedSettings,
   initialSection = 'backup',
 }: Props) => {
   const [panelMessage, setPanelMessage] = useState<string | undefined>();
@@ -236,6 +243,8 @@ export const BackupPanel = ({
         workflowTemplates: WORKFLOW_TEMPLATES,
         taskOverlays: getAllTaskOverlays(),
         viewPreference: loadViewPreference(),
+        customWorkflowStageNames: loadCustomWorkflowStageNames(),
+        customWorkflowStageDetails: loadCustomWorkflowStageDetails(),
         lastSyncedAt,
       });
       exportBackupToFile(backup);
@@ -531,18 +540,53 @@ export const BackupPanel = ({
     onRestored(result.message, result.warning);
   };
 
+  const activeSettingsPage = initialSection === 'calendar'
+    ? 'calendar'
+    : initialSection === 'backup'
+      ? 'backup'
+      : 'settings';
+  const activeSidebarKey = activeSettingsPage === 'calendar'
+    ? 'calendar'
+    : activeSettingsPage === 'backup'
+      ? 'backup'
+      : 'settings';
+  const pageTitleMap = {
+    calendar: {
+      title: 'カレンダー連携',
+      chip: 'カレンダー',
+      context: 'Googleカレンダー',
+      description: 'Googleカレンダーの接続、カレンダーID、予定の取り込み設定を管理します。',
+    },
+    backup: {
+      title: 'バックアップ',
+      chip: 'バックアップ',
+      context: '復元用ファイル',
+      description: 'この端末の状態の保存、復元ファイルの読み込み、バックアップ設定を管理します。',
+    },
+    settings: {
+      title: '設定・同期',
+      chip: '設定・同期',
+      context: '共有と担当者',
+      description: '共有ファイル設定、同期設定、担当者候補を管理します。',
+    },
+  }[activeSettingsPage];
+
+  const openCalendarPage = onOpenCalendarSettings ?? (() => scrollToSettingsSection('calendar'));
+  const openBackupPage = onOpenBackupSettings ?? (() => scrollToSettingsSection('backup'));
+  const openSettingsPage = onOpenSharedSettings ?? (() => scrollToSettingsSection('shared'));
+
   return (
     <main className="page settings-reference-page">
       <AppSidebar
         workspaceName={workspace.workspaceName}
-        activeKey="settings"
+        activeKey={activeSidebarKey}
         calendarStatus={calendarStatus}
         lastUpdatedText={lastImportText}
         onHome={onBackHome}
         onProjects={onBackProject ?? onBackHome}
-        onCalendar={() => scrollToSettingsSection('calendar')}
-        onBackup={() => scrollToSettingsSection('backup')}
-        onSettings={() => scrollToSettingsSection('shared')}
+        onCalendar={openCalendarPage}
+        onBackup={openBackupPage}
+        onSettings={openSettingsPage}
       />
       <section className="card board-header">
         <div className="settings-topbar">
@@ -552,7 +596,7 @@ export const BackupPanel = ({
           </div>
           <div className="settings-topbar-context" aria-label="現在の階層">
             <strong>{workspace.workspaceName}</strong>
-            <span>全体設定</span>
+            <span>{pageTitleMap.context}</span>
           </div>
           <div className="common-nav-secondary">
             <button className="common-nav-action" onClick={onBackHome}>ワークスペースホーム</button>
@@ -560,19 +604,13 @@ export const BackupPanel = ({
           </div>
         </div>
         <div className="page-title-row">
-          <h1>設定・バックアップ</h1>
-          <span className="pill">設定</span>
+          <h1>{pageTitleMap.title}</h1>
+          <span className="pill">{pageTitleMap.chip}</span>
         </div>
         <div className="scope-strip" aria-label="現在の操作範囲">
-          <span className="scope-chip active">全体設定</span>
-          <span>Googleカレンダー接続、共有ファイル、復元用ファイルを管理します。</span>
+          <span className="scope-chip active">{pageTitleMap.context}</span>
+          <span>{pageTitleMap.description}</span>
         </div>
-        <p>ローカル保存された状態を、復元用ファイルとして書き出し・復元します。</p>
-        <p>現在のワークスペース: {workspace.workspaceName}</p>
-        <p>保存済みの進行状況: {overlayCount}件</p>
-        <p>最終バックアップ日時: {lastBackupAt ? new Date(lastBackupAt).toLocaleString() : '未実施'}</p>
-        <p>最終同期日時: {lastSyncedAt ? new Date(lastSyncedAt).toLocaleString() : '未記録'}</p>
-        <p className="note">Googleカレンダー予定そのものは復元対象ではありません。</p>
         {storageWarning ? <p className="warning-text">{storageWarning}</p> : null}
         {panelMessage ? <p className="note">{panelMessage}</p> : null}
         {panelError ? <p className="error preserve-line-break">{panelError}</p> : null}
@@ -610,40 +648,91 @@ export const BackupPanel = ({
           <span className="pill">手動運用</span>
         </div>
         <div className="settings-quick-action-grid">
-          <button
-            type="button"
-            className="settings-quick-action"
-            onClick={onReloadCalendar}
-            disabled={isReloadingCalendar}
-          >
-            <strong>{isReloadingCalendar ? '取り込み中' : 'Googleカレンダーを取り込む'}</strong>
-            <span>正本カレンダーから予定を再取得します。</span>
-          </button>
-          <button
-            type="button"
-            className="settings-quick-action"
-            onClick={() => void handleManualReadWithOAuth()}
-            disabled={!hasSharedFileId || sharedStateMetadata.syncStatus === 'loading'}
-          >
-            <strong>共有ファイルを読む</strong>
-            <span>チームの進行状況をこの端末へ反映します。</span>
-          </button>
-          <button
-            type="button"
-            className="settings-quick-action"
-            onClick={() => void handleManualSaveSharedState()}
-            disabled={!hasSharedFileId || sharedStateMetadata.syncStatus === 'saving'}
-          >
-            <strong>共有ファイルへ保存</strong>
-            <span>この端末の進行状況を共有ファイルへ保存します。</span>
-          </button>
-          <button type="button" className="settings-quick-action" onClick={handleExport}>
-            <strong>復元用ファイルを作成</strong>
-            <span>この端末の状態をファイルとして保存します。</span>
-          </button>
+          {activeSettingsPage === 'calendar' ? (
+            <>
+              <button
+                type="button"
+                className="settings-quick-action"
+                onClick={onConnectGoogleCalendar}
+                disabled={isConnectingGoogle || calendarDiagnostics.isMockMode}
+              >
+                <strong>{isConnectingGoogle ? '接続中' : 'Googleアカウントで接続'}</strong>
+                <span>対象カレンダーを読めるGoogleアカウントで許可します。</span>
+              </button>
+              <button
+                type="button"
+                className="settings-quick-action"
+                onClick={onReloadCalendar}
+                disabled={isReloadingCalendar || (!calendarDiagnostics.isMockMode && !calendarDiagnostics.readyForGoogleRead)}
+              >
+                <strong>{isReloadingCalendar ? '取り込み中' : 'Googleカレンダーを取り込む'}</strong>
+                <span>正本カレンダーから予定を再取得します。</span>
+              </button>
+              <button type="button" className="settings-quick-action" onClick={() => scrollToSettingsSection('calendar')}>
+                <strong>カレンダーIDを確認</strong>
+                <span>プロジェクトごとのカレンダーID設定を確認します。</span>
+              </button>
+              <button type="button" className="settings-quick-action" onClick={() => scrollToSettingsSection('calendar')}>
+                <strong>取り込み状態を見る</strong>
+                <span>接続準備、取得済み予定、形式確認件数を確認します。</span>
+              </button>
+            </>
+          ) : null}
+          {activeSettingsPage === 'settings' ? (
+            <>
+              <button
+                type="button"
+                className="settings-quick-action"
+                onClick={() => void handleManualReadWithOAuth()}
+                disabled={!hasSharedFileId || sharedStateMetadata.syncStatus === 'loading'}
+              >
+                <strong>共有ファイルを読む</strong>
+                <span>チームの進行状況をこの端末へ反映します。</span>
+              </button>
+              <button
+                type="button"
+                className="settings-quick-action"
+                onClick={() => void handleManualSaveSharedState()}
+                disabled={!hasSharedFileId || sharedStateMetadata.syncStatus === 'saving'}
+              >
+                <strong>共有ファイルへ保存</strong>
+                <span>この端末の進行状況を共有ファイルへ保存します。</span>
+              </button>
+              <button type="button" className="settings-quick-action" onClick={() => scrollToSettingsSection('shared')}>
+                <strong>共有設定を確認</strong>
+                <span>DriveファイルID、入室時の読み込み設定を確認します。</span>
+              </button>
+              <button type="button" className="settings-quick-action" onClick={() => scrollToSettingsSection('settings')}>
+                <strong>担当者を管理</strong>
+                <span>タスク編集で選ぶ担当者候補を追加・整理します。</span>
+              </button>
+            </>
+          ) : null}
+          {activeSettingsPage === 'backup' ? (
+            <>
+              <button type="button" className="settings-quick-action" onClick={handleExport}>
+                <strong>バックアップを作成</strong>
+                <span>この端末の状態を復元用ファイルとして保存します。</span>
+              </button>
+              <button
+                type="button"
+                className="settings-quick-action"
+                onClick={() => document.getElementById('backup-restore-input')?.click()}
+              >
+                <strong>復元ファイルを読み込む</strong>
+                <span>保存済みファイルを選び、内容確認後に復元します。</span>
+              </button>
+              <button type="button" className="settings-quick-action" onClick={() => scrollToSettingsSection('backup')}>
+                <strong>保存内容を確認</strong>
+                <span>進行状況、最終バックアップ、保存件数を確認します。</span>
+              </button>
+            </>
+          ) : null}
         </div>
       </section>
 
+      {activeSettingsPage === 'settings' ? (
+        <>
       <section id="settings-section-settings" className="card shared-state-card">
         <h2>担当者候補</h2>
         <p className="note">
@@ -710,6 +799,11 @@ export const BackupPanel = ({
         </div>
       </section>
 
+        </>
+      ) : null}
+
+      {activeSettingsPage === 'calendar' ? (
+        <>
       <section id="settings-section-calendar" className="card shared-state-card">
         <h2>GoogleカレンダーID</h2>
         <p className="note">
@@ -830,6 +924,11 @@ export const BackupPanel = ({
         <p className="note">{calendarDiagnostics.nextAction}</p>
       </section>
 
+        </>
+      ) : null}
+
+      {activeSettingsPage === 'settings' ? (
+        <>
       <section id="settings-section-shared" className="card shared-state-card">
         <h2>共有データの状態</h2>
         <p className="note">Google Drive上の共有ファイルを手動で読み書きします。自動保存、ポーリング同期、Driveファイル作成は未実装です。OAuthトークンは保存しません。</p>
@@ -1000,6 +1099,11 @@ export const BackupPanel = ({
         </details>
       </section>
 
+        </>
+      ) : null}
+
+      {activeSettingsPage === 'backup' ? (
+        <>
       <section id="settings-section-backup" className="card backup-actions">
         <h2>この端末の状態を保存</h2>
         <p className="note">現在の進行状況や画面設定を、復元用ファイルとして書き出します。</p>
@@ -1010,6 +1114,7 @@ export const BackupPanel = ({
         <h2>保存ファイルから復元</h2>
         <p className="note">読み込み後は「上書き復元」を実行するまで保存は変更されません。</p>
         <input
+          id="backup-restore-input"
           type="file"
           accept="application/json,.json"
           onChange={(event) => {
@@ -1029,6 +1134,8 @@ export const BackupPanel = ({
           </div>
         ) : null}
       </section>
+        </>
+      ) : null}
     </main>
   );
 };
