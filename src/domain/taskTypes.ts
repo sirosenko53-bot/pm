@@ -33,6 +33,7 @@ export type TaskOverlay = {
   reviewer?: string;
   memo?: string;
   sortOrder?: number;
+  deletedAt?: string;
   updatedAt: string;
 };
 

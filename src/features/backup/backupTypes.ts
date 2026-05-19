@@ -1,6 +1,7 @@
 import type { TaskOverlay } from '../../domain/taskTypes';
 import type { WorkflowTemplate } from '../../domain/workflowTypes';
 import type { Project, Workspace } from '../../domain/workspaceTypes';
+import type { CustomWorkflowMap, CustomWorkflowStageDetailMap } from '../workflow/customWorkflowStore';
 
 export type ViewPreference = {
   taskBoardProjectFilter?: string;
@@ -17,6 +18,8 @@ export type BackupPackage = {
   workflowTemplates: WorkflowTemplate[];
   taskOverlays: TaskOverlay[];
   viewPreference: ViewPreference;
+  customWorkflowStageNames?: CustomWorkflowMap;
+  customWorkflowStageDetails?: CustomWorkflowStageDetailMap;
   lastSyncedAt: string | null;
 };
 

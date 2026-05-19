@@ -1,8 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { TaskViewModel } from '../../domain/taskTypes';
 import type { Workspace } from '../../domain/workspaceTypes';
 import { CommonNav } from '../navigation/CommonNav';
-import { loadCustomStageNames, saveCustomStageNames } from './customWorkflowStore';
+import { loadCustomStageNames, saveCustomStageDetail, saveCustomStageNames } from './customWorkflowStore';
 import {
   calculateStageProgress,
   calculateStageSummary,
@@ -77,6 +77,16 @@ export const WorkflowView = ({
     () => stages.find((stage) => stage.stageId === selectedStageId) ?? currentStage ?? stages[0],
     [stages, selectedStageId, currentStage],
   );
+  const selectedStageConditionsText = selectedStage?.doneConditions?.join('\n') ?? '';
+  const [stageObjectiveText, setStageObjectiveText] = useState('');
+  const [stageConditionsText, setStageConditionsText] = useState('');
+  const [stageDetailMessage, setStageDetailMessage] = useState('');
+
+  useEffect(() => {
+    setStageObjectiveText(selectedStage?.objective ?? '');
+    setStageConditionsText(selectedStageConditionsText);
+    setStageDetailMessage('');
+  }, [selectedStage?.stageId, selectedStage?.objective, selectedStageConditionsText]);
 
   if (!selectedStage) {
     return (
@@ -111,6 +121,20 @@ export const WorkflowView = ({
     setStageEditorMessage(result.warning ?? '工程を保存しました。タスクの工程は確認・修正画面で割り振れます。');
     setStageStoreVersion((value) => value + 1);
     setSelectedStageId(stageNames.length > 0 ? `custom-${project.projectId}-1` : '');
+  };
+
+  const handleSaveStageDetail = () => {
+    const doneConditions = stageConditionsText
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean);
+    const result = saveCustomStageDetail(project.projectId, selectedStage.stageId, {
+      objective: stageObjectiveText,
+      doneConditions,
+    });
+
+    setStageDetailMessage(result.warning ?? '目的と完了条件を保存しました。');
+    setStageStoreVersion((value) => value + 1);
   };
 
   return (
@@ -199,11 +223,19 @@ export const WorkflowView = ({
           <div className="workflow-detail-grid">
             <div className="workflow-detail-row">
               <span>目的</span>
-              <p>この工程の目的はまだ設定されていません。</p>
+              <p>{selectedStage.objective?.trim() || 'この工程の目的はまだ設定されていません。'}</p>
             </div>
             <div className="workflow-detail-row">
               <span>完了条件</span>
-              <p>完了条件は後続フェーズで編集可能にします。</p>
+              {selectedStage.doneConditions?.length ? (
+                <ul className="workflow-condition-list">
+                  {selectedStage.doneConditions.map((condition) => (
+                    <li key={condition}>{condition}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p>完了条件はまだ設定されていません。</p>
+              )}
             </div>
             <div className="workflow-detail-row">
               <span>次の工程</span>
@@ -304,6 +336,40 @@ export const WorkflowView = ({
             <div className="workflow-editor-actions">
               <button type="button" className="secondary" onClick={handleSaveStages}>工程を保存</button>
               {stageEditorMessage ? <p className="meta">{stageEditorMessage}</p> : null}
+            </div>
+          </div>
+          <div className="workflow-admin-settings-body workflow-stage-detail-editor">
+            <div>
+              <h2>目的・完了条件を設定する</h2>
+              <p className="meta">
+                選択中の工程「{selectedStage.stageName}」に、目的と完了条件を設定します。この端末のローカル設定として保存します。
+              </p>
+            </div>
+            <div className="workflow-detail-editor-fields">
+              <label>
+                目的
+                <textarea
+                  value={stageObjectiveText}
+                  onChange={(event) => setStageObjectiveText(event.target.value)}
+                  rows={3}
+                  placeholder="例: この工程で確認すべき制作上の目的を書く"
+                />
+              </label>
+              <label>
+                完了条件
+                <textarea
+                  value={stageConditionsText}
+                  onChange={(event) => setStageConditionsText(event.target.value)}
+                  rows={4}
+                  placeholder={'例:\nラフ確認が完了している\n次工程へ渡す素材が揃っている'}
+                />
+              </label>
+              <div className="workflow-editor-actions">
+                <button type="button" className="secondary" onClick={handleSaveStageDetail}>
+                  目的・完了条件を保存
+                </button>
+                {stageDetailMessage ? <p className="meta">{stageDetailMessage}</p> : null}
+              </div>
             </div>
           </div>
         </details>
